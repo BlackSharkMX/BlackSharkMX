@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Boston CRM Desk - WhatsApp & Gestor de Turno</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎓</text></svg>">
+</head>
+<body>
+
+  <!-- =====================================================================
+       1. TOP APP HEADER
+       ===================================================================== -->
+  <header class="app-header">
+    <div class="brand-section">
+      <div class="brand-icon">🎓</div>
+      <div class="brand-titles">
+        <h1>Boston CRM Desk</h1>
+        <p>Centro Operativo WhatsApp & Gestión de Turno &bull; Colegio Boston</p>
+      </div>
+    </div>
+
+    <!-- Live Clock & Shift Badge -->
+    <div class="shift-clock-section">
+      <div class="shift-badge">
+        <span class="pulse-dot"></span>
+        <span>Turno Activo (Salida 15:00 hrs)</span>
+      </div>
+      <div class="live-clock">
+        <span class="clock-time" id="liveClockTime">00:00:00</span>
+        <span class="clock-date" id="liveClockDate">Cargando fecha...</span>
+      </div>
+    </div>
+
+    <!-- Header Actions & Metric Badges -->
+    <div class="header-actions">
+      <button class="btn-header btn-workflow" onclick="openWorkflowModal()">
+        <span>📋 Flujo de Trabajo</span>
+      </button>
+
+      <button class="btn-header btn-quick-task" onclick="openNewChatModal()">
+        <span>➕ Nuevo Contacto / Pegar Msg</span>
+      </button>
+
+      <a href="https://web.whatsapp.com" target="_blank" class="btn-header btn-wa-link" style="text-decoration: none;">
+        <span>🌐 WhatsApp Web</span>
+      </a>
+    </div>
+  </header>
+
+  <!-- =====================================================================
+       2. THREE COLUMN WORKSPACE
+       ===================================================================== -->
+  <main class="main-workspace">
+
+    <!-- -----------------------------------------------------------------
+         COLUMNA 1: WHATSAPP OPERATIVO (CHATS Y CONVERSACIONES)
+         ----------------------------------------------------------------- -->
+    <section class="column" id="colWhatsApp">
+      <div class="column-header">
+        <div class="column-title-group">
+          <span style="font-size: 16px;">💬</span>
+          <h2>Bandeja WhatsApp</h2>
+          <span class="badge-counter badge-wa" id="waConnectedBadge">Sincronizado</span>
+        </div>
+        <button class="chip-btn" onclick="openNewChatModal()" title="Agregar nuevo chat">
+          + Chat
+        </button>
+      </div>
+
+      <div class="wa-sub-container">
+        <!-- Search and Category Filters -->
+        <div class="wa-filter-bar">
+          <div class="wa-search-box">
+            <span>🔍</span>
+            <input type="text" id="waSearchInput" placeholder="Buscar contacto, alumno o mensaje...">
+          </div>
+          <div class="wa-category-chips">
+            <button class="chip-btn active" data-filter="todos">Todos</button>
+            <button class="chip-btn" data-filter="pendientes">🔴 Con Pendientes</button>
+            <button class="chip-btn" data-filter="padres">Padres / Familias</button>
+            <button class="chip-btn" data-filter="colegas">Colegas Docentes</button>
+          </div>
+        </div>
+
+        <!-- Split: Chat List & Active Chat -->
+        <div class="wa-split-view">
+          <!-- Chat List -->
+          <div class="wa-chat-list" id="waChatList">
+            <!-- Rendered by app.js -->
+          </div>
+
+          <!-- Active Conversation -->
+          <div class="wa-active-conversation">
+            <div class="wa-chat-header" id="activeChatHeader">
+              <!-- Rendered by app.js -->
+            </div>
+
+            <div class="wa-messages-timeline" id="activeChatMessages">
+              <!-- Rendered by app.js -->
+            </div>
+
+            <div class="wa-input-area">
+              <div class="quick-reply-chips" id="waQuickChips">
+                <!-- Rendered by app.js -->
+              </div>
+              <div class="wa-input-row">
+                <input type="text" id="waMessageInput" class="wa-text-input" placeholder="Escribe un mensaje o usa una plantilla rápida...">
+                <button class="btn-wa-send" onclick="sendChatMessage()" title="Enviar mensaje">➤</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- -----------------------------------------------------------------
+         COLUMNA 2: GESTOR DE ACTIVIDADES Y PENDIENTES DEL TURNO
+         ----------------------------------------------------------------- -->
+    <section class="column" id="colTasks">
+      <div class="column-header">
+        <div class="column-title-group">
+          <span style="font-size: 16px;">⚡</span>
+          <h2>Pendientes del Turno</h2>
+          <span class="badge-counter badge-danger" id="colTasksBadge">0 pendientes</span>
+        </div>
+        <div style="font-size: 11px; color: #64748B;">
+          Meta: Salida en cero
+        </div>
+      </div>
+
+      <div class="tasks-container">
+        <!-- Shift Progress Bar & Filter Tabs -->
+        <div class="tasks-toolbar">
+          <div class="shift-progress-box">
+            <div class="progress-header">
+              <span>Progreso de Salida de Turno</span>
+              <span id="shiftProgressText">0 de 0 resueltos (0%)</span>
+            </div>
+            <div class="progress-bar-bg">
+              <div class="progress-bar-fill" id="shiftProgressFill" style="width: 0%;"></div>
+            </div>
+          </div>
+
+          <div class="task-filter-tabs">
+            <button class="task-tab-btn active" data-filter="turno">Para Hoy (Turno)</button>
+            <button class="task-tab-btn" data-filter="credenciales">🔑 Contraseñas (<span id="statCredentials">0</span>)</button>
+            <button class="task-tab-btn" data-filter="colegas">🤝 Apoyo Colegas</button>
+            <button class="task-tab-btn" data-filter="todos">Ver Todos</button>
+            <button class="task-tab-btn" data-filter="resuelto">✅ Resueltos (<span id="statResolved">0</span>)</button>
+          </div>
+        </div>
+
+        <!-- Scrollable Task List -->
+        <div class="tasks-scroll-list" id="tasksScrollList">
+          <!-- Rendered by app.js -->
+        </div>
+      </div>
+    </section>
+
+    <!-- -----------------------------------------------------------------
+         COLUMNA 3: AGENDA, CALENDARIO Y RELOJ OPERATIVO
+         ----------------------------------------------------------------- -->
+    <section class="column" id="colCalendar">
+      <div class="column-header">
+        <div class="column-title-group">
+          <span style="font-size: 16px;">📅</span>
+          <h2>Agenda & Calendario</h2>
+        </div>
+        <button class="btn-add-event" onclick="document.getElementById('modalAddEvent').classList.add('active')">
+          + Agendar
+        </button>
+      </div>
+
+      <div class="agenda-container">
+        <!-- Interactive Mini Calendar -->
+        <div class="calendar-widget">
+          <div class="calendar-header-nav">
+            <button class="cal-nav-btn" onclick="changeMonth(-1)">◀</button>
+            <h3 id="calMonthTitle">Octubre 2026</h3>
+            <button class="cal-nav-btn" onclick="changeMonth(1)">▶</button>
+          </div>
+          <div class="calendar-grid">
+            <span class="cal-day-label">L</span>
+            <span class="cal-day-label">M</span>
+            <span class="cal-day-label">M</span>
+            <span class="cal-day-label">J</span>
+            <span class="cal-day-label">V</span>
+            <span class="cal-day-label">S</span>
+            <span class="cal-day-label">D</span>
+          </div>
+          <div class="calendar-grid" id="calGridDays" style="margin-top: 4px;">
+            <!-- Rendered by app.js -->
+          </div>
+        </div>
+
+        <!-- Daily Timeline of Commitments -->
+        <div class="timeline-section">
+          <div class="timeline-title-row">
+            <h4 id="timelineSelectedDateTitle">Agenda del Día</h4>
+            <span class="badge-counter" style="background:#EDE9FE; color:#6D28D9;">Compromisos</span>
+          </div>
+
+          <div id="timelineEventsList" style="display: flex; flex-direction: column; gap: 8px;">
+            <!-- Rendered by app.js -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- =====================================================================
+       3. MODALS
+       ===================================================================== -->
+
+  <!-- Modal: Convert WhatsApp Message to Task -->
+  <div class="modal-overlay" id="modalConvertTask">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>📌 Convertir Mensaje de WhatsApp a Pendiente</h3>
+        <button class="btn-close-modal" onclick="closeModal('modalConvertTask')">✕</button>
+      </div>
+      <form onsubmit="submitConvertTask(event)">
+        <div class="modal-body">
+          <input type="hidden" id="convChatId">
+          <input type="hidden" id="convMessageId">
+
+          <div class="form-group">
+            <label>Mensaje Original de WhatsApp:</label>
+            <textarea id="convOriginalMsg" class="form-textarea" readonly style="background:#F1F5F9; color:#475569;"></textarea>
+          </div>
+
+          <div class="form-group">
+            <label>Título de la Tarea / Actividad:</label>
+            <input type="text" id="convTaskTitle" class="form-input" required placeholder="Ej: Enviar usuario y contraseña de portal a Sra. García">
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Categoría:</label>
+              <select id="convCategory" class="form-select">
+                <option value="Contraseñas / Cuentas">🔑 Contraseñas / Cuentas</option>
+                <option value="Apoyo a Colegas">🤝 Apoyo a Colegas / Docentes</option>
+                <option value="Atención a Familias">👨‍👩‍👦 Atención a Familias / Clientes</option>
+                <option value="Dirección Académica">📋 Dirección Académica</option>
+                <option value="Sistemas / TI">💻 Soporte TI / Sistemas</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Prioridad:</label>
+              <select id="convPriority" class="form-select">
+                <option value="alta">🔴 Alta (Salida Inmediata en Turno)</option>
+                <option value="media">🟡 Media (Durante el día)</option>
+                <option value="baja">🔵 Normal</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Asignación de Turno:</label>
+              <select id="convTurn" class="form-select">
+                <option value="Turno Hoy">Mi Turno de Hoy</option>
+                <option value="Próximo Turno">Próximo Turno</option>
+                <option value="Esta Semana">Esta Semana</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Hora Límite de Salida:</label>
+              <input type="time" id="convDeadline" class="form-input" value="14:00">
+            </div>
+          </div>
+
+          <div style="background:#EFF6FF; border:1px solid #BFDBFE; border-radius:8px; padding:10px; margin-top:4px;">
+            <div style="font-size:11px; font-weight:700; color:#1E40AF; margin-bottom:6px;">
+              📅 ¿Requiere agendarse con fecha y hora específica? (Opcional)
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Fecha de Ejecución:</label>
+                <input type="date" id="convSchedDate" class="form-input">
+              </div>
+              <div class="form-group">
+                <label>Hora:</label>
+                <input type="time" id="convSchedTime" class="form-input">
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-modal-cancel" onclick="closeModal('modalConvertTask')">Cancelar</button>
+          <button type="submit" class="btn-modal-primary">Guardar en Pendientes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Add / Schedule Event -->
+  <div class="modal-overlay" id="modalAddEvent">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>📅 Agendar Actividad / Apoyo en Calendario</h3>
+        <button class="btn-close-modal" onclick="closeModal('modalAddEvent')">✕</button>
+      </div>
+      <form onsubmit="submitAddEvent(event)">
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Título del Compromiso / Actividad:</label>
+            <input type="text" id="evtTitle" class="form-input" required placeholder="Ej: Apoyo en aula: proyector con Prof. Carlos">
+          </div>
+
+          <div class="form-group">
+            <label>Persona / Colega Involucrado:</label>
+            <input type="text" id="evtContact" class="form-input" placeholder="Ej: Prof. Carlos Mendoza (Ciencias)">
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Fecha:</label>
+              <input type="date" id="evtDate" class="form-input" required>
+            </div>
+            <div class="form-group">
+              <label>Hora de Inicio:</label>
+              <input type="time" id="evtTime" class="form-input" required value="11:00">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Duración estimada:</label>
+              <select id="evtDuration" class="form-select">
+                <option value="15 min">15 minutos</option>
+                <option value="30 min" selected>30 minutos</option>
+                <option value="45 min">45 minutos</option>
+                <option value="1 hora">1 hora</option>
+                <option value="2 horas">2 horas</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Notas / Requerimientos:</label>
+            <textarea id="evtNotes" class="form-textarea" placeholder="Materiales, sala, software o pendientes a tener listos..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-modal-cancel" onclick="closeModal('modalAddEvent')">Cancelar</button>
+          <button type="submit" class="btn-modal-primary">Agendar en Calendario</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: New Chat / Import Message -->
+  <div class="modal-overlay" id="modalNewChat">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>➕ Nuevo Contacto / Pegar Mensaje de WhatsApp</h3>
+        <button class="btn-close-modal" onclick="closeModal('modalNewChat')">✕</button>
+      </div>
+      <form onsubmit="submitNewChat(event)">
+        <div class="modal-body">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Nombre del Contacto:</label>
+              <input type="text" id="ncName" class="form-input" required placeholder="Ej: Lic. Elena Torres">
+            </div>
+            <div class="form-group">
+              <label>Teléfono (WhatsApp):</label>
+              <input type="text" id="ncPhone" class="form-input" placeholder="+52 777 ...">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Rol / Área en Colegio Boston:</label>
+              <input type="text" id="ncRole" class="form-input" placeholder="Ej: Docente Matemáticas / Padre 1° Prep">
+            </div>
+            <div class="form-group">
+              <label>Categoría:</label>
+              <select id="ncCategory" class="form-select">
+                <option value="Colega Docente">Colega Docente</option>
+                <option value="Padre de Familia">Padre de Familia</option>
+                <option value="Dirección Académica">Dirección Académica</option>
+                <option value="Atención General">Atención General</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Mensaje recibido en WhatsApp:</label>
+            <textarea id="ncMessage" class="form-textarea" required placeholder="Pega aquí el mensaje tal como te llegó en WhatsApp para procesarlo..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-modal-cancel" onclick="closeModal('modalNewChat')">Cancelar</button>
+          <button type="submit" class="btn-modal-primary">Crear Conversación</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Operational Workflow Guide -->
+  <div class="modal-overlay" id="modalWorkflow">
+    <div class="modal-box modal-box-lg">
+      <div class="modal-header">
+        <h3>📋 Flujo de Trabajo Operativo Diario (Metodología de Turno)</h3>
+        <button class="btn-close-modal" onclick="closeModal('modalWorkflow')">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 12px; color: #475569;">
+          Esta metodología te permite iniciar tu día con control absoluto, procesar solicitudes de WhatsApp en minutos y asegurar que ningún pendiente quede sin resolver al terminar tu turno.
+        </p>
+
+        <div class="workflow-step">
+          <div class="step-num">1</div>
+          <div class="step-content">
+            <h4>Apertura y Diagnóstico del Turno (Primeros 5 minutos)</h4>
+            <p>
+              Al abrir el CRM, observa el <b>Reloj en tiempo real</b> y la <b>Columna 3 (Calendario y Agenda)</b> para identificar qué citas, apoyos con colegas o entregas tienes fijadas hoy. Revisa el contador de pendientes del turno en la barra superior.
+            </p>
+          </div>
+        </div>
+
+        <div class="workflow-step">
+          <div class="step-num">2</div>
+          <div class="step-content">
+            <h4>Triage Inmediato de WhatsApp (Columna 1 - 10 minutos)</h4>
+            <p>
+              Revisa los chats entrantes. No dejes solicitudes flotando en el chat:
+              <br>&bull; <b>Si un cliente/padre solicita usuario o contraseña:</b> Haz clic en <code>📌 Convertir en Pendiente</code>. Se etiquetará en <i>Contraseñas / Cuentas</i> con prioridad alta para darle salida en tu turno.
+              <br>&bull; <b>Si un colega docente solicita apoyo para una actividad o clase:</b> Haz clic en <code>📅 Agendar con Colega</code>, selecciona el día y hora en el calendario.
+            </p>
+          </div>
+        </div>
+
+        <div class="workflow-step">
+          <div class="step-num">3</div>
+          <div class="step-content">
+            <h4>Ejecución y Salida de Turno (Columna 2 durante la jornada)</h4>
+            <p>
+              Trabaja guiándote por la lista de <b>"Para Hoy (Turno)"</b>. Conforme generas accesos o resuelves tareas:
+              <br>&bull; Haz clic en <code>✓ Resolver / Salida</code> para marcar la tarea como completada.
+              <br>&bull; Usa <code>💬 Avisar por WA</code> para enviar confirmación inmediata al contacto con plantillas predefinidas.
+              <br>&bull; Observa cómo la barra de progreso avanza hacia el 100%.
+            </p>
+          </div>
+        </div>
+
+        <div class="workflow-step">
+          <div class="step-num">4</div>
+          <div class="step-content">
+            <h4>Cierre de Turno y Bandeja Cero (Últimos 10 minutos)</h4>
+            <p>
+              Antes de concluir tu jornada laboral, verifica que el contador de pendientes del turno esté en cero o con todas las actividades debidamente reprogramadas en el calendario. De esta forma entregas o cierras tu turno sin pendientes invisibles ni olvidos.
+            </p>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-modal-primary" onclick="closeModal('modalWorkflow')">Entendido, comenzar turno</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,284 @@
+{
+  "system": {
+    "institution": "Colegio Boston (Cuernavaca)",
+    "user_title": "Dirección Académica & Coordinación Tecnológica",
+    "version": "1.0.0"
+  },
+  "chats": [
+    {
+      "id": "chat_01",
+      "name": "Sra. Mariana Garza",
+      "phone": "+52 777 345 8912",
+      "category": "Padre de Familia",
+      "role": "3° Secundaria - Grupo B",
+      "avatar": "MG",
+      "avatarColor": "#4F46E5",
+      "unread": true,
+      "messages": [
+        {
+          "id": "msg_01_1",
+          "sender": "them",
+          "text": "Buen día profesor, disculpe la molestia.",
+          "time": "08:15",
+          "date": "2026-10-31",
+          "status": "read"
+        },
+        {
+          "id": "msg_01_2",
+          "sender": "them",
+          "text": "¿Me podría apoyar con el usuario y la contraseña del portal escolar para consultar las calificaciones y avisos de mi hijo Emiliano?",
+          "time": "08:16",
+          "date": "2026-10-31",
+          "status": "read",
+          "convertedToTask": true,
+          "taskId": "task_01"
+        },
+        {
+          "id": "msg_01_3",
+          "sender": "me",
+          "text": "Buenos días Sra. Mariana. Con gusto, ya lo registré en mis pendientes de este turno para generarle sus accesos y compartírselos.",
+          "time": "08:20",
+          "date": "2026-10-31",
+          "status": "sent"
+        }
+      ]
+    },
+    {
+      "id": "chat_02",
+      "name": "Prof. Carlos Mendoza",
+      "phone": "+52 777 512 6743",
+      "category": "Colega Docente",
+      "role": "Docente Ciencias - 1° Preparatoria",
+      "avatar": "CM",
+      "avatarColor": "#059669",
+      "unread": false,
+      "messages": [
+        {
+          "id": "msg_02_1",
+          "sender": "them",
+          "text": "Hola colega, ¿cómo estás?",
+          "time": "09:05",
+          "date": "2026-10-31",
+          "status": "read"
+        },
+        {
+          "id": "msg_02_2",
+          "sender": "them",
+          "text": "¿Crees que me puedas apoyar hoy a las 12:30 en el laboratorio con la calibración del simulador digital y el proyector?",
+          "time": "09:06",
+          "date": "2026-10-31",
+          "status": "read",
+          "convertedToTask": true,
+          "taskId": "task_02"
+        },
+        {
+          "id": "msg_02_3",
+          "sender": "me",
+          "text": "Hola Carlos, claro que sí. Ya lo tengo agendado para las 12:30 hrs en el laboratorio.",
+          "time": "09:12",
+          "date": "2026-10-31",
+          "status": "sent"
+        }
+      ]
+    },
+    {
+      "id": "chat_03",
+      "name": "Lic. Roberto Salinas",
+      "phone": "+52 777 981 2234",
+      "category": "Dirección Académica",
+      "role": "Director Académico",
+      "avatar": "RS",
+      "avatarColor": "#DC2626",
+      "unread": false,
+      "messages": [
+        {
+          "id": "msg_03_1",
+          "sender": "them",
+          "text": "Estimado, por favor recuerda tener listo el informe de seguimiento académico de 3° de secundaria antes de las 14:00 horas.",
+          "time": "09:30",
+          "date": "2026-10-31",
+          "status": "read",
+          "convertedToTask": true,
+          "taskId": "task_03"
+        }
+      ]
+    },
+    {
+      "id": "chat_04",
+      "name": "Sra. Patricia Valdés",
+      "phone": "+52 777 234 1190",
+      "category": "Padre de Familia",
+      "role": "1° Preparatoria - Alumna Sofía Valdés",
+      "avatar": "PV",
+      "avatarColor": "#D97706",
+      "unread": true,
+      "messages": [
+        {
+          "id": "msg_04_1",
+          "sender": "them",
+          "text": "Buenas tardes, disculpe, Sofía no puede ingresar a la plataforma de tareas con la clave que nos dieron en la circular.",
+          "time": "10:45",
+          "date": "2026-10-31",
+          "status": "read"
+        },
+        {
+          "id": "msg_04_2",
+          "sender": "them",
+          "text": "¿Nos podría apoyar restableciendo la contraseña?",
+          "time": "10:46",
+          "date": "2026-10-31",
+          "status": "read",
+          "convertedToTask": true,
+          "taskId": "task_1793469953965"
+        }
+      ]
+    },
+    {
+      "id": "chat_05",
+      "name": "Mtra. Alejandra Ríos",
+      "phone": "+52 777 654 3321",
+      "category": "Colega Docente",
+      "role": "Titular 3° Secundaria",
+      "avatar": "AR",
+      "avatarColor": "#7C3AED",
+      "unread": false,
+      "messages": [
+        {
+          "id": "msg_05_1",
+          "sender": "them",
+          "text": "Hola, ¿podemos revisar mañana a primera hora la lista de proyectos transversales del mes de noviembre?",
+          "time": "11:15",
+          "date": "2026-10-31",
+          "status": "read"
+        }
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "id": "task_1793469953965",
+      "title": "Restablecer contraseña para Sofía Valdés",
+      "description": "¿Nos podría apoyar restableciendo la contraseña?",
+      "source": "WhatsApp",
+      "chatId": "chat_04",
+      "messageId": "msg_04_2",
+      "contactName": "Sra. Patricia Valdés",
+      "contactPhone": "+52 777 234 1190",
+      "category": "Contraseñas / Cuentas",
+      "priority": "alta",
+      "status": "resuelto",
+      "turn": "Turno Hoy",
+      "deadline": "13:00",
+      "scheduledDate": null,
+      "scheduledTime": null,
+      "notes": "",
+      "createdAt": "2026-10-31T18:05:53.965Z",
+      "resolvedAt": "2026-10-31T18:05:53.971Z"
+    },
+    {
+      "id": "task_01",
+      "title": "Enviar usuario y contraseña de portal escolar a Sra. Mariana Garza (3° Sec)",
+      "description": "¿Me podría apoyar con el usuario y la contraseña del portal escolar para consultar las calificaciones y avisos de mi hijo Emiliano?",
+      "source": "WhatsApp",
+      "chatId": "chat_01",
+      "messageId": "msg_01_2",
+      "contactName": "Sra. Mariana Garza",
+      "contactPhone": "+52 777 345 8912",
+      "category": "Contraseñas / Cuentas",
+      "priority": "alta",
+      "status": "pendiente",
+      "turn": "Turno Hoy",
+      "deadline": "12:00",
+      "createdAt": "2026-10-31T08:20:00-06:00",
+      "resolvedAt": null
+    },
+    {
+      "id": "task_02",
+      "title": "Apoyo técnico en aula: Proyector y simulador de ciencias con Prof. Carlos Mendoza",
+      "description": "¿Crees que me puedas apoyar hoy a las 12:30 en el laboratorio con la calibración del simulador digital y el proyector?",
+      "source": "WhatsApp",
+      "chatId": "chat_02",
+      "messageId": "msg_02_2",
+      "contactName": "Prof. Carlos Mendoza",
+      "contactPhone": "+52 777 512 6743",
+      "category": "Apoyo a Colegas",
+      "priority": "media",
+      "status": "agendado",
+      "turn": "Turno Hoy",
+      "deadline": "12:30",
+      "scheduledDate": "2026-10-31",
+      "scheduledTime": "12:30",
+      "createdAt": "2026-10-31T09:12:00-06:00",
+      "resolvedAt": null
+    },
+    {
+      "id": "task_03",
+      "title": "Entrega de reporte de seguimiento de 3° de Secundaria a Dirección Académica",
+      "description": "Recuerda tener listo el informe de seguimiento académico de 3° de secundaria antes de las 14:00 horas.",
+      "source": "WhatsApp",
+      "chatId": "chat_03",
+      "messageId": "msg_03_1",
+      "contactName": "Lic. Roberto Salinas",
+      "contactPhone": "+52 777 981 2234",
+      "category": "Dirección Académica",
+      "priority": "alta",
+      "status": "en_proceso",
+      "turn": "Turno Hoy",
+      "deadline": "14:00",
+      "createdAt": "2026-10-31T09:35:00-06:00",
+      "resolvedAt": null
+    }
+  ],
+  "calendarEvents": [
+    {
+      "id": "evt_01",
+      "title": "Apoyo en laboratorio de ciencias (Prof. Carlos Mendoza)",
+      "date": "2026-10-31",
+      "time": "12:30",
+      "duration": "30 min",
+      "category": "Apoyo a Colegas",
+      "taskId": "task_02",
+      "contact": "Prof. Carlos Mendoza",
+      "notes": "Llevar adaptador HDMI y revisar software simulador."
+    },
+    {
+      "id": "evt_02",
+      "title": "Corte de entrega: Reporte Dirección Académica",
+      "date": "2026-10-31",
+      "time": "14:00",
+      "duration": "15 min",
+      "category": "Dirección Académica",
+      "taskId": "task_03",
+      "contact": "Lic. Roberto Salinas",
+      "notes": "Entregar concentrado de 3° Secundaria y 1° Preparatoria."
+    },
+    {
+      "id": "evt_03",
+      "title": "Revisión de proyectos transversales noviembre",
+      "date": "2026-11-03",
+      "time": "08:30",
+      "duration": "45 min",
+      "category": "Académico",
+      "contact": "Mtra. Alejandra Ríos",
+      "notes": "Definir rúbricas de evaluación común."
+    }
+  ],
+  "quickReplies": [
+    {
+      "title": "🔑 Credenciales enviadas",
+      "text": "Estimado(a) [Nombre], le comparto sus accesos al portal escolar de Colegio Boston:\n- Usuario: [usuario]\n- Contraseña temporal: [clave]\nEnlace: https://portal.colegioboston.edu.mx\nQuedo a sus órdenes."
+    },
+    {
+      "title": "🤝 Apoyo agendado",
+      "text": "Hola [Nombre], enterado. Ya registré nuestro apoyo en mi agenda de hoy a las [hora]. Cuentas con mi apoyo puntualmente."
+    },
+    {
+      "title": "⏳ Solicitud en proceso",
+      "text": "Hola [Nombre], he recibido tu solicitud. Ya se encuentra registrada en mis pendientes de este turno para darle salida a la brevedad."
+    },
+    {
+      "title": "✅ Tarea concluida",
+      "text": "Hola [Nombre], te informo que tu solicitud ya quedó completamente atendida y resuelta en el sistema. ¡Excelente día!"
+    }
+  ]
+}

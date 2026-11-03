@@ -1,0 +1,17 @@
+# Dependencias y entornos virtuales
+node_modules/
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+
+# Paquete local de migración masiva de chats (se sincroniza por OneDrive)
+migracion_agente/
+
+# Archivos temporales de sistema y editores
+.DS_Store
+Thumbs.db
+*.tmp
+*.log
+.vscode/
