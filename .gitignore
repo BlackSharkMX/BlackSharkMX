@@ -6,6 +6,9 @@ env/
 __pycache__/
 *.pyc
 
+# Proyectos independientes con repositorio propio
+Boston_Medical_Record/
+
 # Paquete local de migración masiva de chats (se sincroniza por OneDrive)
 migracion_agente/
 
