@@ -715,47 +715,70 @@ function getAlumnos(grado, grupo) {
 
 /**
  * Consultar balance en tiempo real del alumno para un evento
+ * Detecta si el alumno cuenta con cortesía o con precio especial/descuento previo
  */
 function getEstadoAlumno(idEvento, idCliente, costoTotal) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var abonosSheet = ss.getSheetByName("Historial_Abonos");
-  if (!abonosSheet) {
-    return { costoTotal: parseFloat(costoTotal) || 0, montoPagado: 0, resta: parseFloat(costoTotal) || 0, historial: [], cortesia: false };
+  var inscripcionesSheet = ss.getSheetByName("Inscripciones");
+  
+  var costoDefault = parseFloat(costoTotal) || 0;
+  var costoGuardado = 0;
+  var tieneInscripcion = false;
+  
+  if (inscripcionesSheet && inscripcionesSheet.getLastRow() > 1) {
+    var dataInsc = inscripcionesSheet.getDataRange().getValues();
+    for (var j = 1; j < dataInsc.length; j++) {
+      if (dataInsc[j][1] == idEvento && dataInsc[j][2] == idCliente) {
+        costoGuardado = parseFloat(dataInsc[j][3]) || 0;
+        tieneInscripcion = true;
+        break;
+      }
+    }
   }
   
-  var dataAbonos = abonosSheet.getDataRange().getValues();
+  var costoEfectivo = (costoGuardado > 0) ? costoGuardado : costoDefault;
+  var esPrecioEspecial = (costoGuardado > 0 && Math.abs(costoGuardado - costoDefault) > 0.01);
+  
   var totalAbonado = 0;
   var historial = [];
   var esCortesia = false;
   
-  for (var i = 1; i < dataAbonos.length; i++) {
-    if (dataAbonos[i][1] == idEvento && dataAbonos[i][2] == idCliente) {
-      var montoTexto = dataAbonos[i] && dataAbonos[i][3] ? dataAbonos[i][3].toString().toUpperCase() : "";
-      if (montoTexto.includes("CANCELADO")) continue;
-      
-      if (montoTexto.includes("CORTES")) esCortesia = true;
-      
-      var monto = parseFloat(dataAbonos[i][3]) || 0;
-      totalAbonado += monto;
-      historial.push({ 
-        monto: monto, 
-        fecha: dataAbonos[i][4] ? new Date(dataAbonos[i][4]).toLocaleString() : "N/A" 
-      });
+  if (abonosSheet && abonosSheet.getLastRow() > 1) {
+    var dataAbonos = abonosSheet.getDataRange().getValues();
+    for (var i = 1; i < dataAbonos.length; i++) {
+      if (dataAbonos[i][1] == idEvento && dataAbonos[i][2] == idCliente) {
+        var montoTexto = dataAbonos[i] && dataAbonos[i][3] ? dataAbonos[i][3].toString().toUpperCase() : "";
+        if (montoTexto.includes("CANCELADO")) continue;
+        
+        if (montoTexto.includes("CORTES")) esCortesia = true;
+        
+        var monto = parseFloat(dataAbonos[i][3]) || 0;
+        totalAbonado += monto;
+        historial.push({ 
+          monto: monto, 
+          fecha: dataAbonos[i][4] ? new Date(dataAbonos[i][4]).toLocaleString() : "N/A" 
+        });
+      }
     }
   }
+
   return {
-    costoTotal: parseFloat(costoTotal) || 0,
+    costoTotal: costoEfectivo,
+    costoOriginalEvento: costoDefault,
+    esPrecioEspecial: esPrecioEspecial,
+    precioEspecial: costoGuardado > 0 ? costoGuardado : costoDefault,
     montoPagado: totalAbonado,
-    resta: esCortesia ? 0 : Math.max((parseFloat(costoTotal) || 0) - totalAbonado, 0),
+    resta: esCortesia ? 0 : Math.max(costoEfectivo - totalAbonado, 0),
     historial: historial,
     cortesia: esCortesia
   };
 }
 
 /**
- * Registrar pago o cortesía institucional y enviar comprobante por correo
+ * Registrar pago, cortesía institucional ($0) o cortesía con descuento (precio especial)
  */
-function registrarPago(idEvento, nombreEvento, idCliente, nombreCliente, emailCliente, montoAbono, costoTotal, idCajero, grado, grupo, esCortesia) {
+function registrarPago(idEvento, nombreEvento, idCliente, nombreCliente, emailCliente, montoAbono, costoTotal, idCajero, grado, grupo, esCortesia, esPrecioEspecial) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var abonosSheet = ss.getSheetByName("Historial_Abonos");
   var inscripcionesSheet = ss.getSheetByName("Inscripciones");
@@ -767,7 +790,7 @@ function registrarPago(idEvento, nombreEvento, idCliente, nombreCliente, emailCl
   var estadoPagado = esCortesia ? "Cortesía" : (nuevoTotalPagado >= costoTotal ? "Total" : "Parcial");
   
   var timestamp = new Date().getTime().toString().slice(-6);
-  var idAbono = esCortesia ? "CORT-" + timestamp : "FOLIO-" + timestamp;
+  var idAbono = esCortesia ? "CORT-" + timestamp : (esPrecioEspecial ? "DESC-" + timestamp : "FOLIO-" + timestamp);
   var fechaHora = new Date();
   
   var montoBD = esCortesia ? "CORTESÍA" : montoAbono;
@@ -776,7 +799,7 @@ function registrarPago(idEvento, nombreEvento, idCliente, nombreCliente, emailCl
   // Guardar abono individual
   abonosSheet.appendRow([idAbono, idEvento, idCliente, montoBD, fechaHora, idCajero, estatusCorteBD]);
   
-  // Actualizar o crear inscripción acumulada
+  // Actualizar o crear inscripción acumulada con el costo pactado (estándar o con descuento)
   var dataInsc = inscripcionesSheet.getDataRange().getValues();
   var filaEncontrada = -1;
   for (var i = 1; i < dataInsc.length; i++) {
@@ -787,6 +810,9 @@ function registrarPago(idEvento, nombreEvento, idCliente, nombreCliente, emailCl
   }
   
   if (filaEncontrada !== -1) {
+    if (costoTotal > 0) {
+      inscripcionesSheet.getRange(filaEncontrada, 4).setValue(costoTotal);
+    }
     inscripcionesSheet.getRange(filaEncontrada, 5).setValue(nuevoTotalPagado);
     inscripcionesSheet.getRange(filaEncontrada, 6).setValue(estadoPagado);
   } else {
@@ -798,6 +824,10 @@ function registrarPago(idEvento, nombreEvento, idCliente, nombreCliente, emailCl
   if (emailCliente && emailCliente.includes("@") && !esCortesia) {
     var asunto = "Comprobante Digital de Pago - Folio: " + idAbono + " | Colegio Boston";
     var restaFinal = Math.max(costoTotal - nuevoTotalPagado, 0);
+    var tagTarifaEspecial = esPrecioEspecial 
+      ? `<span style="font-size: 11px; color: #b45309; font-weight: bold; display: block; margin-top: 3px;">🏷️ Tarifa con Descuento Especial (Hijo de Maestro / Personal)</span>`
+      : ``;
+
     var cuerpoHtml = `
       <div style="font-family: 'Segoe UI', Arial, sans-serif; border: 2px solid #0b1f3f; padding: 25px; max-width: 520px; border-radius:12px; margin: 0 auto; color: #2d3748; background-color: #ffffff;">
         <div style="text-align: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 16px; margin-bottom: 20px;">
@@ -818,7 +848,7 @@ function registrarPago(idEvento, nombreEvento, idCliente, nombreCliente, emailCl
         <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; padding: 16px; border-radius: 8px; border-left: 6px solid #16a34a;">
           <table style="width: 100%; font-size: 14px;">
             <tr><td style="color: #16a34a; font-weight: 800; font-size: 15px;">Monto Recibido hoy:</td><td style="text-align: right; color: #16a34a; font-weight: 800; font-size: 20px;">$${montoAbono}.00 MXN</td></tr>
-            <tr><td style="color: #64748b; padding-top: 8px;">Total Acumulado Pagado:</td><td style="text-align: right; padding-top: 8px; font-weight: bold; color: #0b1f3f;">$${nuevoTotalPagado}.00 / $${costoTotal}.00</td></tr>
+            <tr><td style="color: #64748b; padding-top: 8px;">Total Acumulado Pagado:</td><td style="text-align: right; padding-top: 8px; font-weight: bold; color: #0b1f3f;">$${nuevoTotalPagado}.00 / $${costoTotal}.00 ${tagTarifaEspecial}</td></tr>
             <tr><td style="color: #dc2626; font-weight: bold; padding-top: 6px;">Saldo Restante Pendiente:</td><td style="text-align: right; color: #dc2626; font-weight: bold; font-size: 15px; padding-top: 6px;">$${restaFinal}.00 MXN</td></tr>
           </table>
         </div>
@@ -848,10 +878,23 @@ function obtenerConcentradoEstatusGrupo(idEvento, grado, grupo, costoTotal) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var clientesSheet = ss.getSheetByName("Clientes").getDataRange().getValues();
   var abonosSheet = ss.getSheetByName("Historial_Abonos").getDataRange().getValues();
+  var inscSheet = ss.getSheetByName("Inscripciones");
   costoTotal = parseFloat(costoTotal) || 0;
   
   var montosAbonadosPorAlumno = {};
   var cortesias = {};
+  var costosPersonalizados = {};
+
+  if (inscSheet && inscSheet.getLastRow() > 1) {
+    var dataInsc = inscSheet.getDataRange().getValues();
+    for (var k = 1; k < dataInsc.length; k++) {
+      if (dataInsc[k][1] == idEvento && dataInsc[k][2]) {
+        var idAlInsc = dataInsc[k][2].toString().trim();
+        var cInsc = parseFloat(dataInsc[k][3]);
+        if (cInsc > 0) costosPersonalizados[idAlInsc] = cInsc;
+      }
+    }
+  }
   
   for (var j = 1; j < abonosSheet.length; j++) {
     if (abonosSheet[j][1] == idEvento) {
@@ -880,7 +923,8 @@ function obtenerConcentradoEstatusGrupo(idEvento, grado, grupo, costoTotal) {
       var nombreAlumno = clientesSheet[i][1].toString();
       var totalAbonado = montosAbonadosPorAlumno[idAlumno] || 0;
       var esCortesia = cortesias[idAlumno] || false;
-      var restante = esCortesia ? 0 : Math.max(costoTotal - totalAbonado, 0);
+      var costoAlumno = costosPersonalizados[idAlumno] || costoTotal;
+      var restante = esCortesia ? 0 : Math.max(costoAlumno - totalAbonado, 0);
       
       var estatusText = "No ha pagado";
       if (esCortesia) {
@@ -892,9 +936,11 @@ function obtenerConcentradoEstatusGrupo(idEvento, grado, grupo, costoTotal) {
       resultadoConcentrado.push({
         id: idAlumno,
         nombre: nombreAlumno,
+        costo: costoAlumno,
         abonado: totalAbonado,
         restante: restante,
-        estatus: estatusText
+        estatus: estatusText,
+        esPrecioEspecial: (costoAlumno !== costoTotal && !esCortesia)
       });
     }
   }

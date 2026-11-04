@@ -6,7 +6,7 @@
 
 ## 📌 Datos de la Secuencia de Comandos
 - **Script ID:** `1Bt2OC0ZbrIyP_esxlyehhcqXtt-L1ep0n42nyrScwOrxyEYUdxf9o3LZ`
-- **Última Versión Desplegada:** Versión 27
+- **Última Versión Desplegada:** Versión 28
 - **URL de Despliegue Web:** `https://script.google.com/macros/s/AKfycbwZd0TjHSodk3cqw64LI1VhhzsR0No-Vk7w47f1HEmOLyP7-JIzPzaDmdtsJLdPlReS6g/exec`
 
 ---
@@ -20,6 +20,21 @@ La aplicación gestiona sus credenciales en la pestaña **`Usuarios`** de la hoj
 | **Cajero** | Cajero Principal | `cajero` | `BostonCaja2026*` | Activo |
 
 *Nota: Desde el apartado de **👥 Usuarios y Accesos** (exclusivo Admin), se pueden generar nuevos usuarios con contraseñas seguras autogeneradas (ej. `BstK83!`) y consultar el directorio completo de contraseñas.*
+
+---
+
+## 🚀 Novedades de la Versión 28: Flujo Ágil de Cobro y Cortesía con Descuento
+
+1. **⚡ Flujo Continuo: Búsqueda ➔ Selección de Evento ➔ Cobro:**
+   - Al buscar a cualquier alumno en la barra superior y dar clic en **`➕ Cobrar Abono`**, el sistema inyecta al instante sus datos (Grado, Grupo y Alumno seleccionado) en el módulo de cobro sin demoras ni llamadas asíncronas bloqueantes.
+   - Se desplaza con scroll suave a la ventanilla de cobro y enfoca el selector de **Evento**. Una vez que el cajero elige el evento, se consulta el saldo en vivo y el cursor salta automáticamente al campo de **Monto a cobrar**.
+
+2. **🏷️ Cortesía con Descuento (Precio Especial para Hijos de Maestros / Personal):**
+   - Nuevo switch dedicado **`🏷️ Cortesía con Descuento`** disponible junto al switch de Cortesía 100% ($0.00).
+   - Al activarse, despliega un campo para definir el **Precio Especial del Boleto** (tarifa con descuento para hijos de maestros o personal institucional).
+   - El balance en vivo (Costo total y Saldo restante) se recalcula de inmediato sobre esta tarifa preferencial ($\text{Resta} = \text{Precio Especial} - \text{Total Abonado}$).
+   - Ocupa lugar formal en el cupo del evento y registra el dinero real ingresado en caja y arqueo.
+   - El sistema almacena en `Inscripciones` el precio preferencial, de modo que en abonos posteriores el sistema recuerda automáticamente su tarifa especial.
 
 ---
 

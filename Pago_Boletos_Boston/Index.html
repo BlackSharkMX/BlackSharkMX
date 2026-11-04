@@ -660,9 +660,12 @@
 
               <!-- Tarjeta de Saldo en Vivo -->
               <div id="balance-box" class="p-3 bg-light border rounded-3 d-none">
-                <div class="d-flex justify-content-between mb-1 small">
+                <div class="d-flex justify-content-between align-items-center mb-1 small">
                   <span class="text-secondary">Costo del Evento:</span>
-                  <span id="txt-costo-total" class="fw-bold">$0.00</span>
+                  <div>
+                    <span id="txt-costo-total" class="fw-bold">$0.00</span>
+                    <span id="badge-descuento-aplicado" class="badge bg-warning text-dark ms-1 d-none">Descuento Especial</span>
+                  </div>
                 </div>
                 <div class="d-flex justify-content-between mb-1 small">
                   <span class="text-secondary">Total Abonado:</span>
@@ -678,11 +681,43 @@
 
             <!-- Columna Derecha: Cobro, Cortesía y Cambio -->
             <div class="col-12 col-lg-6">
-              <div class="d-flex justify-content-between align-items-center mb-1">
+              <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-2 mb-2">
                 <label class="form-label small fw-bold text-secondary m-0">5. Cobrar Abono ($)</label>
-                <div class="form-check form-switch m-0">
-                  <input class="form-check-input" type="checkbox" id="chk-cortesia" onchange="toggleCortesia()">
-                  <label class="form-check-label small fw-bold text-primary" for="chk-cortesia">🎟️ Marcar Cortesía</label>
+                <div class="d-flex flex-wrap align-items-center gap-3">
+                  <!-- Switch Cortesía con Descuento (Precio Especial) -->
+                  <div class="form-check form-switch m-0">
+                    <input class="form-check-input" type="checkbox" id="chk-descuento" onchange="toggleDescuentoEspecial()">
+                    <label class="form-check-label small fw-bold text-warning" for="chk-descuento" title="Precio especial para hijos de maestros o personal escolar">
+                      🏷️ Cortesía con Descuento
+                    </label>
+                  </div>
+                  <!-- Switch Cortesía 100% -->
+                  <div class="form-check form-switch m-0">
+                    <input class="form-check-input" type="checkbox" id="chk-cortesia" onchange="toggleCortesia()">
+                    <label class="form-check-label small fw-bold text-primary" for="chk-cortesia" title="Boleto 100% libre de costo ($0.00)">
+                      🎟️ Cortesía ($0)
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Panel Desplegable de Precio Especial con Descuento -->
+              <div id="panel-descuento-especial" class="p-2 mb-2 bg-light border border-warning rounded-3 d-none">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                  <span class="small fw-bold text-dark" style="font-size: 12px;">
+                    👨‍🏫 Precio Especial del Boleto (Hijo de Maestro / Descuento):
+                  </span>
+                  <span class="badge bg-warning text-dark">Precio Especial</span>
+                </div>
+                <div class="input-group input-group-sm">
+                  <span class="input-group-text fw-bold text-success bg-white">$</span>
+                  <input type="number" id="num-precio-especial" class="form-control fw-bold text-success font-monospace" placeholder="Precio especial asignado" oninput="aplicarCambioPrecioEspecial()" min="0" step="10">
+                  <button class="btn btn-outline-secondary btn-sm" type="button" onclick="restablecerPrecioOriginal()" title="Restablecer precio original del evento">
+                    ↺ Original
+                  </button>
+                </div>
+                <div class="form-text text-muted mt-1" style="font-size: 11px;">
+                  El saldo pendiente y los límites de abono del alumno se recalcularán en vivo bajo este precio especial.
                 </div>
               </div>
 
@@ -1719,7 +1754,7 @@
                 <div class="d-flex align-items-center gap-2">
                   ${badgeEstatus}
                   <button class="btn btn-sm btn-outline-success fw-bold py-1 px-2" 
-                          onclick="cargarAlumnoEnCobro('${ev.idEvento}', '${al.grado}', '${al.grupo}', '${al.id}')">
+                          onclick="cargarAlumnoEnCobro('${ev.idEvento}', '${al.grado}', '${al.grupo}', '${al.id}', '${al.nombre.replace(/'/g, "\\'")}', '${al.email || ''}')">
                     ➕ Cobrar a este evento
                   </button>
                 </div>
@@ -1770,7 +1805,7 @@
             </button>
             ${(al.estatus && al.estatus.toLowerCase().includes('baja')) ? 
               `<button class="btn btn-secondary btn-sm" disabled title="Alumno dado de baja">🚫 En Baja</button>` :
-              `<button class="btn btn-warning btn-sm fw-bold shadow-sm" onclick="cargarAlumnoEnCobro('', '${al.grado}', '${al.grupo}', '${al.id}')">
+              `<button class="btn btn-warning btn-sm fw-bold shadow-sm" onclick="cargarAlumnoEnCobro('', '${al.grado}', '${al.grupo}', '${al.id}', '${al.nombre.replace(/'/g, "\\'")}', '${al.email || ''}')">
                 ➕ Cobrar Abono
               </button>`}
           </div>
@@ -1807,33 +1842,55 @@
       contenedor.classList.remove('d-none');
     }
 
-    function cargarAlumnoEnCobro(idEvento, grado, grupo, idCliente) {
+    function cargarAlumnoEnCobro(idEvento, grado, grupo, idCliente, nombreCliente, emailCliente) {
+      // 1. Asignar Grado y Grupo en los selectores
       if (grado) document.getElementById('sel-grado').value = grado;
       if (grupo) document.getElementById('sel-grupo').value = grupo;
 
-      if (idEvento) {
-        let selEv = document.getElementById('sel-evento');
+      // 2. Pre-cargar de forma inmediata al alumno en sel-alumno (sin esperar el fetch asíncrono)
+      let selAl = document.getElementById('sel-alumno');
+      let nombreDisplay = nombreCliente || idCliente;
+      if (selAl && idCliente) {
+        selAl.innerHTML = `<option value="${idCliente}" data-nombre="${nombreDisplay}" data-email="${emailCliente || ''}" selected>${nombreDisplay} (${idCliente})</option>`;
+      }
+
+      // 3. Preseleccionar evento si viene especificado
+      let selEv = document.getElementById('sel-evento');
+      if (idEvento && selEv) {
         selEv.value = idEvento;
       }
 
-      verificarCambioFiltroGrupo();
+      // 4. Cargar lista completa del grupo en background asegurando que idCliente quede seleccionado
+      let gra = document.getElementById('sel-grado').value;
+      let gru = document.getElementById('sel-grupo').value;
+      if (gra && gru) {
+        google.script.run.withSuccessHandler(alumnos => {
+          if (alumnos && alumnos.length > 0 && selAl) {
+            selAl.innerHTML = '<option value="">-- Selecciona al alumno --</option>' + 
+              alumnos.map(a => `<option value="${a.id}" data-email="${a.email}" data-nombre="${a.nombre}" ${a.id === idCliente ? 'selected' : ''}>${a.nombre}</option>`).join('');
+            selAl.value = idCliente;
+          }
+        }).getAlumnos(gra, gru);
+      }
 
-      setTimeout(() => {
-        let selAl = document.getElementById('sel-alumno');
-        if (selAl) {
-          selAl.value = idCliente;
-          consultarBalance();
-        }
-      }, 500);
-
-      // Desplazamiento suave al módulo de cobro
+      // 5. Desplazamiento suave hacia el formulario de cobro
       let seccionCobro = document.querySelector('#apartado-cobros .card-boston:nth-of-type(2)');
       if (seccionCobro) {
         seccionCobro.scrollIntoView({ behavior: 'smooth' });
       }
-      setTimeout(() => {
-        document.getElementById('num-monto').focus();
-      }, 600);
+
+      // 6. Si ya hay evento seleccionado, consultar balance y enfocar monto; si no, enfocar el selector de evento
+      if (selEv && selEv.value) {
+        consultarBalance();
+        setTimeout(() => {
+          let numMonto = document.getElementById('num-monto');
+          if (numMonto && !numMonto.disabled) numMonto.focus();
+        }, 500);
+      } else {
+        setTimeout(() => {
+          if (selEv) selEv.focus();
+        }, 500);
+      }
     }
 
     function imprimirEstadoCuentaAlumno(idx) {
@@ -2085,20 +2142,32 @@
       }).getEventosCajero(sesion.id, sesion.rol);
     }
 
-    function verificarCambioFiltroGrupo() {
+    var costoOriginalEventoActual = 0;
+    var costoEfectivoActual = 0;
+    var totalAbonadoAlumnoActual = 0;
+
+    function verificarCambioFiltroGrupo(preservarAlumnoId) {
       let gra = document.getElementById('sel-grado').value;
       let gru = document.getElementById('sel-grupo').value;
       let selAl = document.getElementById('sel-alumno');
+      let idSeleccionadoActual = preservarAlumnoId || (selAl ? selAl.value : "");
 
       if (gra && gru) {
-        selAl.innerHTML = '<option value="">Buscando alumnos del salón...</option>';
+        if (!idSeleccionadoActual) {
+          selAl.innerHTML = '<option value="">Buscando alumnos del salón...</option>';
+        }
         google.script.run.withSuccessHandler(alumnos => {
           if (!alumnos || alumnos.length === 0) {
             selAl.innerHTML = '<option value="">No hay alumnos registrados en este grupo</option>';
             return;
           }
           selAl.innerHTML = '<option value="">-- Selecciona al alumno --</option>' + 
-            alumnos.map(a => `<option value="${a.id}" data-email="${a.email}" data-nombre="${a.nombre}">${a.nombre}</option>`).join('');
+            alumnos.map(a => `<option value="${a.id}" data-email="${a.email}" data-nombre="${a.nombre}" ${a.id === idSeleccionadoActual ? 'selected' : ''}>${a.nombre}</option>`).join('');
+          
+          if (idSeleccionadoActual) {
+            selAl.value = idSeleccionadoActual;
+            consultarBalance();
+          }
         }).getAlumnos(gra, gru);
       } else {
         selAl.innerHTML = '<option value="">-- Primero selecciona Grado y Grupo --</option>';
@@ -2112,40 +2181,141 @@
       let ev = listaEventosCompleta.find(e => e.id == idEv);
       let box = document.getElementById('balance-box');
 
-      saldoPendienteActual = 0;
-      document.getElementById('chk-cortesia').checked = false;
-      toggleCortesia();
-
       if (!idAl || !ev) {
+        saldoPendienteActual = 0;
         box.classList.add('d-none');
         return;
       }
 
       google.script.run.withSuccessHandler(res => {
+        totalAbonadoAlumnoActual = res.montoPagado || 0;
+        costoOriginalEventoActual = res.costoOriginalEvento || ev.costo || res.costoTotal;
+        costoEfectivoActual = res.costoTotal;
         saldoPendienteActual = res.resta;
-        box.classList.remove('d-none');
-        document.getElementById('txt-costo-total').innerText = `$${res.costoTotal}.00`;
-        document.getElementById('txt-abonado').innerText = `$${res.montoPagado}.00`;
-        document.getElementById('txt-resta').innerText = `$${res.resta}.00 MXN`;
-        
-        let badgeCort = document.getElementById('badge-estado-alumno-cortesia');
-        if (res.cortesia) badgeCort.classList.remove('d-none');
-        else badgeCort.classList.add('d-none');
 
-        // Si ya liquidó o tiene cortesía, poner sugerencia
-        if (res.resta <= 0) {
-          document.getElementById('txt-resta').className = "text-success fw-bold font-monospace fs-4";
-          document.getElementById('txt-resta').innerText = res.cortesia ? "CORTESÍA CUBIERTA" : "LIQUIDADO 100%";
+        box.classList.remove('d-none');
+        document.getElementById('txt-abonado').innerText = `$${res.montoPagado}.00`;
+
+        let chkCort = document.getElementById('chk-cortesia');
+        let chkDesc = document.getElementById('chk-descuento');
+        let numPrecioEsp = document.getElementById('num-precio-especial');
+        let panelDesc = document.getElementById('panel-descuento-especial');
+        let badgeDesc = document.getElementById('badge-descuento-aplicado');
+
+        if (res.cortesia) {
+          chkCort.checked = true;
+          chkDesc.checked = false;
+          panelDesc.classList.add('d-none');
+          badgeDesc.classList.add('d-none');
+          toggleCortesia();
+        } else if (res.esPrecioEspecial) {
+          chkDesc.checked = true;
+          chkCort.checked = false;
+          panelDesc.classList.remove('d-none');
+          badgeDesc.classList.remove('d-none');
+          numPrecioEsp.value = res.precioEspecial;
+          recalcularBalanceConPrecioEfectivo();
         } else {
-          document.getElementById('txt-resta').className = "text-danger fw-bold font-monospace fs-4";
+          chkCort.checked = false;
+          chkDesc.checked = false;
+          panelDesc.classList.add('d-none');
+          badgeDesc.classList.add('d-none');
+          numPrecioEsp.value = costoOriginalEventoActual;
+          toggleCortesia();
+          recalcularBalanceConPrecioEfectivo();
         }
       }).getEstadoAlumno(idEv, idAl, ev.costo);
+    }
+
+    function toggleDescuentoEspecial() {
+      let chkDesc = document.getElementById('chk-descuento');
+      let chkCort = document.getElementById('chk-cortesia');
+      let panelDesc = document.getElementById('panel-descuento-especial');
+      let inputPrecioEsp = document.getElementById('num-precio-especial');
+      let badgeDesc = document.getElementById('badge-descuento-aplicado');
+
+      if (chkDesc.checked) {
+        if (chkCort.checked) {
+          chkCort.checked = false;
+          toggleCortesia();
+        }
+
+        panelDesc.classList.remove('d-none');
+        badgeDesc.classList.remove('d-none');
+
+        if (!inputPrecioEsp.value || parseFloat(inputPrecioEsp.value) <= 0) {
+          inputPrecioEsp.value = costoOriginalEventoActual || "";
+        }
+        costoEfectivoActual = parseFloat(inputPrecioEsp.value) || costoOriginalEventoActual;
+        inputPrecioEsp.focus();
+        inputPrecioEsp.select();
+      } else {
+        panelDesc.classList.add('d-none');
+        badgeDesc.classList.add('d-none');
+        costoEfectivoActual = costoOriginalEventoActual;
+        inputPrecioEsp.value = costoOriginalEventoActual;
+      }
+
+      recalcularBalanceConPrecioEfectivo();
+    }
+
+    function aplicarCambioPrecioEspecial() {
+      let inputPrecioEsp = document.getElementById('num-precio-especial');
+      let val = parseFloat(inputPrecioEsp.value);
+      if (!isNaN(val) && val >= 0) {
+        costoEfectivoActual = val;
+      } else {
+        costoEfectivoActual = 0;
+      }
+      recalcularBalanceConPrecioEfectivo();
+    }
+
+    function restablecerPrecioOriginal() {
+      let inputPrecioEsp = document.getElementById('num-precio-especial');
+      inputPrecioEsp.value = costoOriginalEventoActual;
+      costoEfectivoActual = costoOriginalEventoActual;
+      recalcularBalanceConPrecioEfectivo();
+    }
+
+    function recalcularBalanceConPrecioEfectivo() {
+      let isCortesia = document.getElementById('chk-cortesia').checked;
+      let isDescuento = document.getElementById('chk-descuento').checked;
+
+      let costoMostrar = isDescuento ? costoEfectivoActual : costoOriginalEventoActual;
+      document.getElementById('txt-costo-total').innerText = `$${costoMostrar}.00`;
+
+      if (isCortesia) {
+        saldoPendienteActual = 0;
+        document.getElementById('txt-resta').className = "text-success fw-bold font-monospace fs-4";
+        document.getElementById('txt-resta').innerText = "CORTESÍA CUBIERTA";
+        document.getElementById('badge-estado-alumno-cortesia').classList.remove('d-none');
+        calcularCambio();
+        return;
+      } else {
+        document.getElementById('badge-estado-alumno-cortesia').classList.add('d-none');
+      }
+
+      let restante = Math.max(costoMostrar - totalAbonadoAlumnoActual, 0);
+      saldoPendienteActual = restante;
+
+      let txtResta = document.getElementById('txt-resta');
+      if (restante <= 0 && costoMostrar > 0) {
+        txtResta.className = "text-success fw-bold font-monospace fs-4";
+        txtResta.innerText = "LIQUIDADO 100%";
+      } else {
+        txtResta.className = "text-danger fw-bold font-monospace fs-4";
+        txtResta.innerText = `$${restante}.00 MXN`;
+      }
+
+      calcularCambio();
     }
 
     function actualizarCosto() {
       let idEv = document.getElementById('sel-evento').value;
       let ev = listaEventosCompleta.find(e => e.id == idEv);
       let badgeInfo = document.getElementById('badge-evento-alcance-info');
+      let selAl = document.getElementById('sel-alumno');
+      let idAlPreviamenteSeleccionado = selAl ? selAl.value : "";
 
       if (ev) {
         let parse = parsearAlcance(ev.alcance);
@@ -2164,8 +2334,15 @@
         adaptarSelectoresGradoYGrupo({ esTodos: true, grados: ["1", "2", "3"], grupos: ["A", "B", "C"] }, 'sel-grado', 'sel-grupo', true);
       }
 
-      verificarCambioFiltroGrupo();
+      verificarCambioFiltroGrupo(idAlPreviamenteSeleccionado);
       consultarBalance();
+
+      if (idAlPreviamenteSeleccionado) {
+        setTimeout(() => {
+          let numMonto = document.getElementById('num-monto');
+          if (numMonto && !numMonto.disabled) numMonto.focus();
+        }, 500);
+      }
     }
 
     function calcularCambio() {
@@ -2189,10 +2366,17 @@
 
     function toggleCortesia() {
       let isCortesia = document.getElementById('chk-cortesia').checked;
+      let chkDesc = document.getElementById('chk-descuento');
+      let panelDesc = document.getElementById('panel-descuento-especial');
       let inputMonto = document.getElementById('num-monto');
       let inputEfectivo = document.getElementById('num-efectivo');
       
       if (isCortesia) {
+        if (chkDesc.checked) {
+          chkDesc.checked = false;
+          panelDesc.classList.add('d-none');
+          document.getElementById('badge-descuento-aplicado').classList.add('d-none');
+        }
         inputMonto.value = 0;
         inputMonto.disabled = true;
         inputEfectivo.value = "";
@@ -2202,7 +2386,7 @@
         inputMonto.disabled = false;
         inputEfectivo.disabled = false;
       }
-      calcularCambio();
+      recalcularBalanceConPrecioEfectivo();
     }
 
     function cobrar() {
@@ -2210,10 +2394,17 @@
       let alSelect = document.getElementById('sel-alumno');
       let montoInput = document.getElementById('num-monto');
       let isCortesia = document.getElementById('chk-cortesia').checked;
+      let isDescuento = document.getElementById('chk-descuento').checked;
       let ev = listaEventosCompleta.find(e => e.id == evSelect.value);
 
       if (!evSelect.value) return alert("Por favor selecciona un evento.");
       if (!alSelect.value) return alert("Por favor selecciona al alumno que va a realizar el pago.");
+
+      let costoFinal = isDescuento ? costoEfectivoActual : (ev.costo || 0);
+
+      if (isDescuento && (isNaN(costoFinal) || costoFinal < 0)) {
+        return alert("Por favor ingresa un precio especial válido para el boleto.");
+      }
 
       let monto = isCortesia ? 0 : parseFloat(montoInput.value);
       if (!isCortesia && (!monto || monto <= 0)) {
@@ -2232,11 +2423,13 @@
       google.script.run.withSuccessHandler(res => {
         btn.disabled = false;
         btn.innerText = "💰 Registrar Cobro y Enviar Recibo";
-        alert(isCortesia ? `🎟️ Cortesía registrada con éxito.\nFolio: ${res.folio}` : `✅ Pago registrado con éxito.\nFolio Oficial: ${res.folio}\nRecibo digital enviado por correo.`);
+        alert(isCortesia 
+          ? `🎟️ Cortesía registrada con éxito.\nFolio: ${res.folio}` 
+          : (isDescuento 
+              ? `🏷️ Cobro con Descuento Especial registrado.\nFolio Oficial: ${res.folio}\nPrecio especial aplicado: $${costoFinal}.00\nRecibo digital enviado por correo.` 
+              : `✅ Pago registrado con éxito.\nFolio Oficial: ${res.folio}\nRecibo digital enviado por correo.`));
 
-        // Limpiar formulario
-        document.getElementById('chk-cortesia').checked = false;
-        toggleCortesia();
+        // Limpiar montos
         document.getElementById('num-monto').value = "";
         document.getElementById('num-efectivo').value = "";
         calcularCambio();
@@ -2250,8 +2443,8 @@
         alert("Error al registrar el cobro: " + err.message);
       }).registrarPago(
         ev.id, ev.nombre, alSelect.value, opt.dataset.nombre, opt.dataset.email,
-        monto, ev.costo, sesion.id, document.getElementById('sel-grado').value, 
-        document.getElementById('sel-grupo').value, isCortesia
+        monto, costoFinal, sesion.id, document.getElementById('sel-grado').value, 
+        document.getElementById('sel-grupo').value, isCortesia, isDescuento
       );
     }
 
