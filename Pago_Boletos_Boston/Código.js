@@ -17,6 +17,14 @@ function doGet(e) {
         .setMimeType(ContentService.MimeType.JSON);
     }
 
+    // Endpoint de prueba para búsqueda de alumnos
+    if (e && e.parameter && e.parameter.action === 'search') {
+      var query = e.parameter.q || "";
+      var resSearch = consultarHistorialCompletoAlumno(query);
+      return ContentService.createTextOutput(JSON.stringify(resSearch, null, 2))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
     // Endpoint de inspección para diagnóstico de la base de datos
     if (e && e.parameter && e.parameter.action === 'inspect') {
       var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -516,26 +524,34 @@ function consultarHistorialCompletoAlumno(criterio) {
   var clientesData = sheetClientes.getDataRange().getValues();
   var busqueda = criterio.toString().trim().toLowerCase();
   
-  // 1. Localizar alumnos coincidentes por ID o Nombre
-  var alumnosCoincidentes = [];
+  // 1. Localizar alumnos coincidentes por ID o Nombre (priorizando alumnos activos)
+  var coincidentesActivos = [];
+  var coincidentesBajas = [];
   for (var i = 1; i < clientesData.length; i++) {
     var idAl = clientesData[i][0] ? clientesData[i][0].toString().trim() : "";
     var nomAl = clientesData[i][1] ? clientesData[i][1].toString().trim() : "";
     var gradoAl = clientesData[i][3] ? clientesData[i][3].toString().trim() : "";
     var grupoAl = clientesData[i][4] ? clientesData[i][4].toString().trim() : "";
     var emailAl = clientesData[i][5] ? clientesData[i][5].toString().trim() : "";
+    var estatusAl = clientesData[i][6] ? clientesData[i][6].toString().trim() : "Activo";
     
     if (idAl.toLowerCase().includes(busqueda) || nomAl.toLowerCase().includes(busqueda)) {
-      alumnosCoincidentes.push({
+      var itemAl = {
         id: idAl,
         nombre: nomAl,
         grado: gradoAl,
         grupo: grupoAl,
-        email: emailAl
-      });
-      if (alumnosCoincidentes.length >= 10) break;
+        email: emailAl,
+        estatus: estatusAl
+      };
+      if (estatusAl.toLowerCase().includes("baja") || estatusAl.toLowerCase().includes("inactiv")) {
+        coincidentesBajas.push(itemAl);
+      } else {
+        coincidentesActivos.push(itemAl);
+      }
     }
   }
+  var alumnosCoincidentes = coincidentesActivos.concat(coincidentesBajas).slice(0, 15);
   
   if (alumnosCoincidentes.length === 0) {
     return { success: false, message: "No se encontró ningún alumno con el criterio: '" + criterio + "'." };
@@ -1107,7 +1123,6 @@ function eliminarCobro(fila, idEvento, idCliente, montoAbonoAnulado, motivo) {
  */
 function sincronizarAlumnosDesdeSheetExterna(urlOrId, gidForzado) {
   var idSheet = "1cfQ1ni8TuszbAhiW-jEB-Dk2Q7xSBVtUPjBrNP80I_I";
-  var gidTarget = gidForzado ? gidForzado.toString() : "25493851";
 
   if (urlOrId && typeof urlOrId === "string" && urlOrId.trim() !== "") {
     var matchId = urlOrId.match(/\/d\/([a-zA-Z0-9-_]+)/);
@@ -1115,10 +1130,6 @@ function sincronizarAlumnosDesdeSheetExterna(urlOrId, gidForzado) {
       idSheet = matchId[1];
     } else if (!urlOrId.includes("/") && urlOrId.length > 20) {
       idSheet = urlOrId.trim();
-    }
-    var matchGid = urlOrId.match(/gid=([0-9]+)/);
-    if (matchGid && matchGid[1]) {
-      gidTarget = matchGid[1];
     }
   }
 
@@ -1132,83 +1143,94 @@ function sincronizarAlumnosDesdeSheetExterna(urlOrId, gidForzado) {
     };
   }
 
-  // 1. Localizar la hoja u hojas origen
-  var hojas = targetSS.getSheets();
-  var hojaSeleccionada = null;
+  // 1. Identificar las hojas oficiales activas del ciclo escolar 26-27 (1°, 2° y 3° de Secundaria)
+  var todasLasHojas = targetSS.getSheets();
+  var hojasCicloActivo = [];
 
-  if (gidTarget) {
-    hojaSeleccionada = hojas.find(function(h) { return h.getSheetId().toString() === gidTarget; });
+  todasLasHojas.forEach(function(h) {
+    var hName = h.getName().toUpperCase();
+    var esHistorico = hName.includes("RESPALDO") || hName.includes("EGRESADOS") || hName.includes("DATOS") || hName.includes("COPIA") || hName.includes("24-25") || hName.includes("25-26");
+    if (!esHistorico) {
+      if (hName.includes("26-27")) {
+        hojasCicloActivo.push(h);
+      }
+    }
+  });
+
+  // Si no se encontraron por etiqueta "26-27", buscar por pestañas consolidadas
+  if (hojasCicloActivo.length === 0) {
+    var hGrupos = targetSS.getSheetByName("Grupos");
+    if (hGrupos) hojasCicloActivo.push(hGrupos);
   }
-  if (!hojaSeleccionada) {
-    hojaSeleccionada = targetSS.getSheetByName("Grupos");
-  }
-  if (!hojaSeleccionada) {
-    hojaSeleccionada = hojas.find(function(h) { return h.getLastRow() > 10; }) || hojas[0];
+
+  if (hojasCicloActivo.length === 0) {
+    return {
+      success: false,
+      message: "No se encontraron las pestañas del ciclo escolar activo 26-27 en la hoja de cálculo."
+    };
   }
 
   var listaAlumnosNuevos = [];
   var mapaCorreosProcesados = {};
+  var mapaNombresProcesados = {};
 
-  function extraerAlumnosDeHoja(hoja, gradoPorDefecto) {
+  function extraerAlumnosDeHoja(hoja) {
     if (!hoja || hoja.getLastRow() < 2) return;
     var data = hoja.getDataRange().getValues();
     if (data.length < 2) return;
 
-    var headerRowIdx = 0;
-    var colNombre = -1, colCorreo = -1, colGrado = -1, colGrupo = -1;
+    var hName = hoja.getName().toUpperCase();
+    var gradoDefecto = "1";
+    if (hName.includes("2°") || hName.includes("SEGUNDO") || hName.includes(" 2 ")) gradoDefecto = "2";
+    if (hName.includes("3°") || hName.includes("TERCERO") || hName.includes(" 3 ")) gradoDefecto = "3";
 
-    for (var r = 0; r < Math.min(data.length, 5); r++) {
+    var headerRowIdx = 0;
+    var colNombre = 1;
+    var colGradoGrupo = 2;
+    var colCorreo = 3;
+
+    for (var r = 0; r < Math.min(data.length, 4); r++) {
       for (var c = 0; c < data[r].length; c++) {
         var val = (data[r][c] || "").toString().trim().toLowerCase();
-        if (val.includes("nombre") || val.includes("alumno") || val.includes("apellidos")) {
-          if (colNombre === -1) colNombre = c;
-        }
-        if (val.includes("correo") || val.includes("email")) {
-          if (colCorreo === -1) colCorreo = c;
-        }
-        if (val.includes("grado")) {
-          if (colGrado === -1) colGrado = c;
-        }
-        if (val.includes("grupo")) {
-          if (colGrupo === -1) colGrupo = c;
-        }
-      }
-      if (colNombre !== -1 && (colCorreo !== -1 || colGrupo !== -1)) {
-        headerRowIdx = r;
-        break;
+        if (val.includes("nombre") || val.includes("alumno") || val.includes("apellidos")) colNombre = c;
+        if (val.includes("grado") || val.includes("grupo") || val.includes("sección")) colGradoGrupo = c;
+        if (val.includes("correo") || val.includes("email")) colCorreo = c;
       }
     }
-
-    if (colNombre === -1) colNombre = 1;
-    if (colCorreo === -1 && data[0].length > 2) colCorreo = 2;
-    if (colGrado === -1 && data[0].length > 3) colGrado = 3;
-    if (colGrupo === -1 && data[0].length > 4) colGrupo = 4;
 
     for (var i = headerRowIdx + 1; i < data.length; i++) {
       var row = data[i];
       var rawNombre = colNombre >= 0 && row[colNombre] ? row[colNombre].toString().trim() : "";
-      if (!rawNombre || rawNombre.toLowerCase() === "nombre" || rawNombre.toLowerCase().includes("apellidos")) continue;
+      if (!rawNombre || rawNombre.toLowerCase() === "nombre" || rawNombre.toLowerCase().includes("apellidos") || rawNombre.toLowerCase().includes("total")) continue;
 
+      var rawGradoGrupo = colGradoGrupo >= 0 && row[colGradoGrupo] ? row[colGradoGrupo].toString().trim().toUpperCase() : "";
       var rawCorreo = colCorreo >= 0 && row[colCorreo] ? row[colCorreo].toString().trim().toLowerCase() : "";
-      var rawGrado = colGrado >= 0 && row[colGrado] ? row[colGrado].toString().trim() : (gradoPorDefecto || "");
-      var rawGrupo = colGrupo >= 0 && row[colGrupo] ? row[colGrupo].toString().trim().toUpperCase() : "";
 
-      var numGrado = rawGrado.replace(/\D/g, "");
-      if (!numGrado && gradoPorDefecto) numGrado = gradoPorDefecto.toString().replace(/\D/g, "");
-      if (!numGrado) numGrado = "1";
-
+      // Extraer Grado y Grupo (S1A, S2B, 3C, 1° A, etc.)
+      var numGrado = gradoDefecto;
       var letGrupo = "A";
-      var matchGrupo = rawGrupo.match(/[A-C]/);
-      if (matchGrupo) letGrupo = matchGrupo[0];
+
+      var matchSalon = rawGradoGrupo.match(/S?([1-3])\s*[-°º]?\s*([A-Ca-c])/i);
+      if (matchSalon) {
+        numGrado = matchSalon[1];
+        letGrupo = matchSalon[2].toUpperCase();
+      } else {
+        var matchG = rawGradoGrupo.match(/([1-3])/);
+        if (matchG) numGrado = matchG[1];
+        var matchLetra = rawGradoGrupo.match(/([A-Ca-c])/);
+        if (matchLetra) letGrupo = matchLetra[1].toUpperCase();
+      }
 
       var nombreLimpio = rawNombre.replace(/\s*\([^)]*\)\s*/g, " ").trim().replace(/\s+/g, " ");
+      var normNombre = nombreLimpio.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ");
 
-      var claveUnica = rawCorreo || (nombreLimpio.toLowerCase() + "_" + numGrado + letGrupo);
+      var claveUnica = rawCorreo || (normNombre + "_" + numGrado + letGrupo);
       if (mapaCorreosProcesados[claveUnica]) continue;
       mapaCorreosProcesados[claveUnica] = true;
 
       listaAlumnosNuevos.push({
         nombre: nombreLimpio,
+        normNombre: normNombre,
         correo: rawCorreo,
         grado: numGrado,
         grupo: letGrupo
@@ -1216,39 +1238,25 @@ function sincronizarAlumnosDesdeSheetExterna(urlOrId, gidForzado) {
     }
   }
 
-  // Si la hoja seleccionada es la concentrada 'Grupos' o contiene más de 100 filas
-  if (hojaSeleccionada.getName().toLowerCase() === "grupos" || hojaSeleccionada.getLastRow() > 100) {
-    extraerAlumnosDeHoja(hojaSeleccionada, null);
-  } else {
-    var hojaGrupos = targetSS.getSheetByName("Grupos");
-    if (hojaGrupos && hojaGrupos.getLastRow() > 50) {
-      extraerAlumnosDeHoja(hojaGrupos, null);
-    } else {
-      hojas.forEach(function(h) {
-        var hName = h.getName().toLowerCase();
-        if (hName.includes("1") || hName.includes("primero")) extraerAlumnosDeHoja(h, "1");
-        else if (hName.includes("2") || hName.includes("segundo")) extraerAlumnosDeHoja(h, "2");
-        else if (hName.includes("3") || hName.includes("tercero")) extraerAlumnosDeHoja(h, "3");
-        else if (hName === "grupos") extraerAlumnosDeHoja(h, null);
-      });
-    }
-  }
+  hojasCicloActivo.forEach(function(h) {
+    extraerAlumnosDeHoja(h);
+  });
 
   if (listaAlumnosNuevos.length === 0) {
     return {
       success: false,
-      message: "No se encontraron registros de alumnos en la hoja (" + hojaSeleccionada.getName() + ")."
+      message: "No se pudieron extraer alumnos de las listas seleccionadas."
     };
   }
 
-  // 2. Ordenar alumnos alfabéticamente por Grado, Grupo y Nombre
+  // 2. Ordenar alfabéticamente por Grado (1, 2, 3), Grupo (A, B, C) y Nombre
   listaAlumnosNuevos.sort(function(a, b) {
     if (a.grado !== b.grado) return parseInt(a.grado) - parseInt(b.grado);
     if (a.grupo !== b.grupo) return a.grupo.localeCompare(b.grupo);
     return a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' });
   });
 
-  // 3. Generar nuevas matrículas institucionales oficiales (ej. S1A-01, S2B-05...)
+  // 3. Generar nuevas matrículas oficiales (S1A-01, S1A-02...)
   var contadoresSalones = {};
   listaAlumnosNuevos.forEach(function(al) {
     var claveSalon = "S" + al.grado + al.grupo;
@@ -1296,10 +1304,10 @@ function sincronizarAlumnosDesdeSheetExterna(urlOrId, gidForzado) {
 
   var nuevasFilasClientes = [];
   var setCorreosNuevos = {};
+  var setNombresNuevos = {};
 
   listaAlumnosNuevos.forEach(function(al) {
-    var normNomNuevo = al.nombre.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ");
-    var alExistente = (al.correo && mapExistentesPorCorreo[al.correo]) ? mapExistentesPorCorreo[al.correo] : mapExistentesPorNombre[normNomNuevo];
+    var alExistente = (al.correo && mapExistentesPorCorreo[al.correo]) ? mapExistentesPorCorreo[al.correo] : mapExistentesPorNombre[al.normNombre];
 
     if (alExistente) {
       totalActualizados++;
@@ -1311,6 +1319,7 @@ function sincronizarAlumnosDesdeSheetExterna(urlOrId, gidForzado) {
     }
 
     if (al.correo) setCorreosNuevos[al.correo] = true;
+    setNombresNuevos[al.normNombre] = true;
 
     nuevasFilasClientes.push([
       al.matricula,
@@ -1324,7 +1333,7 @@ function sincronizarAlumnosDesdeSheetExterna(urlOrId, gidForzado) {
     ]);
   });
 
-  // Depurar alumnos que ya no estén en estas listas nuevas
+  // Identificar y procesar bajas (alumnos en la base de datos que ya no están en las listas actualizadas)
   var sheetAbonos = ssActual.getSheetByName("Historial_Abonos");
   var idsConPagos = {};
   if (sheetAbonos && sheetAbonos.getLastRow() > 1) {
@@ -1340,12 +1349,11 @@ function sincronizarAlumnosDesdeSheetExterna(urlOrId, gidForzado) {
     var nomOld = clientesActuales[i][1] ? clientesActuales[i][1].toString().trim() : "";
     var normNomOld = nomOld.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ");
 
-    var matchNuevo = (mailOld && setCorreosNuevos[mailOld]) || listaAlumnosNuevos.find(function(n) {
-      return n.nombre.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ") === normNomOld;
-    });
+    var estaEnNuevos = (mailOld && setCorreosNuevos[mailOld]) || setNombresNuevos[normNomOld];
 
-    if (!matchNuevo) {
+    if (!estaEnNuevos && idOld) {
       totalBajas++;
+      // Si el alumno tiene pagos registrados, lo conservamos como "Baja" para no corromper la contabilidad histórica
       if (idsConPagos[idOld]) {
         nuevasFilasClientes.push([
           idOld,
@@ -1354,14 +1362,15 @@ function sincronizarAlumnosDesdeSheetExterna(urlOrId, gidForzado) {
           clientesActuales[i][3] || "",
           clientesActuales[i][4] || "",
           mailOld,
-          "Inactivo / Baja",
+          "Baja",
           fechaHoy
         ]);
       }
+      // Si no tenía pagos, queda dado de baja y removido del padrón
     }
   }
 
-  // Reescribir hoja 'Clientes' con formato estandarizado
+  // Escribir en 'Clientes'
   sheetClientes.clearContents();
   sheetClientes.getRange(1, 1, 1, 8).setValues([headersClientes]);
   sheetClientes.getRange(1, 1, 1, 8).setFontWeight("bold").setBackground("#1e293b").setFontColor("#f8fafc");
@@ -1370,46 +1379,46 @@ function sincronizarAlumnosDesdeSheetExterna(urlOrId, gidForzado) {
     sheetClientes.getRange(2, 1, nuevasFilasClientes.length, 8).setValues(nuevasFilasClientes);
   }
 
-  // 5. Migrar IDs antiguos en Historial_Abonos e Inscripciones para proteger historial de pagos
+  // 5. Migrar IDs antiguos en Historial_Abonos e Inscripciones
   if (Object.keys(mapMatriculaAntiguaANueva).length > 0) {
     if (sheetAbonos && sheetAbonos.getLastRow() > 1) {
       var abRange = sheetAbonos.getRange(2, 3, sheetAbonos.getLastRow() - 1, 1);
       var abValues = abRange.getValues();
-      var abModificado = false;
+      var abMod = false;
       for (var k = 0; k < abValues.length; k++) {
-        var oldAbonoId = abValues[k][0] ? abValues[k][0].toString().trim() : "";
-        if (mapMatriculaAntiguaANueva[oldAbonoId]) {
-          abValues[k][0] = mapMatriculaAntiguaANueva[oldAbonoId];
-          abModificado = true;
+        var oldId = abValues[k][0] ? abValues[k][0].toString().trim() : "";
+        if (mapMatriculaAntiguaANueva[oldId]) {
+          abValues[k][0] = mapMatriculaAntiguaANueva[oldId];
+          abMod = true;
         }
       }
-      if (abModificado) abRange.setValues(abValues);
+      if (abMod) abRange.setValues(abValues);
     }
 
     var sheetInsc = ssActual.getSheetByName("Inscripciones");
     if (sheetInsc && sheetInsc.getLastRow() > 1) {
-      var inscRange = sheetInsc.getRange(2, 3, sheetInsc.getLastRow() - 1, 1);
-      var inscValues = inscRange.getValues();
-      var inscModificado = false;
-      for (var m = 0; m < inscValues.length; m++) {
-        var oldInscId = inscValues[m][0] ? inscValues[m][0].toString().trim() : "";
-        if (mapMatriculaAntiguaANueva[oldInscId]) {
-          inscValues[m][0] = mapMatriculaAntiguaANueva[oldInscId];
-          inscModificado = true;
+      var inRange = sheetInsc.getRange(2, 3, sheetInsc.getLastRow() - 1, 1);
+      var inValues = inRange.getValues();
+      var inMod = false;
+      for (var m = 0; m < inValues.length; m++) {
+        var oldInId = inValues[m][0] ? inValues[m][0].toString().trim() : "";
+        if (mapMatriculaAntiguaANueva[oldInId]) {
+          inValues[m][0] = mapMatriculaAntiguaANueva[oldInId];
+          inMod = true;
         }
       }
-      if (inscModificado) inscRange.setValues(inscValues);
+      if (inMod) inRange.setValues(inValues);
     }
   }
 
   return {
     success: true,
+    totalActivos: listaAlumnosNuevos.length,
     totalNuevos: totalNuevos,
     totalActualizados: totalActualizados,
     totalBajas: totalBajas,
-    totalActivos: listaAlumnosNuevos.length,
-    hojaOrigen: hojaSeleccionada.getName(),
+    hojasProcesadas: hojasCicloActivo.map(function(h) { return h.getName(); }),
     salones: contadoresSalones,
-    message: "Sincronización completada exitosamente. " + listaAlumnosNuevos.length + " alumnos activos registrados con sus nuevas matrículas oficiales."
+    message: "Sincronización completada exitosamente. " + listaAlumnosNuevos.length + " alumnos activos registrados con sus nuevas matrículas oficiales (S1A a S3C)."
   };
 }

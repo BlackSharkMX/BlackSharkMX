@@ -1632,7 +1632,7 @@
         if (expedientesBusquedaActual.length > 1) {
           pills.innerHTML = expedientesBusquedaActual.map((item, idx) => `
             <button class="btn btn-sm btn-outline-primary pill-alumno-match" onclick="mostrarExpedienteAlumnoIndex(${idx})">
-              👤 ${item.alumno.nombre} (${item.alumno.grado}°"${item.alumno.grupo}")
+              👤 ${item.alumno.nombre} (${item.alumno.grado}°"${item.alumno.grupo}") ${(item.alumno.estatus && item.alumno.estatus.toLowerCase().includes('baja')) ? '<span class="badge bg-danger ms-1">BAJA</span>' : ''}
             </button>
           `).join('');
           selectorCoincidencias.classList.remove('d-none');
@@ -1760,6 +1760,7 @@
             <div class="d-flex flex-wrap gap-2 mt-1">
               <span class="badge bg-secondary font-monospace">Matrícula: ${al.id}</span>
               <span class="badge bg-primary">${al.grado}° Secundaria - Grupo "${al.grupo}"</span>
+              <span class="badge ${(al.estatus && al.estatus.toLowerCase().includes('baja')) ? 'bg-danger' : 'bg-success'}">${al.estatus || 'Activo'}</span>
               ${al.email ? `<span class="badge bg-light text-dark border">✉️ ${al.email}</span>` : ''}
             </div>
           </div>
@@ -1767,9 +1768,11 @@
             <button class="btn btn-outline-dark btn-sm fw-bold" onclick="imprimirEstadoCuentaAlumno(${idx})">
               🖨️ Imprimir Estado de Cuenta
             </button>
-            <button class="btn btn-warning btn-sm fw-bold shadow-sm" onclick="cargarAlumnoEnCobro('', '${al.grado}', '${al.grupo}', '${al.id}')">
-              ➕ Cobrar Abono
-            </button>
+            ${(al.estatus && al.estatus.toLowerCase().includes('baja')) ? 
+              `<button class="btn btn-secondary btn-sm" disabled title="Alumno dado de baja">🚫 En Baja</button>` :
+              `<button class="btn btn-warning btn-sm fw-bold shadow-sm" onclick="cargarAlumnoEnCobro('', '${al.grado}', '${al.grupo}', '${al.id}')">
+                ➕ Cobrar Abono
+              </button>`}
           </div>
         </div>
 
