@@ -32,7 +32,7 @@ function doGet(e) {
         .setMimeType(ContentService.MimeType.JSON);
     }
 
-    // Endpoint de métricas de recaudación en tiempo real
+
     if (e && e.parameter && e.parameter.action === 'metricas') {
       var idEvMetricas = e.parameter.idEvento || "EV-730628";
       var resMet = obtenerMetricasRecaudacion(idEvMetricas);
@@ -1162,18 +1162,48 @@ function consultarHistorialCompletoAlumno(criterio) {
 /**
  * Obtener alumnos filtrados por Grado y Grupo
  */
+/**
+ * Obtener alumnos por grado y grupo (o todos los grupos de un grado si grupo es vacío o 'TODOS')
+ */
 function getAlumnos(grado, grupo) {
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Clientes");
   if (!sheet) return [];
   var data = sheet.getDataRange().getValues();
   var filtrados = [];
+  var grupoTarget = (grupo && grupo.toString().trim().toUpperCase() !== "TODOS" && grupo.toString().trim() !== "") 
+    ? grupo.toString().trim().toUpperCase() 
+    : null;
+  var gradoTarget = (grado && grado.toString().trim() !== "" && grado.toString().trim().toUpperCase() !== "TODOS")
+    ? grado.toString().trim()
+    : null;
+
   for (var i = 1; i < data.length; i++) {
     var estatus = data[i][6] ? data[i][6].toString().trim().toLowerCase() : "activo";
     if (estatus.includes("inactiv") || estatus.includes("baja")) continue;
-    if (data[i][3].toString() == grado.toString() && data[i][4].toString().trim().toUpperCase() == grupo.toString().trim().toUpperCase()) {
-      filtrados.push({ id: data[i][0], nombre: data[i][1], email: data[i][5] || "" });
+    
+    var rowGrado = data[i][3] !== undefined && data[i][3] !== null ? data[i][3].toString().trim() : "";
+    var rowGrupo = data[i][4] !== undefined && data[i][4] !== null ? data[i][4].toString().trim().toUpperCase() : "";
+
+    var matchGrado = (!gradoTarget || rowGrado == gradoTarget);
+    var matchGrupo = (!grupoTarget || rowGrupo == grupoTarget);
+
+    if (matchGrado && matchGrupo) {
+      filtrados.push({ 
+        id: data[i][0] ? data[i][0].toString().trim() : "", 
+        nombre: data[i][1] ? data[i][1].toString().trim() : "", 
+        grado: rowGrado,
+        grupo: rowGrupo,
+        email: data[i][5] || "" 
+      });
     }
   }
+
+  filtrados.sort(function(a, b) {
+    if (a.grado !== b.grado) return a.grado.localeCompare(b.grado);
+    if (a.grupo !== b.grupo) return a.grupo.localeCompare(b.grupo);
+    return a.nombre.localeCompare(b.nombre);
+  });
+
   return filtrados;
 }
 

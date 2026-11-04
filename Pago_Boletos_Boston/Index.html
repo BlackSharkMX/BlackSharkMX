@@ -710,7 +710,9 @@
           <div class="row g-2 mb-3">
             <div class="col-12 col-md-4">
               <label class="form-label small fw-bold text-secondary">1. Evento Escolar</label>
-              <select id="sel-evento" class="form-select" onchange="actualizarCosto()"></select>
+              <select id="sel-evento" class="form-select" onchange="actualizarCosto()">
+                <option value="">Cargando eventos activos...</option>
+              </select>
               <div id="badge-evento-alcance-info" class="mt-1" style="min-height: 20px;"></div>
             </div>
 
@@ -2180,21 +2182,30 @@
       }
 
       // Cargar Catálogos
-      google.script.run.withSuccessHandler(eventos => {
-        listaEventosCompleta = eventos;
-        actualizarSelectoresEventos();
-        cargarEventosDelCajero();
-        obtenerEfectivoEnCajaActual();
-        cargarCatalogoAlumnosParaAutocompletar();
-        cargarInvitadosExternos();
+      google.script.run
+        .withSuccessHandler(eventos => {
+          listaEventosCompleta = eventos || [];
+          actualizarSelectoresEventos();
+          if (sesion.rol !== 'Admin') {
+            cargarEventosDelCajero();
+          }
+          obtenerEfectivoEnCajaActual();
+          cargarCatalogoAlumnosParaAutocompletar();
+          cargarInvitadosExternos();
 
-        if (sesion.rol === 'Admin') {
-          actualizarDropdownsAdminEspeciales();
-          cargarDashboard();
-          cargarUsuariosAdmin();
-          cargarDirectorioEventosAdmin();
-        }
-      }).getTodosEventosActivos();
+          if (sesion.rol === 'Admin') {
+            actualizarDropdownsAdminEspeciales();
+            cargarDashboard();
+            cargarUsuariosAdmin();
+            cargarDirectorioEventosAdmin();
+          }
+        })
+        .withFailureHandler(err => {
+          console.error("Error al cargar eventos activos:", err);
+          let selCobro = document.getElementById('sel-evento');
+          if (selCobro) selCobro.innerHTML = '<option value="">Error al cargar eventos. Por favor recarga la página.</option>';
+        })
+        .getTodosEventosActivos();
     }
 
     // NAVEGACIÓN ENTRE APARTADOS (TABS)
@@ -2588,7 +2599,7 @@
       } else {
         let radAl = document.getElementById('rad-tipo-alumno');
         if (radAl) radAl.checked = true;
-        cambiarTipoParticipanteCobro('alumno');
+        cambiarTipoParticipanteCobro('alumno', idCliente);
 
         // Asignar Grado y Grupo en los selectores
         if (grado) document.getElementById('sel-grado').value = grado;
@@ -2598,28 +2609,26 @@
         let selAl = document.getElementById('sel-alumno');
         let nombreDisplay = nombreCliente || idCliente;
         if (selAl && idCliente) {
-          selAl.innerHTML = `<option value="${idCliente}" data-nombre="${nombreDisplay}" data-email="${emailCliente || ''}" selected>${nombreDisplay} (${idCliente})</option>`;
+          selAl.innerHTML = `<option value="${idCliente}" data-nombre="${nombreDisplay}" data-email="${emailCliente || ''}" data-grado="${grado || ''}" data-grupo="${grupo || ''}" selected>${nombreDisplay} (${idCliente})</option>`;
           selAl.value = idCliente;
         }
 
-        // Cargar lista completa del grupo en background
+        // Cargar lista completa preservando al alumno
         let gra = document.getElementById('sel-grado').value;
-        let gru = document.getElementById('sel-grupo').value;
-        if (gra && gru) {
-          google.script.run.withSuccessHandler(alumnos => {
-            if (alumnos && alumnos.length > 0 && selAl) {
-              selAl.innerHTML = '<option value="">-- Selecciona al alumno --</option>' + 
-                alumnos.map(a => `<option value="${a.id}" data-email="${a.email}" data-nombre="${a.nombre}" ${a.id === idCliente ? 'selected' : ''}>${a.nombre}</option>`).join('');
-              selAl.value = idCliente;
-            }
-          }).getAlumnos(gra, gru);
+        if (gra) {
+          verificarCambioFiltroGrupo(idCliente);
         }
       }
 
-      // 3. Preseleccionar evento si viene especificado
+      // 3. Preseleccionar evento si viene especificado o tomar el evento activo por defecto
       let selEv = document.getElementById('sel-evento');
       if (idEvento && selEv) {
         selEv.value = idEvento;
+        actualizarCosto();
+      } else if (selEv && selEv.value) {
+        actualizarCosto();
+      } else if (selEv && listaEventosCompleta && listaEventosCompleta.length > 0) {
+        selEv.value = listaEventosCompleta[0].id;
         actualizarCosto();
       }
 
@@ -2636,7 +2645,7 @@
           let numMonto = document.getElementById('num-monto');
           if (numMonto && !numMonto.disabled) numMonto.focus();
         }, 300);
-      }, 300);
+      }, 400);
     }
 
     function imprimirEstadoCuentaAlumno(idx) {
@@ -2804,15 +2813,18 @@
 
       if (parseInfo.grados.includes(prevGrado)) {
         selGrado.value = prevGrado;
-      } else if (!tieneOpcionVacia && parseInfo.grados.length > 0) {
+      } else if (parseInfo.grados.length === 1) {
         selGrado.value = parseInfo.grados[0];
-      } else if (tieneOpcionVacia && parseInfo.grados.length === 1) {
+      } else if (!tieneOpcionVacia && parseInfo.grados.length > 0) {
         selGrado.value = parseInfo.grados[0];
       } else {
         selGrado.value = tieneOpcionVacia ? "" : (parseInfo.grados[0] || "");
       }
 
-      var htmlGrupos = tieneOpcionVacia ? '<option value="">-- Grupo --</option>' : '';
+      var textoTodosGrupos = (parseInfo.grupos && parseInfo.grupos.length > 0)
+        ? ('-- Todos los Grupos (' + parseInfo.grupos.join(', ') + ') --')
+        : '-- Todos los Grupos --';
+      var htmlGrupos = tieneOpcionVacia ? ('<option value="">' + textoTodosGrupos + '</option>') : '';
       parseInfo.grupos.forEach(function(gr) {
         htmlGrupos += '<option value="' + gr + '">Grupo ' + gr + '</option>';
       });
@@ -2822,10 +2834,8 @@
         selGrupo.value = prevGrupo;
       } else if (!tieneOpcionVacia && parseInfo.grupos.length > 0) {
         selGrupo.value = parseInfo.grupos[0];
-      } else if (tieneOpcionVacia && parseInfo.grupos.length === 1) {
-        selGrupo.value = parseInfo.grupos[0];
       } else {
-        selGrupo.value = tieneOpcionVacia ? "" : (parseInfo.grupos[0] || "");
+        selGrupo.value = "";
       }
     }
 
@@ -2854,10 +2864,19 @@
     // 3. APARTADO: CAJA Y COBROS
     function actualizarSelectoresEventos() {
       let opts = '<option value="">-- Seleccionar Evento Activo --</option>' + 
-        listaEventosCompleta.map(e => `<option value="${e.id}">${e.nombre} ($${e.costo}.00)</option>`).join('');
+        listaEventosCompleta.map(e => `<option value="${e.id}">${e.nombre} ($${e.costo.toLocaleString('es-MX', {minimumFractionDigits: 2})})</option>`).join('');
       
       let selCobro = document.getElementById('sel-evento');
-      if (selCobro) selCobro.innerHTML = opts;
+      if (selCobro) {
+        let prevVal = selCobro.value;
+        selCobro.innerHTML = opts;
+        if (prevVal && listaEventosCompleta.some(e => e.id == prevVal)) {
+          selCobro.value = prevVal;
+        } else if (listaEventosCompleta.length > 0) {
+          selCobro.value = listaEventosCompleta[0].id;
+        }
+        actualizarCosto();
+      }
 
       let selListas = document.getElementById('sel-listas-evento');
       if (selListas) {
@@ -2873,7 +2892,7 @@
 
       let selMet = document.getElementById('sel-evento-metricas');
       if (selMet) {
-        selMet.innerHTML = listaEventosCompleta.map(e => `<option value="${e.id}">${e.nombre} ($${e.costo}.00)</option>`).join('');
+        selMet.innerHTML = listaEventosCompleta.map(e => `<option value="${e.id}">${e.nombre} ($${e.costo.toLocaleString('es-MX', {minimumFractionDigits: 2})})</option>`).join('');
         if (listaEventosCompleta.length > 0 && !selMet.value) {
           selMet.value = listaEventosCompleta[0].id;
         }
@@ -2885,15 +2904,25 @@
     }
 
     function cargarEventosDelCajero() {
-      google.script.run.withSuccessHandler(eventos => {
-        let select = document.getElementById('sel-evento');
-        select.innerHTML = '<option value="">-- Seleccionar Evento --</option>' + 
-          eventos.map(e => `<option value="${e.id}">${e.nombre} ($${e.costo}.00)</option>`).join('');
-        if (eventos.length > 0) {
-          select.value = eventos[0].id;
-        }
-        actualizarCosto();
-      }).getEventosCajero(sesion.id, sesion.rol);
+      google.script.run
+        .withSuccessHandler(eventos => {
+          if (!eventos || eventos.length === 0) return;
+          let select = document.getElementById('sel-evento');
+          if (!select) return;
+          let prevVal = select.value;
+          select.innerHTML = '<option value="">-- Seleccionar Evento --</option>' + 
+            eventos.map(e => `<option value="${e.id}">${e.nombre} ($${e.costo.toLocaleString('es-MX', {minimumFractionDigits: 2})})</option>`).join('');
+          if (prevVal && eventos.some(e => e.id == prevVal)) {
+            select.value = prevVal;
+          } else if (eventos.length > 0) {
+            select.value = eventos[0].id;
+          }
+          actualizarCosto();
+        })
+        .withFailureHandler(err => {
+          console.warn("Aviso al cargar eventos del cajero:", err);
+        })
+        .getEventosCajero(sesion.id, sesion.rol);
     }
 
     // ==============================================================
@@ -2928,8 +2957,9 @@
       } else {
         contAlumnos.forEach(el => el.classList.remove('d-none'));
         contExternos.forEach(el => el.classList.add('d-none'));
-        if (selAl) selAl.innerHTML = '<option value="">-- Primero selecciona Grado y Grupo --</option>';
-        document.getElementById('balance-box').classList.add('d-none');
+        if (!idPreseleccionado) {
+          actualizarCosto();
+        }
       }
     }
 
@@ -3339,26 +3369,41 @@
       let selAl = document.getElementById('sel-alumno');
       let idSeleccionadoActual = preservarAlumnoId || (selAl ? selAl.value : "");
 
-      if (gra && gru) {
+      if (gra) {
         if (!idSeleccionadoActual) {
-          selAl.innerHTML = '<option value="">Buscando alumnos del salón...</option>';
+          selAl.innerHTML = '<option value="">Buscando alumnos...</option>';
         }
-        google.script.run.withSuccessHandler(alumnos => {
-          if (!alumnos || alumnos.length === 0) {
-            selAl.innerHTML = '<option value="">No hay alumnos registrados en este grupo</option>';
-            return;
-          }
-          selAl.innerHTML = '<option value="">-- Selecciona al alumno --</option>' + 
-            alumnos.map(a => `<option value="${a.id}" data-email="${a.email}" data-nombre="${a.nombre}" ${a.id === idSeleccionadoActual ? 'selected' : ''}>${a.nombre}</option>`).join('');
-          
-          if (idSeleccionadoActual) {
-            selAl.value = idSeleccionadoActual;
+        google.script.run
+          .withSuccessHandler(alumnos => {
+            if (!alumnos || alumnos.length === 0) {
+              selAl.innerHTML = '<option value="">No hay alumnos activos registrados en este filtro</option>';
+              consultarBalance();
+              return;
+            }
+            let labelPlaceholder = gru 
+              ? `-- Selecciona alumno de ${gra}°${gru} (${alumnos.length}) --` 
+              : `-- Selecciona alumno de ${gra}° (Todos los grupos: ${alumnos.length}) --`;
+
+            selAl.innerHTML = `<option value="">${labelPlaceholder}</option>` + 
+              alumnos.map(a => {
+                let displayTxt = gru ? a.nombre : `${a.nombre} (${a.grado}°${a.grupo})`;
+                return `<option value="${a.id}" data-email="${a.email || ''}" data-nombre="${a.nombre}" data-grado="${a.grado}" data-grupo="${a.grupo}" ${a.id === idSeleccionadoActual ? 'selected' : ''}>${displayTxt}</option>`;
+              }).join('');
+            
+            if (idSeleccionadoActual && alumnos.some(a => a.id === idSeleccionadoActual)) {
+              selAl.value = idSeleccionadoActual;
+            }
             consultarBalance();
-          }
-        }).getAlumnos(gra, gru);
+          })
+          .withFailureHandler(err => {
+            console.error("Error al obtener alumnos:", err);
+            selAl.innerHTML = '<option value="">Error al cargar alumnos</option>';
+            consultarBalance();
+          })
+          .getAlumnos(gra, gru);
       } else {
-        selAl.innerHTML = '<option value="">-- Primero selecciona Grado y Grupo --</option>';
-        document.getElementById('balance-box').classList.add('d-none');
+        selAl.innerHTML = '<option value="">-- Primero selecciona Grado Escolar --</option>';
+        consultarBalance();
       }
     }
 
@@ -3368,50 +3413,75 @@
       let ev = listaEventosCompleta.find(e => e.id == idEv);
       let box = document.getElementById('balance-box');
 
-      if (!idAl || !ev) {
+      if (!ev) {
         saldoPendienteActual = 0;
-        box.classList.add('d-none');
+        if (box) box.classList.add('d-none');
         return;
       }
 
-      google.script.run.withSuccessHandler(res => {
-        totalAbonadoAlumnoActual = res.montoPagado || 0;
-        costoOriginalEventoActual = res.costoOriginalEvento || ev.costo || res.costoTotal;
-        costoEfectivoActual = res.costoTotal;
-        saldoPendienteActual = res.resta;
+      // Si aún no se selecciona alumno, mostrar el costo base oficial del evento
+      if (!idAl) {
+        saldoPendienteActual = ev.costo;
+        totalAbonadoAlumnoActual = 0;
+        costoOriginalEventoActual = ev.costo;
+        costoEfectivoActual = ev.costo;
 
-        box.classList.remove('d-none');
-        document.getElementById('txt-abonado').innerText = `$${res.montoPagado}.00`;
-
-        let chkCort = document.getElementById('chk-cortesia');
-        let chkDesc = document.getElementById('chk-descuento');
-        let numPrecioEsp = document.getElementById('num-precio-especial');
-        let panelDesc = document.getElementById('panel-descuento-especial');
-        let badgeDesc = document.getElementById('badge-descuento-aplicado');
-
-        if (res.cortesia) {
-          chkCort.checked = true;
-          chkDesc.checked = false;
-          panelDesc.classList.add('d-none');
-          badgeDesc.classList.add('d-none');
-          toggleCortesia();
-        } else if (res.esPrecioEspecial) {
-          chkDesc.checked = true;
-          chkCort.checked = false;
-          panelDesc.classList.remove('d-none');
-          badgeDesc.classList.remove('d-none');
-          numPrecioEsp.value = res.precioEspecial;
-          recalcularBalanceConPrecioEfectivo();
-        } else {
-          chkCort.checked = false;
-          chkDesc.checked = false;
-          panelDesc.classList.add('d-none');
-          badgeDesc.classList.add('d-none');
-          numPrecioEsp.value = costoOriginalEventoActual;
-          toggleCortesia();
-          recalcularBalanceConPrecioEfectivo();
+        if (box) {
+          box.classList.remove('d-none');
+          document.getElementById('txt-costo-total').innerText = `$${ev.costo.toLocaleString('es-MX', {minimumFractionDigits: 2})}`;
+          document.getElementById('txt-abonado').innerText = "$0.00";
+          let txtResta = document.getElementById('txt-resta');
+          txtResta.className = "text-primary fw-bold font-monospace fs-4";
+          txtResta.innerText = `$${ev.costo.toLocaleString('es-MX', {minimumFractionDigits: 2})} MXN`;
+          document.getElementById('badge-descuento-aplicado').classList.add('d-none');
+          document.getElementById('badge-estado-alumno-cortesia').classList.add('d-none');
         }
-      }).getEstadoAlumno(idEv, idAl, ev.costo);
+        return;
+      }
+
+      google.script.run
+        .withSuccessHandler(res => {
+          totalAbonadoAlumnoActual = res.montoPagado || 0;
+          costoOriginalEventoActual = res.costoOriginalEvento || ev.costo || res.costoTotal;
+          costoEfectivoActual = res.costoTotal;
+          saldoPendienteActual = res.resta;
+
+          box.classList.remove('d-none');
+          document.getElementById('txt-abonado').innerText = `$${res.montoPagado}.00`;
+
+          let chkCort = document.getElementById('chk-cortesia');
+          let chkDesc = document.getElementById('chk-descuento');
+          let numPrecioEsp = document.getElementById('num-precio-especial');
+          let panelDesc = document.getElementById('panel-descuento-especial');
+          let badgeDesc = document.getElementById('badge-descuento-aplicado');
+
+          if (res.cortesia) {
+            chkCort.checked = true;
+            chkDesc.checked = false;
+            panelDesc.classList.add('d-none');
+            badgeDesc.classList.add('d-none');
+            toggleCortesia();
+          } else if (res.esPrecioEspecial) {
+            chkDesc.checked = true;
+            chkCort.checked = false;
+            panelDesc.classList.remove('d-none');
+            badgeDesc.classList.remove('d-none');
+            numPrecioEsp.value = res.precioEspecial;
+            recalcularBalanceConPrecioEfectivo();
+          } else {
+            chkCort.checked = false;
+            chkDesc.checked = false;
+            panelDesc.classList.add('d-none');
+            badgeDesc.classList.add('d-none');
+            numPrecioEsp.value = costoOriginalEventoActual;
+            toggleCortesia();
+            recalcularBalanceConPrecioEfectivo();
+          }
+        })
+        .withFailureHandler(err => {
+          console.error("Error al obtener estado del alumno:", err);
+        })
+        .getEstadoAlumno(idEv, idAl, ev.costo);
     }
 
     function toggleDescuentoEspecial() {
@@ -3509,13 +3579,14 @@
       if (ev) {
         let parse = parsearAlcance(ev.alcance);
         if (badgeInfo) {
+          let badgeCosto = `<span class="badge bg-success text-white fw-bold me-1">💰 Costo Oficial: $${ev.costo.toLocaleString('es-MX', {minimumFractionDigits: 2})} MXN</span>`;
           let badgeAlcance = parse.esTodos 
-            ? `<span class="badge bg-light text-secondary border">🌐 Todos los salones</span>`
-            : `<span class="badge bg-warning text-dark border border-warning" title="${parse.texto}">🎯 Salones: ${parse.texto}</span>`;
+            ? `<span class="badge bg-light text-secondary border me-1">🌐 Todos los salones</span>`
+            : `<span class="badge bg-warning text-dark border border-warning me-1" title="${parse.texto}">🎯 Salones: ${parse.texto}</span>`;
           let badgeCupo = (ev.cupo === 0 || !ev.cupo)
-            ? `<span class="badge bg-info text-dark ms-1">Cupo: Ilimitado</span>`
-            : `<span class="badge bg-secondary ms-1">Cupo: ${ev.cupo}</span>`;
-          badgeInfo.innerHTML = badgeAlcance + badgeCupo;
+            ? `<span class="badge bg-info text-dark">Cupo: Ilimitado</span>`
+            : `<span class="badge bg-secondary">Cupo: ${ev.cupo}</span>`;
+          badgeInfo.innerHTML = badgeCosto + badgeAlcance + badgeCupo;
         }
         if (!esModoExterno) {
           adaptarSelectoresGradoYGrupo(parse, 'sel-grado', 'sel-grupo', true);
@@ -3529,8 +3600,9 @@
 
       if (!esModoExterno) {
         verificarCambioFiltroGrupo(idAlPreviamenteSeleccionado);
+      } else {
+        consultarBalance();
       }
-      consultarBalance();
 
       if (idAlPreviamenteSeleccionado) {
         setTimeout(() => {
@@ -3617,8 +3689,8 @@
 
       let radExt = document.getElementById('rad-tipo-externo');
       let esModoExterno = radExt && radExt.checked;
-      let gradoCobro = esModoExterno ? "Invitado" : document.getElementById('sel-grado').value;
-      let grupoCobro = esModoExterno ? "EXT" : document.getElementById('sel-grupo').value;
+      let gradoCobro = esModoExterno ? "Invitado" : (opt.dataset.grado || document.getElementById('sel-grado').value);
+      let grupoCobro = esModoExterno ? "EXT" : (opt.dataset.grupo || document.getElementById('sel-grupo').value);
       let nombreClienteCobro = opt.dataset.nombre || opt.text;
       let emailClienteCobro = opt.dataset.email || "";
 
