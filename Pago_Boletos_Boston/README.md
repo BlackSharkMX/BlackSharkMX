@@ -139,10 +139,14 @@ El sistema cuenta actualmente con los **219 alumnos activos oficiales** cargados
    - Buscador rápido interactivo por nombre.
    - Impresión con membrete oficial del Colegio Boston o exportación a PDF.
 
-3. **💰 Mi Caja y Arqueo:**
-   - Resumen del efectivo en custodia del cajero activo.
-   - Desglose detallado de transacciones pendientes de entrega.
-   - Generación de Comprobante Oficial de Arqueo de Caja con líneas de firma y reinicio de caja a $0.00.
+3. **💰 Mi Caja, Arqueo Diario y Entrega a Caja General:**
+   - **Política de Entrega a Caja General:** Recordatorio institucional claro sobre la custodia temporal y la obligatoriedad de entregar el efectivo recaudado en Caja General al terminar el turno.
+   - **Métricas en Vivo de Caja:** Monitoreo simultáneo de Efectivo en Caja Activa, Total Cobrado en Efectivo Hoy, Total Ya Entregado a Caja General Hoy y Cantidad de alumnos cobrados hoy.
+   - **Calculadora de Conciliación Física de Efectivo:** Desglose interactivo por denominaciones ($1,000, $500, $200, $100, $50, $20 y monedas) con comparación en tiempo real contra el saldo teórico del sistema y badges automáticos de cuadre (`Cuadre Exacto`, `Faltante` o `Sobrante`).
+   - **Detalle de Cobros del Día:** Listado exclusivo de alumnos e invitados que abonaron dinero real en efectivo hoy (filtrando cortesías de $0 y cancelaciones), con botón directo de impresión o exportación a PDF.
+   - **Cortes Históricos:** Hoja de base de datos dedicada (`Cortes_Caja`) con historial de todas las actas emitidas y botón de reimpresión de acta oficial en cualquier momento.
+   - **Acta Oficial con Doble Firma:** Comprobante institucional formal con folio único, desglose de billetes, tabla de transacciones amparadas y recuadros de firma: *Entregó (Cajero Responsable)* y *Recibió de Conformidad (Caja General / Dirección Administrativa)*.
+   - **Alerta de Salida Segura:** Notificación preventiva al cerrar sesión si el cajero aún cuenta con efectivo pendiente de entrega.
 
 4. **🎪 Eventos y Costos (Admin):**
    - Alta de eventos escolares con configuración de Costo, Cupo (0 = Sin límite), Cajero y Alcance de participación (Todos o Grados/Grupos específicos).
