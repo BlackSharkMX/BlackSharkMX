@@ -32,6 +32,13 @@ function doGet(e) {
         .setMimeType(ContentService.MimeType.JSON);
     }
 
+    // Endpoint para ejecución de carga masiva de pagos (Tolantongo 3° Secundaria)
+    if (e && e.parameter && e.parameter.action === 'cargarMasivo') {
+      var resCarga = ejecutarCargaMasivaTolantongo();
+      return ContentService.createTextOutput(JSON.stringify(resCarga, null, 2))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
 
     if (e && e.parameter && e.parameter.action === 'metricas') {
       var idEvMetricas = e.parameter.idEvento || "EV-730628";
@@ -2401,5 +2408,173 @@ function sincronizarAlumnosDesdeSheetExterna(urlOrId, gidForzado) {
     hojasProcesadas: hojasCicloActivo.map(function(h) { return h.getName(); }),
     salones: contadoresSalones,
     message: "Sincronización completada exitosamente. " + listaAlumnosNuevos.length + " alumnos activos registrados con sus nuevas matrículas oficiales (S1A a S3C)."
+  };
+}
+
+/**
+ * Carga masiva de pagos para la Excursión a Tolantongo (EV-730628)
+ * Basada en las listas físicas de 3° de Secundaria (Grupos A, B y C)
+ */
+function ejecutarCargaMasivaTolantongo() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var abonosSheet = ss.getSheetByName("Historial_Abonos");
+  var inscripcionesSheet = ss.getSheetByName("Inscripciones");
+  var clientesSheet = ss.getSheetByName("Clientes");
+
+  if (!abonosSheet || !inscripcionesSheet || !clientesSheet) {
+    return { success: false, message: "No se encontraron las hojas requeridas en el archivo." };
+  }
+
+  var idEvento = "EV-730628";
+  var idCajero = "USR-002"; // Hugo Galera M. (Cajero activo)
+  var estatusCorteBD = "Pendiente";
+  var fechaHora = new Date();
+
+  // Lista exacta obtenida de las listas de control de 3° de Secundaria (Ciclo 2026-2027)
+  var pagosLote = [
+    // === TERCER GRADO GRUPO "A" ===
+    { idCliente: 'S3A-01', nombreCliente: 'Agonizante Durán Derian Altair', grado: '3', grupo: 'A', abonos: [2400], asiento: '15', autorizacion: true },
+    { idCliente: 'S3A-02', nombreCliente: 'Aguirre Pastrana Fabián', grado: '3', grupo: 'A', abonos: [2400, 2000], asiento: '13', autorizacion: false },
+    { idCliente: 'S3A-03', nombreCliente: 'Aguirre Sedano Mariana', grado: '3', grupo: 'A', abonos: [2400, 2000], asiento: '08', autorizacion: false },
+    { idCliente: 'S3A-04', nombreCliente: 'Betancourt Manrique Matías', grado: '3', grupo: 'A', abonos: [2200], asiento: '14', autorizacion: false },
+    { idCliente: 'S3A-05', nombreCliente: 'Corro García Danna Adriel', grado: '3', grupo: 'A', abonos: [2400], asiento: '11', autorizacion: false },
+    { idCliente: 'S3A-14', nombreCliente: 'Reyes Medina Sofía', grado: '3', grupo: 'A', abonos: [2400], asiento: '37', autorizacion: false },
+    { idCliente: 'S3A-15', nombreCliente: 'Román Roldán María Fernanda', grado: '3', grupo: 'A', abonos: [2500], asiento: '', autorizacion: false },
+    { idCliente: 'S3A-18', nombreCliente: 'Soto Alcaraz Emiliano', grado: '3', grupo: 'A', abonos: [2000], asiento: '30', autorizacion: false },
+    { idCliente: 'S3A-19', nombreCliente: 'Talavera Carreón Renata', grado: '3', grupo: 'A', abonos: [2000], asiento: '27', autorizacion: false },
+    { idCliente: 'S3A-20', nombreCliente: 'Vázquez Ávila María José', grado: '3', grupo: 'A', abonos: [2500], asiento: '18', autorizacion: true },
+
+    // === TERCER GRADO GRUPO "B" ===
+    { idCliente: 'S3B-01', nombreCliente: 'Amable Nájera Esteban', grado: '3', grupo: 'B', abonos: [2400, 2000], asiento: '05', autorizacion: false },
+    { idCliente: 'S3B-03', nombreCliente: 'Arillo García Constanza Giselle', grado: '3', grupo: 'B', abonos: [3000], asiento: '10', autorizacion: false },
+    { idCliente: 'S3B-04', nombreCliente: 'Aznar Velázquez Joshua', grado: '3', grupo: 'B', abonos: [2000], asiento: '12', autorizacion: false },
+    { idCliente: 'S3B-08', nombreCliente: 'Cortés Sotelo Maximiliano', grado: '3', grupo: 'B', abonos: [2400], asiento: '06', autorizacion: true },
+    { idCliente: 'S3B-09', nombreCliente: 'Cuata Moreno Leah', grado: '3', grupo: 'B', abonos: [2500, 1900], asiento: '02', autorizacion: true },
+    { idCliente: 'S3B-10', nombreCliente: 'Delgado Álvarez Alejandra', grado: '3', grupo: 'B', abonos: [2400], asiento: '19', autorizacion: false },
+    { idCliente: 'S3B-17', nombreCliente: 'Malo Estrella Fernanda Isabella', grado: '3', grupo: 'B', abonos: [1000, 1400], asiento: '04', costoTotal: 2400, esPrecioEspecial: true, autorizacion: false },
+    { idCliente: 'S3B-18', nombreCliente: 'Martínez Nava Leonardo', grado: '3', grupo: 'B', abonos: [2200], asiento: '20', autorizacion: true },
+    { idCliente: 'S3B-19', nombreCliente: 'Padilla Hernández Estefanía', grado: '3', grupo: 'B', abonos: [2000], asiento: '34', autorizacion: false },
+    { idCliente: 'S3B-22', nombreCliente: 'Villegas Estrada Karla', grado: '3', grupo: 'B', abonos: [2400], asiento: '07', autorizacion: false },
+
+    // === TERCER GRADO GRUPO "C" ===
+    { idCliente: 'S3C-01', nombreCliente: 'Allende Peña Danna Valentina', grado: '3', grupo: 'C', abonos: [2400], asiento: '34', autorizacion: false },
+    { idCliente: 'S3C-02', nombreCliente: 'Aranda Bahena Guillermo Fernando', grado: '3', grupo: 'C', abonos: [4400], asiento: '03', autorizacion: false },
+    { idCliente: 'S3C-03', nombreCliente: 'Arzola Meléndez Sofía Inés', grado: '3', grupo: 'C', abonos: [2400], asiento: '01', autorizacion: false },
+    { idCliente: 'S3C-09', nombreCliente: 'Filio Guadarrama Renata', grado: '3', grupo: 'C', abonos: [1500], asiento: '28', autorizacion: false },
+    { idCliente: 'S3C-11', nombreCliente: 'Flores Pedraza María José', grado: '3', grupo: 'C', abonos: [2400, 2000], asiento: '16', autorizacion: false },
+    { idCliente: 'S3C-12', nombreCliente: 'García Marín Sofía', grado: '3', grupo: 'C', abonos: [2000], asiento: '20', autorizacion: false },
+    { idCliente: 'S3C-13', nombreCliente: 'González Luna Valeria', grado: '3', grupo: 'C', abonos: [2200], asiento: '27', autorizacion: false },
+    { idCliente: 'S3C-14', nombreCliente: 'Hernández Narváez Lisandra', grado: '3', grupo: 'C', abonos: [2400], asiento: '09', autorizacion: false },
+    { idCliente: 'S3C-16', nombreCliente: 'Martínez Montaño Paola', grado: '3', grupo: 'C', abonos: [2400], asiento: '33', autorizacion: false },
+    { idCliente: 'S3C-19', nombreCliente: 'Ocampo Abarca Zara Lilian', grado: '3', grupo: 'C', abonos: [1000], asiento: '25', autorizacion: false },
+    { idCliente: 'S3C-20', nombreCliente: 'Pardavé Gómez Diego', grado: '3', grupo: 'C', abonos: [2400], asiento: '17', autorizacion: false },
+    { idCliente: 'S3C-21', nombreCliente: 'Taylor Verdeja Hilda Renata', grado: '3', grupo: 'C', abonos: [1500], asiento: '31', autorizacion: false },
+    { idCliente: 'S3C-22', nombreCliente: 'Urban Ethan Neri', grado: '3', grupo: 'C', abonos: [2000], asiento: '23', autorizacion: false }
+  ];
+
+  var abonosExistentes = abonosSheet.getDataRange().getValues();
+  var inscripcionesExistentes = inscripcionesSheet.getDataRange().getValues();
+
+  var filasAbonosNuevos = [];
+  var resumenAlumnos = [];
+  var totalRecaudadoLote = 0;
+  var contadorFolio = 1000;
+
+  for (var i = 0; i < pagosLote.length; i++) {
+    var p = pagosLote[i];
+    var idAl = p.idCliente;
+    var costoEventoAlumno = parseFloat(p.costoTotal) || 4400;
+    var esEsp = !!p.esPrecioEspecial;
+    var abonosArr = p.abonos;
+
+    // Calcular abonos previos si existieran
+    var acumulado = 0;
+    for (var a = 1; a < abonosExistentes.length; a++) {
+      if (abonosExistentes[a][1] == idEvento && abonosExistentes[a][2] == idAl) {
+        var mExistente = parseFloat(abonosExistentes[a][3]);
+        if (!isNaN(mExistente)) acumulado += mExistente;
+      }
+    }
+
+    for (var b = 0; b < abonosArr.length; b++) {
+      var monto = parseFloat(abonosArr[b]) || 0;
+      if (monto <= 0) continue;
+
+      acumulado += monto;
+      totalRecaudadoLote += monto;
+      contadorFolio++;
+
+      var rand = Math.floor(100 + Math.random() * 900);
+      var folio = (esEsp ? "DESC-" : "FOLIO-") + contadorFolio + "-" + rand;
+
+      filasAbonosNuevos.push([
+        folio,
+        idEvento,
+        idAl,
+        monto,
+        fechaHora,
+        idCajero,
+        estatusCorteBD
+      ]);
+
+      abonosExistentes.push([
+        folio,
+        idEvento,
+        idAl,
+        monto,
+        fechaHora,
+        idCajero,
+        estatusCorteBD
+      ]);
+    }
+
+    var estatusFinal = (acumulado >= costoEventoAlumno) ? "Total" : "Parcial";
+
+    // Actualizar o insertar en Inscripciones
+    var filaInsc = -1;
+    for (var k = 1; k < inscripcionesExistentes.length; k++) {
+      if (inscripcionesExistentes[k][1] == idEvento && inscripcionesExistentes[k][2] == idAl) {
+        filaInsc = k + 1;
+        break;
+      }
+    }
+
+    if (filaInsc !== -1) {
+      inscripcionesSheet.getRange(filaInsc, 4).setValue(costoEventoAlumno);
+      inscripcionesSheet.getRange(filaInsc, 5).setValue(acumulado);
+      inscripcionesSheet.getRange(filaInsc, 6).setValue(estatusFinal);
+    } else {
+      var idInsc = "INS-" + (2000 + i);
+      inscripcionesSheet.appendRow([idInsc, idEvento, idAl, costoEventoAlumno, acumulado, estatusFinal]);
+      inscripcionesExistentes.push([idInsc, idEvento, idAl, costoEventoAlumno, acumulado, estatusFinal]);
+    }
+
+    resumenAlumnos.push({
+      id: idAl,
+      nombre: p.nombreCliente,
+      grado: p.grado,
+      grupo: p.grupo,
+      asiento: p.asiento,
+      abonos: abonosArr,
+      totalAbonado: acumulado,
+      costo: costoEventoAlumno,
+      restante: Math.max(costoEventoAlumno - acumulado, 0),
+      estatus: estatusFinal,
+      esPrecioEspecial: esEsp
+    });
+  }
+
+  // Insertar todos los abonos en bloque para máxima eficiencia
+  if (filasAbonosNuevos.length > 0) {
+    var ultimaFila = abonosSheet.getLastRow();
+    abonosSheet.getRange(ultimaFila + 1, 1, filasAbonosNuevos.length, 7).setValues(filasAbonosNuevos);
+  }
+
+  return {
+    success: true,
+    totalAlumnos: resumenAlumnos.length,
+    totalTransacciones: filasAbonosNuevos.length,
+    montoTotalRecaudado: totalRecaudadoLote,
+    resumen: resumenAlumnos
   };
 }
