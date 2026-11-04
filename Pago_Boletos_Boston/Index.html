@@ -1,0 +1,2040 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="theme-color" content="#0b1f3f">
+
+  <title>Eventos Boston | Control de Pagos, Abonos y Cooperaciones - Colegio Boston</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <style>
+    :root {
+      --color-fondo: #f0f3f8;
+      --color-primario: #0b1f3f;       /* Azul marino institucional Boston */
+      --color-primario-hover: #143263;
+      --color-dorado: #c59b27;
+      --color-dorado-brillante: #f3d068;
+      --color-rojo-boston: #c83e2b;
+      --color-texto: #1e293b;
+      --color-texto-muted: #64748b;
+      --color-borde: #cbd5e1;
+      --color-exito: #10b981;
+      --color-error: #ef4444;
+      --color-advertencia: #f59e0b;
+      --radio-tarjeta: 16px;
+      --radio-input: 12px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: var(--color-fondo);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      color: var(--color-texto);
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* CONTENEDOR LOGIN CENTRADO (ESTILO MEDICAL) */
+    .centrado-login {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 24px 16px;
+    }
+
+    .container-login {
+      width: 100%;
+      max-width: 450px;
+      margin: 0 auto;
+      text-align: center;
+    }
+
+    /* BANNER INSTITUCIONAL BOSTON (IDÉNTICO A MEDICAL) */
+    .banner-boston {
+      position: relative;
+      background: linear-gradient(135deg, #06152b 0%, #0c2340 50%, #112e56 100%);
+      border-radius: var(--radio-tarjeta);
+      overflow: hidden;
+      margin-bottom: 22px;
+      box-shadow: 0 14px 28px rgba(11, 31, 63, 0.25), 0 4px 10px rgba(11, 31, 63, 0.15);
+      border: 1.5px solid rgba(222, 176, 38, 0.45);
+      text-align: left;
+    }
+
+    .banner-franja-dorada {
+      height: 4px;
+      background: linear-gradient(90deg, #c59b27, #f3d068, #deb026, #c59b27);
+      width: 100%;
+    }
+
+    .banner-watermark {
+      position: absolute;
+      right: -10px;
+      top: 50%;
+      transform: translateY(-46%);
+      width: 230px;
+      height: 230px;
+      background-image: url('https://lh3.googleusercontent.com/d/1ZpZST5pl7nQPkJRhnKLL2WNDNpEO6_3f');
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+      opacity: 0.18;
+      pointer-events: none;
+      filter: drop-shadow(0 0 10px rgba(222, 176, 38, 0.2));
+      z-index: 1;
+    }
+
+    .banner-content {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 22px 20px;
+    }
+
+    .banner-escudo {
+      width: 76px;
+      height: auto;
+      filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.5));
+      flex-shrink: 0;
+      background: rgba(255, 255, 255, 0.08);
+      padding: 6px;
+      border-radius: 12px;
+      border: 1px solid rgba(222, 176, 38, 0.35);
+    }
+
+    .banner-textos { flex: 1; }
+
+    .banner-institucion {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 2.2px;
+      color: var(--color-dorado-brillante);
+      text-transform: uppercase;
+      margin-bottom: 2px;
+    }
+
+    .banner-siglas {
+      font-size: 24px;
+      font-weight: 800;
+      color: #ffffff;
+      margin: 0;
+      line-height: 1.15;
+      letter-spacing: 0.3px;
+      text-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+    }
+
+    .banner-titulo {
+      font-size: 13px;
+      font-weight: 600;
+      color: #f1f5f9;
+      margin-top: 4px;
+      line-height: 1.25;
+    }
+
+    .banner-sub {
+      font-size: 11px;
+      color: #cbd5e1;
+      margin-top: 3px;
+      font-weight: 400;
+    }
+
+    .banner-franjas-boston {
+      height: 7px;
+      width: 100%;
+      background: repeating-linear-gradient(
+        90deg,
+        #c83e2b 0px,
+        #c83e2b 14px,
+        #ffffff 14px,
+        #ffffff 28px
+      );
+      border-top: 1.5px solid #deb026;
+    }
+
+    /* TARJETAS PRINCIPALES */
+    .card-boston {
+      background-color: #ffffff;
+      border-radius: var(--radio-tarjeta);
+      padding: 26px 22px;
+      box-shadow: 0 10px 25px -5px rgba(11, 31, 63, 0.08), 0 4px 6px -2px rgba(11, 31, 63, 0.03);
+      text-align: left;
+      margin-bottom: 20px;
+      border: 1px solid rgba(226, 232, 240, 0.9);
+    }
+
+    .section-title {
+      border-bottom: 2px solid #f1f5f9;
+      padding-bottom: 12px;
+      margin-bottom: 18px;
+      color: var(--color-primario);
+      font-size: 1.15rem;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* INPUTS Y FORMULARIOS */
+    .form-group-custom { margin-bottom: 16px; position: relative; }
+    .form-group-custom label {
+      display: block;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--color-texto-muted);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .input-icon-wrapper { position: relative; }
+    .input-icon {
+      position: absolute;
+      bottom: 13px;
+      left: 14px;
+      width: 20px;
+      height: 20px;
+      fill: #94a3b8;
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    .form-control, .form-select {
+      font-size: 16px !important; /* Previene auto-zoom en iOS Safari */
+      padding: 12px 14px;
+      border-radius: var(--radio-input);
+      border: 1.5px solid var(--color-borde);
+      background-color: #ffffff;
+      color: var(--color-texto);
+      font-family: inherit;
+      transition: all 0.2s ease;
+    }
+    .form-control:focus, .form-select:focus {
+      border-color: var(--color-primario);
+      box-shadow: 0 0 0 3px rgba(11, 31, 63, 0.12);
+      outline: none;
+    }
+    .input-with-icon { padding-left: 44px !important; }
+
+    /* BOTONES INSTITUCIONALES */
+    .btn-boston {
+      background-color: var(--color-primario);
+      color: #ffffff;
+      font-weight: 700;
+      border-radius: var(--radio-input);
+      padding: 13px 18px;
+      font-size: 15px;
+      border: none;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-boston:hover:not(:disabled) {
+      background-color: var(--color-primario-hover);
+      color: #ffffff;
+      transform: translateY(-1px);
+    }
+    .btn-boston:active:not(:disabled) { transform: translateY(0); }
+    .btn-boston:disabled { background-color: #94a3b8; cursor: not-allowed; opacity: 0.8; }
+
+    .btn-boston-gold {
+      background-color: var(--color-dorado);
+      color: #ffffff;
+      font-weight: 700;
+      border-radius: var(--radio-input);
+      padding: 13px 18px;
+      font-size: 15px;
+      border: none;
+      transition: all 0.2s ease;
+    }
+    .btn-boston-gold:hover { background-color: #b38b1f; color: #ffffff; }
+
+    /* NAVBAR SUPERIOR */
+    .navbar-boston {
+      background: #ffffff;
+      border-bottom: 1.5px solid #e2e8f0;
+      padding: 12px 20px;
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      box-shadow: 0 4px 12px rgba(11, 31, 63, 0.05);
+    }
+
+    .navbar-brand-content {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .navbar-logo {
+      height: 42px;
+      width: auto;
+      border-radius: 8px;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+    }
+    .navbar-title {
+      font-size: 17px;
+      font-weight: 800;
+      color: var(--color-primario);
+      line-height: 1.15;
+    }
+    .navbar-subtitle {
+      font-size: 11px;
+      color: var(--color-dorado);
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    /* PESTAÑAS (APARTADOS) */
+    .nav-tabs-apartados {
+      display: flex;
+      overflow-x: auto;
+      white-space: nowrap;
+      -webkit-overflow-scrolling: touch;
+      gap: 8px;
+      margin-bottom: 22px;
+      padding-bottom: 4px;
+      border-bottom: 2px solid #e2e8f0;
+    }
+    .nav-tabs-apartados::-webkit-scrollbar { height: 4px; }
+    .nav-tabs-apartados::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+
+    .tab-apartado {
+      padding: 10px 18px;
+      border-radius: var(--radio-input);
+      background: #ffffff;
+      color: var(--color-texto-muted);
+      border: 1px solid #cbd5e1;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      user-select: none;
+    }
+    .tab-apartado:hover {
+      background: #f8fafc;
+      color: var(--color-primario);
+    }
+    .tab-apartado.active {
+      background: var(--color-primario);
+      color: #ffffff;
+      border-color: var(--color-primario);
+      box-shadow: 0 4px 10px rgba(11, 31, 63, 0.18);
+    }
+
+    /* TABLAS RESPONSIVAS TÁCTILES */
+    .table-responsive-movil {
+      display: block;
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      background: white;
+      margin-bottom: 16px;
+    }
+    .table-responsive-movil table { white-space: nowrap; margin-bottom: 0; }
+
+    /* ALERTAS */
+    .alerta-boston {
+      padding: 12px 16px;
+      border-radius: var(--radio-input);
+      font-size: 13.5px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .alerta-error { background-color: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+    .alerta-exito { background-color: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+    .alerta-info { background-color: #e0f2fe; color: #075985; border: 1px solid #bae6fd; }
+
+    /* SPINNERS */
+    .spinner-sm {
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top: 2px solid #ffffff;
+      border-radius: 50%;
+      width: 16px;
+      height: 16px;
+      animation: spin 0.8s linear infinite;
+      display: inline-block;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+    /* BADGES */
+    .badge-rol-admin { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; font-weight: 700; padding: 4px 10px; border-radius: 999px; font-size: 11px; }
+    .badge-rol-cajero { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; font-weight: 700; padding: 4px 10px; border-radius: 999px; font-size: 11px; }
+
+    /* CAPAS DE IMPRESIÓN */
+    .print-area { display: none; }
+    @media print {
+      @page { margin: 1cm; size: auto; }
+      body { background: #fff !important; color: #000 !important; font-size: 12px; }
+      #main-app, #seccionLogin, .no-imprimir { display: none !important; }
+      .print-area { display: block !important; }
+      .table-print { width: 100%; border-collapse: collapse; margin-top: 14px; }
+      .table-print th, .table-print td { border: 1px solid #000; padding: 6px 8px; text-align: left; }
+      .table-print th { background-color: #f1f5f9 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-weight: bold; }
+      .marco-print-titulo { border: 2px solid #000; padding: 12px; text-align: center; margin-bottom: 16px; }
+      .hoja-grupo-print { page-break-after: always; display: block !important; }
+      .hoja-grupo-print:last-child { page-break-after: avoid; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ==============================================================
+       CAPAS AISLADAS DE IMPRESIÓN OFICIAL
+       ============================================================== -->
+  <div id="print-area-caja" class="print-area"></div>
+  <div id="print-area-concentrado" class="print-area"></div>
+  <div id="print-area-auditoria" class="print-area"></div>
+  <div id="print-area-logistica" class="print-area"></div>
+
+  <!-- ==============================================================
+       SECCIÓN 1: LOGIN (INTERFAZ ESTILO BOSTON MEDICAL)
+       ============================================================== -->
+  <div id="seccionLogin" class="centrado-login">
+    <div class="container-login">
+      
+      <!-- Banner Institucional Boston -->
+      <div class="banner-boston">
+        <div class="banner-franja-dorada"></div>
+        <div class="banner-watermark"></div>
+        <div class="banner-content">
+          <img src="https://lh3.googleusercontent.com/d/1ZpZST5pl7nQPkJRhnKLL2WNDNpEO6_3f" alt="Escudo Colegio Boston" class="banner-escudo">
+          <div class="banner-textos">
+            <span class="banner-institucion">COLEGIO BOSTON</span>
+            <h1 class="banner-siglas">EVENTOS BOSTON</h1>
+            <div class="banner-titulo">Control de Pagos, Abonos y Cooperaciones</div>
+            <div class="banner-sub">Excursiones • Actividades • Graduaciones</div>
+          </div>
+        </div>
+        <div class="banner-franjas-boston"></div>
+      </div>
+
+      <!-- Tarjeta de Acceso -->
+      <div class="card-boston">
+        <h4 style="color: var(--color-primario); font-weight: 800; margin: 0 0 4px 0; font-size: 19px;">Acceso al Sistema</h4>
+        <p style="color: var(--color-texto-muted); font-size: 13px; margin: 0 0 18px 0;">Selecciona o escribe tu usuario institucional para ingresar.</p>
+        
+        <div id="loginAlerta" class="alerta-boston alerta-error d-none"></div>
+
+        <form id="formLogin" onsubmit="ejecutarLogin(event)">
+          
+          <!-- Selector / Input de Usuario -->
+          <div class="form-group-custom">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <label id="lblUsuario" for="user" class="m-0">Usuario Autorizado</label>
+              <a href="javascript:void(0)" onclick="alternarModoIngresoUsuario()" id="linkModoUsuario" style="font-size: 12px; color: var(--color-primario); text-decoration: underline; font-weight: 600;">✏️ Escribir manual</a>
+            </div>
+            
+            <div class="input-icon-wrapper">
+              <svg class="input-icon" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+              <!-- Selector precargado desde backend -->
+              <select id="user" class="form-select input-with-icon" onchange="manejarSeleccionUsuario(this.value)">
+                <option value="">Cargando usuarios autorizados...</option>
+              </select>
+              <!-- Campo alternativo manual -->
+              <input type="text" id="userInputManual" class="form-control input-with-icon d-none" placeholder="Escribe tu usuario (ej. admin o cajero)" autocomplete="username">
+            </div>
+          </div>
+
+          <!-- Contraseña con candado -->
+          <div class="form-group-custom">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <label for="pass" class="m-0">Contraseña de Acceso</label>
+              <a href="javascript:void(0)" onclick="toggleVerPassword()" id="linkVerPass" style="font-size: 12px; color: var(--color-texto-muted); text-decoration: none; font-weight: 600;">👁️ Ver</a>
+            </div>
+            <div class="input-icon-wrapper">
+              <svg class="input-icon" viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+              <input type="password" id="pass" class="form-control input-with-icon" placeholder="••••••••" autocomplete="current-password" required>
+            </div>
+          </div>
+
+          <!-- Recordar Sesión en Móviles -->
+          <div class="d-flex align-items-center mb-3">
+            <label class="d-flex align-items-center gap-2 small text-secondary" style="cursor: pointer; user-select: none;">
+              <input type="checkbox" id="chkRecordarSesion" checked style="width: 17px; height: 17px; accent-color: var(--color-primario); cursor: pointer;">
+              <span>Mantener mi sesión iniciada en este dispositivo</span>
+            </label>
+          </div>
+
+          <button type="submit" id="btnLogin" class="btn-boston w-100 py-3">
+            <span id="txtBtnLogin">Entrar a Eventos Boston</span>
+            <span id="spinnerLogin" class="spinner-sm d-none"></span>
+          </button>
+        </form>
+
+        <div class="text-center mt-3 pt-3 border-top" style="font-size: 11px; color: var(--color-texto-muted);">
+          Colegio Boston • Cuernavaca, Morelos <br>
+          <span class="text-secondary">Dirección Académica y Sistemas</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ==============================================================
+       SECCIÓN 2: APLICACIÓN PRINCIPAL (ORGANIZADA POR APARTADOS)
+       ============================================================== -->
+  <div id="main-app" class="d-none">
+
+    <!-- NAVBAR SUPERIOR -->
+    <header class="navbar-boston no-imprimir">
+      <div class="container-fluid d-flex justify-content-between align-items-center">
+        
+        <div class="navbar-brand-content">
+          <img src="https://lh3.googleusercontent.com/d/1ZpZST5pl7nQPkJRhnKLL2WNDNpEO6_3f" alt="Escudo Boston" class="navbar-logo">
+          <div>
+            <div class="navbar-title">EVENTOS BOSTON</div>
+            <div class="navbar-subtitle">Colegio Boston • Control Escolar</div>
+          </div>
+        </div>
+
+        <div class="d-flex align-items-center gap-3">
+          <div class="text-end d-none d-sm-block">
+            <div id="navUserGreeting" class="fw-bold" style="font-size: 13.5px; color: var(--color-primario);">Cargando...</div>
+            <div id="navUserRoleBadge"></div>
+          </div>
+          <button class="btn btn-outline-danger btn-sm fw-bold px-3 py-2" onclick="cerrarSesionApp()" title="Salir del sistema">
+            🚪 Salir
+          </button>
+        </div>
+
+      </div>
+    </header>
+
+    <div class="container-fluid py-4 px-3 px-md-4">
+
+      <!-- BARRA DE APARTADOS / TABS -->
+      <nav class="nav-tabs-apartados no-imprimir" id="contenedorTabsApartados">
+        <button class="tab-apartado active" onclick="cambiarApartado('apartado-cobros')">
+          💳 Caja y Cobros
+        </button>
+        <button class="tab-apartado" onclick="cambiarApartado('apartado-listas')">
+          📋 Listas de Salón
+        </button>
+        <button class="tab-apartado" onclick="cambiarApartado('apartado-caja')">
+          💰 Mi Caja y Arqueo
+        </button>
+        
+        <!-- Apartados exclusivos de Administrador -->
+        <button class="tab-apartado admin-only d-none" onclick="cambiarApartado('apartado-eventos')">
+          🎪 Eventos y Costos
+        </button>
+        <button class="tab-apartado admin-only d-none" onclick="cambiarApartado('apartado-usuarios')">
+          👥 Usuarios y Accesos
+        </button>
+        <button class="tab-apartado admin-only d-none" onclick="cambiarApartado('apartado-auditoria')">
+          📊 Auditoría Global
+        </button>
+      </nav>
+
+      <!-- ==============================================================
+           APARTADO 1: 💳 CAJA Y COBROS (RECEPCIÓN DE PAGOS EN VIVO)
+           ============================================================== -->
+      <section id="apartado-cobros" class="apartado-content">
+        <div class="card-boston">
+          
+          <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-2 mb-3">
+            <h5 class="section-title m-0 border-0">💳 Recepción de Pagos y Abonos</h5>
+            <div class="d-flex align-items-center gap-2">
+              <span id="badge-efectivo-usuario" class="badge bg-success p-2 font-monospace" style="font-size: 1rem;">Mi Caja: $0.00</span>
+              <button class="btn btn-warning btn-sm fw-bold px-3 py-2" onclick="cambiarApartado('apartado-caja')">💰 Arqueo</button>
+            </div>
+          </div>
+
+          <!-- Filtro de Evento, Grado y Grupo -->
+          <div class="row g-2 mb-3">
+            <div class="col-12 col-md-4">
+              <label class="form-label small fw-bold text-secondary">1. Evento Escolar</label>
+              <select id="sel-evento" class="form-select" onchange="actualizarCosto()"></select>
+            </div>
+            <div class="col-6 col-md-4">
+              <label class="form-label small fw-bold text-secondary">2. Grado</label>
+              <select id="sel-grado" class="form-select" onchange="verificarCambioFiltroGrupo()">
+                <option value="">-- Grado --</option>
+                <option value="1">1° Secundaria</option>
+                <option value="2">2° Secundaria</option>
+                <option value="3">3° Secundaria</option>
+              </select>
+            </div>
+            <div class="col-6 col-md-4">
+              <label class="form-label small fw-bold text-secondary">3. Grupo / Sección</label>
+              <select id="sel-grupo" class="form-select" onchange="verificarCambioFiltroGrupo()">
+                <option value="">-- Grupo --</option>
+                <option value="A">Grupo A</option>
+                <option value="B">Grupo B</option>
+                <option value="C">Grupo C</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Selección de Alumno y Cobro -->
+          <div class="row g-3">
+            
+            <!-- Columna Izquierda: Alumno y Balance -->
+            <div class="col-12 col-lg-6">
+              <label class="form-label small fw-bold text-secondary">4. Buscar Alumno</label>
+              <select id="sel-alumno" class="form-select mb-2" onchange="consultarBalance()">
+                <option value="">-- Primero selecciona Grado y Grupo --</option>
+              </select>
+
+              <!-- Tarjeta de Saldo en Vivo -->
+              <div id="balance-box" class="p-3 bg-light border rounded-3 d-none">
+                <div class="d-flex justify-content-between mb-1 small">
+                  <span class="text-secondary">Costo del Evento:</span>
+                  <span id="txt-costo-total" class="fw-bold">$0.00</span>
+                </div>
+                <div class="d-flex justify-content-between mb-1 small">
+                  <span class="text-secondary">Total Abonado:</span>
+                  <span id="txt-abonado" class="text-success fw-bold">$0.00</span>
+                </div>
+                <div class="text-center mt-2 pt-2 border-top">
+                  <span class="small text-secondary fw-bold text-uppercase">Resta por Pagar:</span>
+                  <div id="txt-resta" class="text-danger fw-bold font-monospace" style="font-size: 1.6rem;">$0.00 MXN</div>
+                  <div id="badge-estado-alumno-cortesia" class="badge bg-info text-dark p-2 mt-1 d-none">🎟️ Alumno con Cortesía Autorizada</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Columna Derecha: Cobro, Cortesía y Cambio -->
+            <div class="col-12 col-lg-6">
+              <div class="d-flex justify-content-between align-items-center mb-1">
+                <label class="form-label small fw-bold text-secondary m-0">5. Cobrar Abono ($)</label>
+                <div class="form-check form-switch m-0">
+                  <input class="form-check-input" type="checkbox" id="chk-cortesia" onchange="toggleCortesia()">
+                  <label class="form-check-label small fw-bold text-primary" for="chk-cortesia">🎟️ Marcar Cortesía</label>
+                </div>
+              </div>
+
+              <div class="row g-2 mb-2">
+                <div class="col-6">
+                  <label class="small text-muted" style="font-size:11px;">Monto a cobrar:</label>
+                  <input type="number" id="num-monto" class="form-control text-center fw-bold" placeholder="$0.00" oninput="calcularCambio()" inputmode="numeric">
+                </div>
+                <div class="col-6">
+                  <label class="small text-muted" style="font-size:11px;">Efectivo recibido:</label>
+                  <input type="number" id="num-efectivo" class="form-control text-center text-primary fw-bold" placeholder="$ Recibido" oninput="calcularCambio()" inputmode="numeric">
+                </div>
+              </div>
+
+              <!-- Calculadora visual de cambio -->
+              <div class="p-2 mb-3 bg-dark text-white rounded text-center d-flex justify-content-between align-items-center px-3">
+                <span class="small fw-bold text-uppercase">Cambio a entregar:</span>
+                <span id="txt-cambio" class="fw-bold font-monospace" style="font-size: 1.3rem;">$0.00</span>
+              </div>
+
+              <!-- Botones de Acción -->
+              <div class="d-flex flex-column gap-2">
+                <button id="btn-cobrar" class="btn btn-warning btn-lg w-100 py-3 fw-bold shadow-sm" onclick="cobrar()">
+                  💰 Registrar Cobro y Enviar Recibo
+                </button>
+                <button class="btn btn-outline-success w-100 py-2 fw-bold" onclick="irAConcentradoDesdeCobro()">
+                  📋 Ver Concentrado del Salón
+                </button>
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ==============================================================
+           APARTADO 2: 📋 LISTAS Y CONCENTRADOS DE SALÓN
+           ============================================================== -->
+      <section id="apartado-listas" class="apartado-content d-none">
+        <div class="card-boston">
+          
+          <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-2 mb-3">
+            <h5 class="section-title m-0 border-0">📋 Listas y Concentrados por Salón</h5>
+            <button class="btn btn-dark text-warning btn-sm fw-bold" onclick="imprimirConcentradoGrupoActual()">
+              🖨️ Imprimir / Descargar PDF
+            </button>
+          </div>
+
+          <div class="row g-2 mb-3">
+            <div class="col-12 col-md-5">
+              <label class="form-label small fw-bold text-secondary">Evento:</label>
+              <select id="sel-listas-evento" class="form-select" onchange="cargarConcentradoDesdeModulo()"></select>
+            </div>
+            <div class="col-6 col-md-3">
+              <label class="form-label small fw-bold text-secondary">Grado:</label>
+              <select id="sel-listas-grado" class="form-select" onchange="cargarConcentradoDesdeModulo()">
+                <option value="1">1° Secundaria</option>
+                <option value="2">2° Secundaria</option>
+                <option value="3">3° Secundaria</option>
+              </select>
+            </div>
+            <div class="col-6 col-md-4">
+              <label class="form-label small fw-bold text-secondary">Grupo:</label>
+              <select id="sel-listas-grupo" class="form-select" onchange="cargarConcentradoDesdeModulo()">
+                <option value="A">Grupo A</option>
+                <option value="B">Grupo B</option>
+                <option value="C">Grupo C</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Resumen de Alumnos del Grupo -->
+          <div class="row g-2 text-center mb-3">
+            <div class="col-6 col-md-3">
+              <div class="p-2 bg-light border rounded">
+                <span class="small text-muted d-block" style="font-size: 11px;">Total Alumnos</span>
+                <strong id="resumen-total-alumnos" class="text-primary fs-6">0</strong>
+              </div>
+            </div>
+            <div class="col-6 col-md-3">
+              <div class="p-2 bg-light border rounded">
+                <span class="small text-muted d-block" style="font-size: 11px;">Pagados</span>
+                <strong id="resumen-pagados" class="text-success fs-6">0</strong>
+              </div>
+            </div>
+            <div class="col-6 col-md-3">
+              <div class="p-2 bg-light border rounded">
+                <span class="small text-muted d-block" style="font-size: 11px;">Con Abono</span>
+                <strong id="resumen-con-abono" class="text-warning fs-6">0</strong>
+              </div>
+            </div>
+            <div class="col-6 col-md-3">
+              <div class="p-2 bg-light border rounded">
+                <span class="small text-muted d-block" style="font-size: 11px;">Sin Pago</span>
+                <strong id="resumen-sin-pago" class="text-danger fs-6">0</strong>
+              </div>
+            </div>
+          </div>
+
+          <!-- Filtro de Búsqueda Rápida en Tabla -->
+          <div class="mb-2">
+            <input type="text" id="busqueda-tabla-alumnos" class="form-control" placeholder="🔍 Buscar alumno en la lista..." onkeyup="filtrarTablaAlumnosEnPantalla()">
+          </div>
+
+          <!-- Tabla de Concentrado -->
+          <div class="table-responsive-movil">
+            <table class="table table-bordered table-striped table-hover table-sm align-middle m-0" id="tabla-concentrado-alumnos">
+              <thead class="table-dark" style="font-size: 13px;">
+                <tr>
+                  <th style="width: 100px;">ID</th>
+                  <th>Nombre Completo del Estudiante</th>
+                  <th style="text-align: right; width: 120px;">Abonado</th>
+                  <th style="text-align: right; width: 120px;">Restante</th>
+                  <th style="text-align: center; width: 120px;">Estatus</th>
+                </tr>
+              </thead>
+              <tbody id="body-tabla-concentrado" style="font-size: 13px;">
+                <tr><td colspan="5" class="text-center py-3 text-muted">Selecciona los filtros para consultar la lista del salón.</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ==============================================================
+           APARTADO 3: 💰 MI CAJA Y ARQUEO
+           ============================================================== -->
+      <section id="apartado-caja" class="apartado-content d-none">
+        <div class="card-boston">
+          
+          <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-2 mb-3">
+            <div>
+              <h5 class="section-title m-0 border-0">💰 Arqueo de Caja y Entrega de Efectivo</h5>
+              <p class="small text-muted m-0">Movimientos de cobro en efectivo bajo custodia del cajero activo.</p>
+            </div>
+            <button class="btn btn-success btn-lg fw-bold" onclick="abrirModalCorteCaja()">
+              🖨️ Realizar Corte de Caja Oficial
+            </button>
+          </div>
+
+          <!-- Tarjeta de Saldo en Caja -->
+          <div class="p-3 mb-3 bg-light border border-success border-opacity-50 rounded-3 text-center">
+            <span class="small fw-bold text-success text-uppercase letter-spacing-1">Efectivo Total Pendiente de Entrega:</span>
+            <div id="arqueo-gran-total" class="text-success fw-bold font-monospace" style="font-size: 2.2rem;">$0.00 MXN</div>
+          </div>
+
+          <h6 class="fw-bold text-secondary mb-2" style="font-size: 13px;">FOLIOS PENDIENTES DE CORTE:</h6>
+          <div class="table-responsive-movil">
+            <table class="table table-sm table-striped align-middle m-0">
+              <thead class="table-secondary" style="font-size: 12.5px;">
+                <tr>
+                  <th>Folio</th>
+                  <th>Fecha y Hora</th>
+                  <th>Alumno</th>
+                  <th>Concepto / Evento</th>
+                  <th style="text-align: right;">Monto</th>
+                </tr>
+              </thead>
+              <tbody id="tabla-desglose-caja" style="font-size: 12px;">
+                <tr><td colspan="5" class="text-center py-3 text-muted">No hay folios pendientes de arqueo. Caja en ceros.</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ==============================================================
+           APARTADO 4: 🎪 EVENTOS Y COSTOS (EXCLUSIVO ADMIN)
+           ============================================================== -->
+      <section id="apartado-eventos" class="apartado-content admin-only d-none">
+        
+        <!-- Crear Nuevo Evento -->
+        <div class="card-boston">
+          <h5 class="section-title">🎪 Crear Nuevo Evento Escolar</h5>
+          <div class="row g-2">
+            <div class="col-12 col-md-3">
+              <label class="form-label small">Nombre del Evento</label>
+              <input type="text" id="new-ev-nombre" class="form-control" placeholder="Ej. Excursión Six Flags 2026">
+            </div>
+            <div class="col-6 col-md-2">
+              <label class="form-label small">Costo Alumno ($)</label>
+              <input type="number" id="new-ev-costo" class="form-control" placeholder="850">
+            </div>
+            <div class="col-6 col-md-2">
+              <label class="form-label small">Cupo Meta (Alumnos)</label>
+              <input type="number" id="new-ev-cupo" class="form-control" placeholder="120">
+            </div>
+            <div class="col-12 col-md-3">
+              <label class="form-label small">Cajero Responsable</label>
+              <select id="new-ev-cajero" class="form-select select-cajeros-lista"><option value="">Cargando...</option></select>
+            </div>
+            <div class="col-12 col-md-2 d-flex align-items-end mt-2 mt-md-0">
+              <button class="btn-boston w-100 py-2" onclick="crearEvento()">Crear Evento</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Modificar Evento Existente -->
+        <div class="card-boston">
+          <h5 class="section-title text-primary">✏️ Modificar Evento Existente</h5>
+          <div class="row g-3">
+            <div class="col-12 col-md-4">
+              <label class="form-label small">Seleccionar Evento a Editar</label>
+              <select id="admin-edit-evento" class="form-select" onchange="cargarDatosEventoEditar()">
+                <option value="">Cargando eventos...</option>
+              </select>
+            </div>
+            <div class="col-12 col-md-3">
+              <label class="form-label small">Nuevo Nombre</label>
+              <input type="text" id="edit-ev-nombre" class="form-control" placeholder="Nombre corregido">
+            </div>
+            <div class="col-6 col-md-2">
+              <label class="form-label small">Nuevo Costo ($)</label>
+              <input type="number" id="edit-ev-costo" class="form-control" placeholder="Costo">
+            </div>
+            <div class="col-6 col-md-1">
+              <label class="form-label small">Cupo</label>
+              <input type="number" id="edit-ev-cupo" class="form-control" placeholder="Meta">
+            </div>
+            <div class="col-12 col-md-2 d-flex align-items-end mt-2 mt-md-0">
+              <button class="btn-boston-gold w-100 py-2" onclick="guardarEdicionEvento()">Actualizar</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Asignar Eventos Adicionales a Cajeros -->
+        <div class="card-boston">
+          <h5 class="section-title">🔗 Vincular Evento Adicional a Cajero</h5>
+          <div class="row g-2">
+            <div class="col-12 col-md-5">
+              <label class="form-label small">Selecciona Cajero:</label>
+              <select id="asg-m-cajero" class="form-select select-cajeros-lista"><option value="">Cargando...</option></select>
+            </div>
+            <div class="col-12 col-md-5">
+              <label class="form-label small">Selecciona Evento a Asignar:</label>
+              <select id="asg-m-evento" class="form-select"><option value="">Cargando...</option></select>
+            </div>
+            <div class="col-12 col-md-2 d-flex align-items-end mt-2 mt-md-0">
+              <button class="btn btn-outline-primary w-100 py-2 fw-bold" onclick="vincularEventoExtra()">Asignar</button>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ==============================================================
+           APARTADO 5: 👥 USUARIOS Y ACCESOS (EXCLUSIVO ADMIN)
+           ============================================================== -->
+      <section id="apartado-usuarios" class="apartado-content admin-only d-none">
+        
+        <!-- Alta de Nuevo Usuario con Generador de Contraseñas -->
+        <div class="card-boston">
+          <h5 class="section-title">👥 Registrar Nuevo Usuario (Cajero o Admin)</h5>
+          <p class="small text-muted">Genera contraseñas institucionales seguras para el personal escolar.</p>
+
+          <div class="row g-3">
+            <div class="col-12 col-md-4">
+              <label class="form-label small">Nombre Completo del Personal</label>
+              <input type="text" id="add-usr-nombre" class="form-control" placeholder="Ej. Lic. Gabriel Morales">
+            </div>
+            <div class="col-6 col-md-3">
+              <label class="form-label small">Usuario para Login</label>
+              <input type="text" id="add-usr-user" class="form-control" placeholder="ej. gabriel.morales">
+            </div>
+            <div class="col-6 col-md-2">
+              <label class="form-label small">Rol en Sistema</label>
+              <select id="add-usr-rol" class="form-select">
+                <option value="Cajero">Cajero</option>
+                <option value="Admin">Administrador</option>
+              </select>
+            </div>
+            <div class="col-12 col-md-3">
+              <div class="d-flex justify-content-between align-items-center mb-1">
+                <label class="form-label small m-0">Contraseña</label>
+                <a href="javascript:void(0)" onclick="generarPasswordInput()" style="font-size: 11px; color: var(--color-primario); font-weight: 700;">🎲 Generar Auto</a>
+              </div>
+              <input type="text" id="add-usr-pass" class="form-control font-monospace fw-bold" placeholder="Escribe o genera">
+            </div>
+            <div class="col-12 text-end">
+              <button class="btn-boston px-4 py-2" onclick="altaUsuarioDesdeAdmin()">
+                💾 Guardar Usuario en el Sistema
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabla de Credenciales y Usuarios Activos -->
+        <div class="card-boston">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="section-title m-0 border-0">📋 Directorio Oficial de Cuentas y Contraseñas</h5>
+            <button class="btn btn-outline-secondary btn-sm fw-bold" onclick="cargarUsuariosAdmin()">🔄 Recargar</button>
+          </div>
+
+          <div class="table-responsive-movil">
+            <table class="table table-sm table-striped align-middle m-0">
+              <thead class="table-dark" style="font-size: 12.5px;">
+                <tr>
+                  <th>ID</th>
+                  <th>Nombre Completo</th>
+                  <th>Rol</th>
+                  <th>Usuario</th>
+                  <th>Contraseña Actual</th>
+                  <th>Estatus</th>
+                </tr>
+              </thead>
+              <tbody id="tabla-usuarios-admin" style="font-size: 12px;">
+                <tr><td colspan="6" class="text-center py-3 text-muted">Cargando cuentas...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ==============================================================
+           APARTADO 6: 📊 AUDITORÍA Y LOGÍSTICA (EXCLUSIVO ADMIN)
+           ============================================================== -->
+      <section id="apartado-auditoria" class="apartado-content admin-only d-none">
+        <div class="card-boston">
+          
+          <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-2 mb-3">
+            <div>
+              <h5 class="section-title m-0 border-0">📊 Inteligencia Financiera y Auditoría</h5>
+              <p class="small text-muted m-0">Métricas consolidadas de cobro y registro de folios.</p>
+            </div>
+            <button class="btn btn-dark text-warning btn-sm fw-bold" onclick="generarEImprimirDetalleFinanciero()">
+              🖨️ Imprimir Detalle Financiero
+            </button>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label small fw-bold text-secondary">Filtrar Indicadores por Evento:</label>
+            <select id="filtro-stats-evento" class="form-select border-primary" onchange="procesarFiltroDashboard()"></select>
+          </div>
+
+          <!-- KPIs -->
+          <div class="row g-2 text-center mb-3">
+            <div class="col-6 col-md-3">
+              <div class="p-3 bg-light border rounded-3">
+                <h6 style="font-size: 11px;" class="text-muted text-uppercase m-0">Recaudación Neta</h6>
+                <h4 id="dash-dinero" class="text-primary fw-bold m-0 mt-1">$0.00</h4>
+              </div>
+            </div>
+            <div class="col-6 col-md-3">
+              <div class="p-3 bg-light border rounded-3">
+                <h6 style="font-size: 11px;" class="text-muted text-uppercase m-0">Alumnos Inscritos</h6>
+                <h4 id="dash-abono" class="fw-bold m-0 mt-1">0</h4>
+              </div>
+            </div>
+            <div class="col-6 col-md-3">
+              <div class="p-3 bg-light border rounded-3">
+                <h6 style="font-size: 11px;" class="text-muted text-uppercase m-0">Meta Financiera</h6>
+                <h4 id="dash-meta" class="text-success fw-bold m-0 mt-1">$0.00</h4>
+              </div>
+            </div>
+            <div class="col-6 col-md-3">
+              <div class="p-3 bg-light border rounded-3">
+                <h6 style="font-size: 11px;" class="text-muted text-uppercase m-0">Total Cancelado</h6>
+                <h4 id="dash-cancelado" class="text-danger fw-bold m-0 mt-1">$0.00</h4>
+              </div>
+            </div>
+          </div>
+
+          <!-- Módulo de Logística Escolar (Transportes y Asistencia) -->
+          <div class="p-3 bg-light border border-success border-opacity-50 rounded-3 mb-4">
+            <h6 class="fw-bold text-success mb-2">📋 Módulo de Logística (Listas de Asistencia por Salón para Transporte)</h6>
+            <div class="row g-2 align-items-end">
+              <div class="col-12 col-md-8">
+                <label class="form-label small text-secondary">Selecciona Evento:</label>
+                <select id="sel-logistica-evento" class="form-select"></select>
+              </div>
+              <div class="col-12 col-md-4">
+                <button class="btn btn-success w-100 py-2 fw-bold" onclick="prepararEImprimirListaLogistica()">
+                  🖨️ Generar Listas por Salón
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <h6 class="fw-bold text-secondary mb-2" style="font-size: 13px;">HISTORIAL GLOBAL DE TRANSACCIONES:</h6>
+          <div class="table-responsive-movil">
+            <table class="table table-sm table-hover align-middle m-0">
+              <thead class="table-dark" style="font-size: 12.5px;">
+                <tr>
+                  <th>Folio</th>
+                  <th>Evento</th>
+                  <th>ID Alumno</th>
+                  <th>Monto</th>
+                  <th>Fecha</th>
+                  <th>Cajero</th>
+                  <th class="text-center">Control</th>
+                </tr>
+              </thead>
+              <tbody id="tabla-transacciones" style="font-size: 12px;"></tbody>
+            </table>
+          </div>
+
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <!-- ==============================================================
+       JAVASCRIPT DEL CLIENTE
+       ============================================================== -->
+  <script>
+    // MOCK COMPLETO PARA PREVIEW Y PRUEBAS LOCALES (NO ROMPE EN NAVEGADOR)
+    if (typeof google === 'undefined') {
+      console.warn("Ejecutando en entorno local/preview. Creando entorno simulado de Google Apps Script...");
+      window.google = {
+        script: {
+          run: (function() {
+            let handlers = { success: null, failure: null };
+            let proxyObj = new Proxy({}, {
+              get: function(target, prop) {
+                if (prop === 'withSuccessHandler') return function(cb) { handlers.success = cb; return proxyObj; };
+                if (prop === 'withFailureHandler') return function(cb) { handlers.failure = cb; return proxyObj; };
+                return function(...args) {
+                  setTimeout(() => {
+                    let data = { success: true, message: "Acción simulada exitosa" };
+                    if (prop === 'obtenerUsuariosLogin') {
+                      data = {
+                        success: true,
+                        usuarios: [
+                          { id: "ADM-001", nombre: "Dirección / Administrador", rol: "Admin", usuario: "admin" },
+                          { id: "CJ-101", nombre: "Cajero Principal", rol: "Cajero", usuario: "cajero" }
+                        ]
+                      };
+                    } else if (prop === 'login') {
+                      let u = args[0] ? args[0].toLowerCase() : '';
+                      if (u.includes('cajer') || u === 'cajero') {
+                        data = { success: true, rol: "Cajero", nombre: "Cajero Principal", id: "CJ-101", usuario: "cajero" };
+                      } else {
+                        data = { success: true, rol: "Admin", nombre: "Dirección General", id: "ADM-001", usuario: "admin" };
+                      }
+                    } else if (prop === 'getTodosEventosActivos' || prop === 'getEventosCajero') {
+                      data = [
+                        { id: "EV-01", nombre: "Excursión Six Flags 2026", costo: 850, cupo: 120 },
+                        { id: "EV-02", nombre: "Taller Cultural Papel Picado", costo: 35, cupo: 80 },
+                        { id: "EV-03", nombre: "Paquete Graduación 3° Secundaria", costo: 1200, cupo: 60 }
+                      ];
+                    } else if (prop === 'getCajeros') {
+                      data = [{ id: "CJ-101", nombre: "Cajero Principal" }];
+                    } else if (prop === 'obtenerUsuariosAdmin') {
+                      data = [
+                        { id: "ADM-001", nombre: "Dirección / Administrador", rol: "Admin", usuario: "admin", password: "BostonAdmin2026*", estatus: "Activo" },
+                        { id: "CJ-101", nombre: "Cajero Principal", rol: "Cajero", usuario: "cajero", password: "BostonCaja2026*", estatus: "Activo" }
+                      ];
+                    } else if (prop === 'getAlumnos') {
+                      data = [
+                        { id: "ALU-101", nombre: "Álvarez Morales Santiago", email: "santiago@boston.edu.mx" },
+                        { id: "ALU-102", nombre: "Benítez Gómez Sofía", email: "sofia@boston.edu.mx" },
+                        { id: "ALU-103", nombre: "Cervantes Díaz Mateo", email: "mateo@boston.edu.mx" }
+                      ];
+                    } else if (prop === 'getEstadoAlumno') {
+                      data = { costoTotal: 850, montoPagado: 300, resta: 550, cortesia: false, historial: [] };
+                    } else if (prop === 'obtenerConcentradoEstatusGrupo') {
+                      data = [
+                        { id: "ALU-101", nombre: "Álvarez Morales Santiago", abonado: 850, restante: 0, estatus: "PAGADO" },
+                        { id: "ALU-102", nombre: "Benítez Gómez Sofía", abonado: 300, restante: 550, estatus: "Con Abono" },
+                        { id: "ALU-103", nombre: "Cervantes Díaz Mateo", abonado: 0, restante: 850, estatus: "No ha pagado" }
+                      ];
+                    } else if (prop === 'obtenerEfectivoPendienteCajero') {
+                      data = { 
+                        totalCaja: 1150, 
+                        transacciones: [
+                          { folio: "FOL-10921", fecha: new Date().toLocaleString(), alumno: "Álvarez Morales Santiago", evento: "Excursión Six Flags 2026", monto: 850 },
+                          { folio: "FOL-10922", fecha: new Date().toLocaleString(), alumno: "Benítez Gómez Sofía", evento: "Excursión Six Flags 2026", monto: 300 }
+                        ]
+                      };
+                    } else if (prop === 'getEstadisticasAdmin') {
+                      data = {
+                        transacciones: [
+                          { idAbono: "FOL-10921", idEvento: "EV-01", idCliente: "ALU-101", montoValor: 850, montoTexto: "850", montoCancelado: 0, fecha: new Date().toLocaleString(), cajero: "Cajero Principal", fila: 2, cancelado: false },
+                          { idAbono: "FOL-10922", idEvento: "EV-01", idCliente: "ALU-102", montoValor: 300, montoTexto: "300", montoCancelado: 0, fecha: new Date().toLocaleString(), cajero: "Cajero Principal", fila: 3, cancelado: false }
+                        ],
+                        alumnosPorEvento: { "EV-01": 2, "EV-02": 0, "EV-03": 0 }
+                      };
+                    } else if (prop === 'obtenerListaLogistica') {
+                      data = [
+                        { id: "ALU-101", nombre: "Álvarez Morales Santiago", grado: "1", grupo: "A", abonado: 850, restante: 0, estatus: "PAGADO" },
+                        { id: "ALU-102", nombre: "Benítez Gómez Sofía", grado: "1", grupo: "A", abonado: 300, restante: 550, estatus: "Con Abono" }
+                      ];
+                    }
+                    if (handlers.success) handlers.success(data);
+                  }, 300);
+                };
+              }
+            });
+            return proxyObj;
+          })()
+        }
+      };
+    }
+
+    // VARIABLES GLOBALES DE ESTADO
+    let sesion = {};
+    let listaEventosCompleta = [];
+    let baseDatosTransacciones = [];
+    let mapeoAlumnosPorEvento = {};
+    let datosConcentradoGrupoActual = [];
+    let saldoPendienteActual = 0;
+    let globalMeta = 0, globalRecaudado = 0, globalCancelado = 0, globalAsisten = 0;
+
+    // INICIALIZACIÓN AL CARGAR LA PÁGINA
+    window.addEventListener('DOMContentLoaded', () => {
+      cargarUsuariosParaLogin();
+      verificarSesionGuardada();
+    });
+
+    // 1. GESTIÓN DEL LOGIN Y CREDENCIALES
+    function cargarUsuariosParaLogin() {
+      let selUser = document.getElementById('user');
+      google.script.run.withSuccessHandler(res => {
+        if (res && res.usuarios) {
+          let html = '<option value="">-- Selecciona tu usuario --</option>';
+          res.usuarios.forEach(u => {
+            html += `<option value="${u.usuario}">${u.nombre} (${u.rol})</option>`;
+          });
+          html += '<option value="__manual__">✏️ Escribir otro usuario...</option>';
+          selUser.innerHTML = html;
+        }
+      }).obtenerUsuariosLogin();
+    }
+
+    function manejarSeleccionUsuario(val) {
+      if (val === '__manual__') {
+        alternarModoIngresoUsuario(true);
+      }
+    }
+
+    function alternarModoIngresoUsuario(forzarManual) {
+      let sel = document.getElementById('user');
+      let inp = document.getElementById('userInputManual');
+      let link = document.getElementById('linkModoUsuario');
+      let esManual = forzarManual !== undefined ? forzarManual : inp.classList.contains('d-none');
+
+      if (esManual) {
+        sel.classList.add('d-none');
+        inp.classList.remove('d-none');
+        inp.focus();
+        link.innerText = "📋 Seleccionar de la lista";
+      } else {
+        inp.classList.add('d-none');
+        sel.classList.remove('d-none');
+        sel.value = "";
+        link.innerText = "✏️ Escribir manual";
+      }
+    }
+
+    function toggleVerPassword() {
+      let passInput = document.getElementById('pass');
+      let link = document.getElementById('linkVerPass');
+      if (passInput.type === 'password') {
+        passInput.type = 'text';
+        link.innerText = '🙈 Ocultar';
+      } else {
+        passInput.type = 'password';
+        link.innerText = '👁️ Ver';
+      }
+    }
+
+    function ejecutarLogin(e) {
+      if (e) e.preventDefault();
+      
+      let inpManual = document.getElementById('userInputManual');
+      let selUser = document.getElementById('user');
+      let usuario = !inpManual.classList.contains('d-none') ? inpManual.value.trim() : selUser.value.trim();
+      let pass = document.getElementById('pass').value.trim();
+      let alerta = document.getElementById('loginAlerta');
+      let btn = document.getElementById('btnLogin');
+      let txtBtn = document.getElementById('txtBtnLogin');
+      let spinner = document.getElementById('spinnerLogin');
+
+      if (!usuario || !pass) {
+        alerta.innerText = "Por favor ingresa usuario y contraseña.";
+        alerta.classList.remove('d-none');
+        return;
+      }
+
+      alerta.classList.add('d-none');
+      btn.disabled = true;
+      txtBtn.innerText = "Verificando acceso...";
+      spinner.classList.remove('d-none');
+
+      google.script.run.withSuccessHandler(res => {
+        btn.disabled = false;
+        txtBtn.innerText = "Entrar a Eventos Boston";
+        spinner.classList.add('d-none');
+
+        if (res.success) {
+          sesion = res;
+          
+          if (document.getElementById('chkRecordarSesion').checked) {
+            localStorage.setItem('boston_session', JSON.stringify({ usuario: usuario, pass: pass }));
+          } else {
+            localStorage.removeItem('boston_session');
+          }
+
+          iniciarInterfazApp();
+        } else {
+          alerta.innerText = res.message || "Usuario o contraseña incorrectos.";
+          alerta.classList.remove('d-none');
+        }
+      }).withFailureHandler(err => {
+        btn.disabled = false;
+        txtBtn.innerText = "Entrar a Eventos Boston";
+        spinner.classList.add('d-none');
+        alerta.innerText = "Error de conexión: " + err.message;
+        alerta.classList.remove('d-none');
+      }).login(usuario, pass);
+    }
+
+    function verificarSesionGuardada() {
+      let saved = localStorage.getItem('boston_session');
+      if (saved) {
+        try {
+          let creds = JSON.parse(saved);
+          if (creds.usuario && creds.pass) {
+            document.getElementById('pass').value = creds.pass;
+            alternarModoIngresoUsuario(true);
+            document.getElementById('userInputManual').value = creds.usuario;
+          }
+        } catch(e) {}
+      }
+    }
+
+    function cerrarSesionApp() {
+      if (!confirm("¿Deseas cerrar tu sesión en Eventos Boston?")) return;
+      sesion = {};
+      localStorage.removeItem('boston_session');
+      document.getElementById('pass').value = "";
+      document.getElementById('main-app').classList.add('d-none');
+      document.getElementById('seccionLogin').classList.remove('d-none');
+      cambiarApartado('apartado-cobros');
+    }
+
+    // 2. INICIALIZACIÓN DE LA APLICACIÓN TRAS LOGIN
+    function iniciarInterfazApp() {
+      document.getElementById('seccionLogin').classList.add('d-none');
+      document.getElementById('main-app').classList.remove('d-none');
+
+      // Actualizar saludo en navbar
+      document.getElementById('navUserGreeting').innerText = `Hola, ${sesion.nombre}`;
+      let roleBadge = document.getElementById('navUserRoleBadge');
+      if (sesion.rol === 'Admin') {
+        roleBadge.innerHTML = `<span class="badge-rol-admin">Administrador General</span>`;
+        document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('d-none'));
+      } else {
+        roleBadge.innerHTML = `<span class="badge-rol-cajero">Cajero Autorizado</span>`;
+        document.querySelectorAll('.admin-only').forEach(el => el.classList.add('d-none'));
+      }
+
+      // Cargar Catálogos
+      google.script.run.withSuccessHandler(eventos => {
+        listaEventosCompleta = eventos;
+        actualizarSelectoresEventos();
+        cargarEventosDelCajero();
+        obtenerEfectivoEnCajaActual();
+
+        if (sesion.rol === 'Admin') {
+          actualizarDropdownsAdminEspeciales();
+          cargarDashboard();
+          cargarUsuariosAdmin();
+        }
+      }).getTodosEventosActivos();
+    }
+
+    // NAVEGACIÓN ENTRE APARTADOS (TABS)
+    function cambiarApartado(apartadoId) {
+      document.querySelectorAll('.apartado-content').forEach(el => el.classList.add('d-none'));
+      document.querySelectorAll('.tab-apartado').forEach(el => el.classList.remove('active'));
+
+      let seccion = document.getElementById(apartadoId);
+      if (seccion) seccion.classList.remove('d-none');
+
+      // Marcar botón activo
+      let btn = Array.from(document.querySelectorAll('.tab-apartado')).find(b => b.getAttribute('onclick').includes(apartadoId));
+      if (btn) btn.classList.add('active');
+
+      // Acciones específicas al abrir apartado
+      if (apartadoId === 'apartado-caja') {
+        obtenerEfectivoEnCajaActual();
+      } else if (apartadoId === 'apartado-usuarios' && sesion.rol === 'Admin') {
+        cargarUsuariosAdmin();
+      } else if (apartadoId === 'apartado-auditoria' && sesion.rol === 'Admin') {
+        cargarDashboard();
+      } else if (apartadoId === 'apartado-listas') {
+        cargarConcentradoDesdeModulo();
+      }
+    }
+
+    // 3. APARTADO: CAJA Y COBROS
+    function actualizarSelectoresEventos() {
+      let opts = '<option value="">-- Seleccionar Evento Activo --</option>' + 
+        listaEventosCompleta.map(e => `<option value="${e.id}">${e.nombre} ($${e.costo}.00)</option>`).join('');
+      
+      let selCobro = document.getElementById('sel-evento');
+      if (selCobro) selCobro.innerHTML = opts;
+
+      let selListas = document.getElementById('sel-listas-evento');
+      if (selListas) selListas.innerHTML = opts;
+
+      let selLog = document.getElementById('sel-logistica-evento');
+      if (selLog) selLog.innerHTML = opts;
+
+      let selFiltro = document.getElementById('filtro-stats-evento');
+      if (selFiltro) selFiltro.innerHTML = '<option value="TODOS">-- Todos los Eventos Escolares --</option>' + 
+        listaEventosCompleta.map(e => `<option value="${e.id}">${e.nombre} (${e.id})</option>`).join('');
+    }
+
+    function cargarEventosDelCajero() {
+      google.script.run.withSuccessHandler(eventos => {
+        let select = document.getElementById('sel-evento');
+        select.innerHTML = '<option value="">-- Seleccionar Evento --</option>' + 
+          eventos.map(e => `<option value="${e.id}">${e.nombre} ($${e.costo}.00)</option>`).join('');
+        if (eventos.length > 0) {
+          select.value = eventos[0].id;
+        }
+        actualizarCosto();
+      }).getEventosCajero(sesion.id, sesion.rol);
+    }
+
+    function verificarCambioFiltroGrupo() {
+      let gra = document.getElementById('sel-grado').value;
+      let gru = document.getElementById('sel-grupo').value;
+      let selAl = document.getElementById('sel-alumno');
+
+      if (gra && gru) {
+        selAl.innerHTML = '<option value="">Buscando alumnos del salón...</option>';
+        google.script.run.withSuccessHandler(alumnos => {
+          if (!alumnos || alumnos.length === 0) {
+            selAl.innerHTML = '<option value="">No hay alumnos registrados en este grupo</option>';
+            return;
+          }
+          selAl.innerHTML = '<option value="">-- Selecciona al alumno --</option>' + 
+            alumnos.map(a => `<option value="${a.id}" data-email="${a.email}" data-nombre="${a.nombre}">${a.nombre}</option>`).join('');
+        }).getAlumnos(gra, gru);
+      } else {
+        selAl.innerHTML = '<option value="">-- Primero selecciona Grado y Grupo --</option>';
+        document.getElementById('balance-box').classList.add('d-none');
+      }
+    }
+
+    function consultarBalance() {
+      let idEv = document.getElementById('sel-evento').value;
+      let idAl = document.getElementById('sel-alumno').value;
+      let ev = listaEventosCompleta.find(e => e.id == idEv);
+      let box = document.getElementById('balance-box');
+
+      saldoPendienteActual = 0;
+      document.getElementById('chk-cortesia').checked = false;
+      toggleCortesia();
+
+      if (!idAl || !ev) {
+        box.classList.add('d-none');
+        return;
+      }
+
+      google.script.run.withSuccessHandler(res => {
+        saldoPendienteActual = res.resta;
+        box.classList.remove('d-none');
+        document.getElementById('txt-costo-total').innerText = `$${res.costoTotal}.00`;
+        document.getElementById('txt-abonado').innerText = `$${res.montoPagado}.00`;
+        document.getElementById('txt-resta').innerText = `$${res.resta}.00 MXN`;
+        
+        let badgeCort = document.getElementById('badge-estado-alumno-cortesia');
+        if (res.cortesia) badgeCort.classList.remove('d-none');
+        else badgeCort.classList.add('d-none');
+
+        // Si ya liquidó o tiene cortesía, poner sugerencia
+        if (res.resta <= 0) {
+          document.getElementById('txt-resta').className = "text-success fw-bold font-monospace fs-4";
+          document.getElementById('txt-resta').innerText = res.cortesia ? "CORTESÍA CUBIERTA" : "LIQUIDADO 100%";
+        } else {
+          document.getElementById('txt-resta').className = "text-danger fw-bold font-monospace fs-4";
+        }
+      }).getEstadoAlumno(idEv, idAl, ev.costo);
+    }
+
+    function actualizarCosto() {
+      consultarBalance();
+    }
+
+    function calcularCambio() {
+      let montoACobrar = parseFloat(document.getElementById('num-monto').value) || 0;
+      let efectivoRecibido = parseFloat(document.getElementById('num-efectivo').value) || 0;
+      let txtCambio = document.getElementById('txt-cambio');
+      
+      if (efectivoRecibido > 0 && efectivoRecibido >= montoACobrar) {
+        let cambio = efectivoRecibido - montoACobrar;
+        txtCambio.innerText = `$${cambio.toFixed(2)}`;
+        txtCambio.style.color = "#2ecc71";
+      } else if (efectivoRecibido > 0 && efectivoRecibido < montoACobrar) {
+        let falta = montoACobrar - efectivoRecibido;
+        txtCambio.innerText = `Faltan $${falta.toFixed(2)}`;
+        txtCambio.style.color = "#e74c3c";
+      } else {
+        txtCambio.innerText = "$0.00";
+        txtCambio.style.color = "#ffffff";
+      }
+    }
+
+    function toggleCortesia() {
+      let isCortesia = document.getElementById('chk-cortesia').checked;
+      let inputMonto = document.getElementById('num-monto');
+      let inputEfectivo = document.getElementById('num-efectivo');
+      
+      if (isCortesia) {
+        inputMonto.value = 0;
+        inputMonto.disabled = true;
+        inputEfectivo.value = "";
+        inputEfectivo.disabled = true;
+      } else {
+        inputMonto.value = "";
+        inputMonto.disabled = false;
+        inputEfectivo.disabled = false;
+      }
+      calcularCambio();
+    }
+
+    function cobrar() {
+      let evSelect = document.getElementById('sel-evento');
+      let alSelect = document.getElementById('sel-alumno');
+      let montoInput = document.getElementById('num-monto');
+      let isCortesia = document.getElementById('chk-cortesia').checked;
+      let ev = listaEventosCompleta.find(e => e.id == evSelect.value);
+
+      if (!evSelect.value) return alert("Por favor selecciona un evento.");
+      if (!alSelect.value) return alert("Por favor selecciona al alumno que va a realizar el pago.");
+
+      let monto = isCortesia ? 0 : parseFloat(montoInput.value);
+      if (!isCortesia && (!monto || monto <= 0)) {
+        return alert("Ingresa un monto válido para cobrar.");
+      }
+
+      if (!isCortesia && monto > saldoPendienteActual) {
+        return alert(`❌ ATENCIÓN: No es posible cobrar más del saldo pendiente.\n\nEl alumno únicamente debe $${saldoPendienteActual}.00 MXN para este evento.`);
+      }
+
+      let opt = alSelect.options[alSelect.selectedIndex];
+      let btn = document.getElementById('btn-cobrar');
+      btn.disabled = true;
+      btn.innerText = "Registrando cobro...";
+
+      google.script.run.withSuccessHandler(res => {
+        btn.disabled = false;
+        btn.innerText = "💰 Registrar Cobro y Enviar Recibo";
+        alert(isCortesia ? `🎟️ Cortesía registrada con éxito.\nFolio: ${res.folio}` : `✅ Pago registrado con éxito.\nFolio Oficial: ${res.folio}\nRecibo digital enviado por correo.`);
+
+        // Limpiar formulario
+        document.getElementById('chk-cortesia').checked = false;
+        toggleCortesia();
+        document.getElementById('num-monto').value = "";
+        document.getElementById('num-efectivo').value = "";
+        calcularCambio();
+
+        consultarBalance();
+        obtenerEfectivoEnCajaActual();
+        if (sesion.rol === 'Admin') cargarDashboard();
+      }).withFailureHandler(err => {
+        btn.disabled = false;
+        btn.innerText = "💰 Registrar Cobro y Enviar Recibo";
+        alert("Error al registrar el cobro: " + err.message);
+      }).registrarPago(
+        ev.id, ev.nombre, alSelect.value, opt.dataset.nombre, opt.dataset.email,
+        monto, ev.costo, sesion.id, document.getElementById('sel-grado').value, 
+        document.getElementById('sel-grupo').value, isCortesia
+      );
+    }
+
+    function irAConcentradoDesdeCobro() {
+      let idEv = document.getElementById('sel-evento').value;
+      let gra = document.getElementById('sel-grado').value;
+      let gru = document.getElementById('sel-grupo').value;
+
+      if (idEv) document.getElementById('sel-listas-evento').value = idEv;
+      if (gra) document.getElementById('sel-listas-grado').value = gra;
+      if (gru) document.getElementById('sel-listas-grupo').value = gru;
+
+      cambiarApartado('apartado-listas');
+    }
+
+    // 4. APARTADO: LISTAS Y CONCENTRADOS
+    function cargarConcentradoDesdeModulo() {
+      let idEv = document.getElementById('sel-listas-evento').value;
+      let gra = document.getElementById('sel-listas-grado').value;
+      let gru = document.getElementById('sel-listas-grupo').value;
+      let ev = listaEventosCompleta.find(e => e.id == idEv);
+
+      if (!idEv || !gra || !gru || !ev) return;
+
+      let tbody = document.getElementById('body-tabla-concentrado');
+      tbody.innerHTML = `<tr><td colspan="5" class="text-center py-3">Consultando lista de ${gra}° "${gru}"...</td></tr>`;
+
+      google.script.run.withSuccessHandler(alumnos => {
+        datosConcentradoGrupoActual = alumnos || [];
+        renderizarTablaConcentrado(datosConcentradoGrupoActual);
+      }).obtenerConcentradoEstatusGrupo(idEv, gra, gru, ev.costo);
+    }
+
+    function renderizarTablaConcentrado(alumnos) {
+      let tbody = document.getElementById('body-tabla-concentrado');
+      let html = "";
+      let countPagados = 0, countAbonos = 0, countSinPago = 0;
+
+      alumnos.forEach(al => {
+        let badge = "";
+        if (al.estatus === "PAGADO") {
+          badge = `<span class="badge bg-success p-1 d-block">PAGADO</span>`;
+          countPagados++;
+        } else if (al.estatus === "CORTESÍA") {
+          badge = `<span class="badge bg-info text-dark p-1 d-block">CORTESÍA</span>`;
+          countPagados++;
+        } else if (al.estatus === "Con Abono") {
+          badge = `<span class="badge bg-warning text-dark p-1 d-block">CON ABONO</span>`;
+          countAbonos++;
+        } else {
+          badge = `<span class="badge bg-danger p-1 d-block">SIN PAGO</span>`;
+          countSinPago++;
+        }
+
+        html += `
+          <tr>
+            <td class="font-monospace small fw-bold">${al.id}</td>
+            <td class="fw-bold">${al.nombre}</td>
+            <td style="text-align: right;" class="text-success fw-bold">$${al.abonado}.00</td>
+            <td style="text-align: right;" class="text-danger fw-bold">$${al.restante}.00</td>
+            <td>${badge}</td>
+          </tr>`;
+      });
+
+      tbody.innerHTML = html || `<tr><td colspan="5" class="text-center py-3 text-muted">No se encontraron alumnos en este salón.</td></tr>`;
+
+      // Actualizar contadores
+      document.getElementById('resumen-total-alumnos').innerText = alumnos.length;
+      document.getElementById('resumen-pagados').innerText = countPagados;
+      document.getElementById('resumen-con-abono').innerText = countAbonos;
+      document.getElementById('resumen-sin-pago').innerText = countSinPago;
+    }
+
+    function filtrarTablaAlumnosEnPantalla() {
+      let texto = document.getElementById('busqueda-tabla-alumnos').value.toLowerCase();
+      let filtrados = datosConcentradoGrupoActual.filter(a => a.nombre.toLowerCase().includes(texto) || a.id.toLowerCase().includes(texto));
+      renderizarTablaConcentrado(filtrados);
+    }
+
+    function imprimirConcentradoGrupoActual() {
+      if (!datosConcentradoGrupoActual || datosConcentradoGrupoActual.length === 0) {
+        return alert("No hay datos en la lista para imprimir.");
+      }
+      let idEv = document.getElementById('sel-listas-evento').value;
+      let ev = listaEventosCompleta.find(e => e.id == idEv);
+      let gra = document.getElementById('sel-listas-grado').value;
+      let gru = document.getElementById('sel-listas-grupo').value;
+      let horaEmision = new Date().toLocaleString();
+
+      let filasPrint = "";
+      datosConcentradoGrupoActual.forEach((al, index) => {
+        filasPrint += `
+          <tr>
+            <td>${index + 1}</td>
+            <td style="font-family:monospace;">${al.id}</td>
+            <td>${al.nombre}</td>
+            <td style="text-align:right;">$${al.abonado}.00</td>
+            <td style="text-align:right;">$${al.restante}.00</td>
+            <td style="text-align:center;">${al.estatus}</td>
+          </tr>`;
+      });
+
+      document.getElementById('print-area-concentrado').innerHTML = `
+        <div style="padding: 15px;">
+          <div class="marco-print-titulo">
+            <h2 style="margin:0; font-size:18px;">COLEGIO BOSTON</h2>
+            <h4 style="margin:3px 0; font-size:14px; font-weight:bold;">EVENTOS BOSTON • CONCENTRADO DE SALÓN</h4>
+            <p style="margin:2px 0; font-size:12px;"><strong>Evento:</strong> ${ev ? ev.nombre : ''} | <strong>Salón:</strong> ${gra}° "${gru}" Secundaria</p>
+            <p style="text-align:right; font-size:10px; margin:0; color:#555;">Emisión: ${horaEmision}</p>
+          </div>
+          <table class="table-print">
+            <thead>
+              <tr><th>N°</th><th>ID</th><th>Nombre del Alumno</th><th style="text-align:right;">Abonado</th><th style="text-align:right;">Restante</th><th style="text-align:center;">Estatus</th></tr>
+            </thead>
+            <tbody>${filasPrint}</tbody>
+          </table>
+        </div>`;
+
+      forzarImpresionAislada('print-area-concentrado');
+    }
+
+    // 5. APARTADO: MI CAJA Y ARQUEO
+    function obtenerEfectivoEnCajaActual() {
+      if (!sesion.id) return;
+      google.script.run.withSuccessHandler(res => {
+        let total = res ? res.totalCaja : 0;
+        document.getElementById('badge-efectivo-usuario').innerText = `Mi Caja: $${total}.00`;
+        document.getElementById('arqueo-gran-total').innerText = `$${total}.00 MXN`;
+
+        let tbody = document.getElementById('tabla-desglose-caja');
+        if (res && res.transacciones && res.transacciones.length > 0) {
+          let html = res.transacciones.map(t => `
+            <tr>
+              <td class="font-monospace fw-bold text-danger">${t.folio}</td>
+              <td>${t.fecha}</td>
+              <td class="fw-bold">${t.alumno}</td>
+              <td>${t.evento}</td>
+              <td style="text-align: right;" class="text-success fw-bold">+$${t.monto}.00</td>
+            </tr>`).join('');
+          tbody.innerHTML = html;
+        } else {
+          tbody.innerHTML = `<tr><td colspan="5" class="text-center py-3 text-muted">No hay folios pendientes de arqueo. Caja en ceros.</td></tr>`;
+        }
+      }).obtenerEfectivoPendienteCajero(sesion.id);
+    }
+
+    function abrirModalCorteCaja() {
+      if (!confirm("¿Deseas generar el arqueo oficial de caja para entregar el efectivo acumulado?")) return;
+      
+      google.script.run.withSuccessHandler(res => {
+        if (!res || res.totalCaja === 0) return alert("Tu caja actualmente se encuentra en ceros ($0.00).");
+
+        let horaImpresion = new Date().toLocaleString();
+        let tablaFilas = res.transacciones.map(t => `
+          <tr>
+            <td style="font-family:monospace; font-weight:bold;">${t.folio}</td>
+            <td>${t.fecha}</td>
+            <td>${t.alumno}</td>
+            <td>${t.evento}</td>
+            <td style="text-align:right; font-weight:bold;">$${t.monto}.00</td>
+          </tr>`).join('');
+
+        let printHtml = `
+          <div style="padding: 15px;">
+            <div class="marco-print-titulo">
+              <h2 style="margin:0; font-size:18px;">COLEGIO BOSTON</h2>
+              <h4 style="margin:2px 0; font-size:14px; font-weight:bold;">RECIBO OFICIAL DE CORTE Y ARQUEO DE CAJA</h4>
+              <p style="margin:2px 0; font-size:12px;"><strong>Cajero Responsable:</strong> ${sesion.nombre} | <strong>Fecha:</strong> ${horaImpresion}</p>
+            </div>
+            <table class="table-print">
+              <thead><tr><th>Folio</th><th>Fecha</th><th>Estudiante</th><th>Concepto</th><th style="text-align:right;">Monto</th></tr></thead>
+              <tbody>
+                ${tablaFilas}
+                <tr style="font-weight:bold; background-color:#eee;">
+                  <td colspan="4" style="text-align:right;">EFECTIVO TOTAL ENTREGADO:</td>
+                  <td style="text-align:right; font-size:14px;">$${res.totalCaja}.00</td>
+                </tr>
+              </tbody>
+            </table>
+            <div style="margin-top: 40px; display: flex; justify-content: space-around; text-align: center;">
+              <div style="width: 200px; border-top: 1px solid #000; padding-top: 5px;">
+                Firma del Cajero<br><small>${sesion.nombre}</small>
+              </div>
+              <div style="width: 200px; border-top: 1px solid #000; padding-top: 5px;">
+                Recibió Conforme<br><small>Dirección / Administración</small>
+              </div>
+            </div>
+          </div>`;
+
+        document.getElementById('print-area-caja').innerHTML = printHtml;
+
+        forzarImpresionAislada('print-area-caja', () => {
+          if (confirm("¿El arqueo de caja se imprimió correctamente? Al presionar ACEPTAR tu caja se reiniciará a $0.00.")) {
+            google.script.run.withSuccessHandler(() => {
+              alert("✅ Corte procesado. Caja reiniciada.");
+              obtenerEfectivoEnCajaActual();
+              if (sesion.rol === 'Admin') cargarDashboard();
+            }).procesarCierreDeCajaBD(sesion.id);
+          }
+        });
+      }).obtenerEfectivoPendienteCajero(sesion.id);
+    }
+
+    // 6. APARTADO: EVENTOS Y COSTOS (ADMIN)
+    function crearEvento() {
+      let nom = document.getElementById('new-ev-nombre').value.trim();
+      let cos = document.getElementById('new-ev-costo').value.trim();
+      let cup = document.getElementById('new-ev-cupo').value.trim();
+      let caj = document.getElementById('new-ev-cajero').value;
+
+      if (!nom || !cos || !cup || !caj) return alert("Completa todos los campos para registrar el evento.");
+
+      google.script.run.withSuccessHandler(res => {
+        alert(res.message);
+        document.getElementById('new-ev-nombre').value = "";
+        document.getElementById('new-ev-costo').value = "";
+        document.getElementById('new-ev-cupo').value = "";
+        
+        google.script.run.withSuccessHandler(evs => {
+          listaEventosCompleta = evs;
+          actualizarSelectoresEventos();
+          actualizarDropdownsAdminEspeciales();
+        }).getTodosEventosActivos();
+      }).crearNuevoEvento(nom, cos, cup, caj);
+    }
+
+    function cargarDatosEventoEditar() {
+      let id = document.getElementById('admin-edit-evento').value;
+      let ev = listaEventosCompleta.find(e => e.id === id);
+      if (ev) {
+        document.getElementById('edit-ev-nombre').value = ev.nombre;
+        document.getElementById('edit-ev-costo').value = ev.costo;
+        document.getElementById('edit-ev-cupo').value = ev.cupo;
+      } else {
+        document.getElementById('edit-ev-nombre').value = "";
+        document.getElementById('edit-ev-costo').value = "";
+        document.getElementById('edit-ev-cupo').value = "";
+      }
+    }
+
+    function guardarEdicionEvento() {
+      let id = document.getElementById('admin-edit-evento').value;
+      let nom = document.getElementById('edit-ev-nombre').value.trim();
+      let cos = document.getElementById('edit-ev-costo').value.trim();
+      let cup = document.getElementById('edit-ev-cupo').value.trim();
+
+      if (!id || !nom || !cos || !cup) return alert("Por favor selecciona un evento y llena todos los campos.");
+
+      google.script.run.withSuccessHandler(res => {
+        alert(res.message);
+        google.script.run.withSuccessHandler(evs => {
+          listaEventosCompleta = evs;
+          actualizarSelectoresEventos();
+          actualizarDropdownsAdminEspeciales();
+          if (sesion.rol === 'Admin') cargarDashboard();
+        }).getTodosEventosActivos();
+      }).modificarEvento(id, nom, cos, cup);
+    }
+
+    function vincularEventoExtra() {
+      let idCaj = document.getElementById('asg-m-cajero').value;
+      let idEve = document.getElementById('asg-m-evento').value;
+      if (!idCaj || !idEve) return alert("Selecciona cajero y evento.");
+
+      google.script.run.withSuccessHandler(res => {
+        alert(res.message);
+      }).asignarEventoACajero(idEve, idCaj);
+    }
+
+    function actualizarDropdownsAdminEspeciales() {
+      let selectEdit = document.getElementById('admin-edit-evento');
+      if (selectEdit) {
+        selectEdit.innerHTML = '<option value="">-- Seleccionar Evento a Editar --</option>' + 
+          listaEventosCompleta.map(e => `<option value="${e.id}">${e.nombre}</option>`).join('');
+      }
+
+      let selectEv = document.getElementById('asg-m-evento');
+      if (selectEv) {
+        selectEv.innerHTML = '<option value="">-- Seleccionar Evento --</option>' + 
+          listaEventosCompleta.map(e => `<option value="${e.id}">${e.nombre}</option>`).join('');
+      }
+
+      google.script.run.withSuccessHandler(cajeros => {
+        let selects = document.querySelectorAll('.select-cajeros-lista');
+        selects.forEach(s => {
+          s.innerHTML = '<option value="">-- Seleccionar Cajero --</option>' + 
+            cajeros.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
+        });
+      }).getCajeros();
+    }
+
+    // 7. APARTADO: USUARIOS Y ACCESOS (ADMIN)
+    function generarPasswordInput() {
+      let charsMayus = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+      let charsMinus = "abcdefghjkmnpqrstuvwxyz";
+      let charsNum = "23456789";
+      let simbolos = ["!", "@", "#", "*", "$"];
+      function rand(str) { return str.charAt(Math.floor(Math.random() * str.length)); }
+      let pass = "Bst" + rand(charsMayus) + rand(charsMinus) + rand(charsNum) + rand(charsNum) + simbolos[Math.floor(Math.random() * simbolos.length)];
+      document.getElementById('add-usr-pass').value = pass;
+    }
+
+    function altaUsuarioDesdeAdmin() {
+      let nom = document.getElementById('add-usr-nombre').value.trim();
+      let usr = document.getElementById('add-usr-user').value.trim();
+      let rol = document.getElementById('add-usr-rol').value;
+      let pass = document.getElementById('add-usr-pass').value.trim();
+
+      if (!nom || !usr) return alert("Ingresa al menos el nombre y usuario.");
+
+      google.script.run.withSuccessHandler(res => {
+        if (res.success) {
+          alert(`✅ ${res.message}\nContraseña asignada: ${res.passwordGenerada}`);
+          document.getElementById('add-usr-nombre').value = "";
+          document.getElementById('add-usr-user').value = "";
+          document.getElementById('add-usr-pass').value = "";
+          cargarUsuariosAdmin();
+          cargarUsuariosParaLogin();
+          actualizarDropdownsAdminEspeciales();
+        } else {
+          alert("Error: " + res.message);
+        }
+      }).registrarNuevoUsuario(nom, usr, rol, pass);
+    }
+
+    function cargarUsuariosAdmin() {
+      let tbody = document.getElementById('tabla-usuarios-admin');
+      tbody.innerHTML = `<tr><td colspan="6" class="text-center py-3">Cargando directorio de cuentas...</td></tr>`;
+
+      google.script.run.withSuccessHandler(usuarios => {
+        if (!usuarios || usuarios.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="6" class="text-center py-3 text-muted">No hay usuarios registrados.</td></tr>`;
+          return;
+        }
+
+        let html = usuarios.map(u => `
+          <tr>
+            <td class="font-monospace small fw-bold">${u.id}</td>
+            <td class="fw-bold">${u.nombre}</td>
+            <td><span class="${u.rol === 'Admin' ? 'badge-rol-admin' : 'badge-rol-cajero'}">${u.rol}</span></td>
+            <td class="font-monospace">${u.usuario}</td>
+            <td class="font-monospace fw-bold text-primary">
+              ${u.password}
+              <button class="btn btn-sm btn-link p-0 ms-2 text-decoration-none" onclick="copiarTexto('${u.password}')" title="Copiar contraseña">📋</button>
+            </td>
+            <td><span class="badge bg-success">${u.estatus}</span></td>
+          </tr>`).join('');
+        tbody.innerHTML = html;
+      }).obtenerUsuariosAdmin();
+    }
+
+    function copiarTexto(txt) {
+      navigator.clipboard.writeText(txt).then(() => {
+        alert("Contraseña copiada al portapapeles: " + txt);
+      });
+    }
+
+    // 8. APARTADO: AUDITORÍA GLOBAL (ADMIN)
+    function cargarDashboard() {
+      google.script.run.withSuccessHandler(res => {
+        baseDatosTransacciones = res.transacciones || [];
+        mapeoAlumnosPorEvento = res.alumnosPorEvento || {};
+        procesarFiltroDashboard();
+      }).getEstadisticasAdmin();
+    }
+
+    function procesarFiltroDashboard() {
+      let filtro = document.getElementById('filtro-stats-evento').value || "TODOS";
+      globalRecaudado = 0; globalCancelado = 0; globalAsisten = 0; globalMeta = 0;
+
+      if (filtro === "TODOS") {
+        listaEventosCompleta.forEach(e => { globalMeta += (parseFloat(e.costo) * parseInt(e.cupo)); });
+        Object.keys(mapeoAlumnosPorEvento).forEach(k => { globalAsisten += mapeoAlumnosPorEvento[k]; });
+      } else {
+        let ev = listaEventosCompleta.find(e => e.id === filtro);
+        if (ev) globalMeta = parseFloat(ev.costo) * parseInt(ev.cupo);
+        globalAsisten = mapeoAlumnosPorEvento[filtro] || 0;
+      }
+
+      let tbody = document.getElementById('tabla-transacciones');
+      let filasHtml = "";
+
+      baseDatosTransacciones.forEach(t => {
+        if (filtro !== "TODOS" && t.idEvento !== filtro) return;
+        globalRecaudado += t.montoValor;
+        globalCancelado += t.montoCancelado;
+
+        let estiloFila = t.cancelado ? 'style="background-color: #fee2e2; text-decoration: line-through; color: #991b1b;"' : '';
+        let botonAccion = t.cancelado ? `<span class="badge bg-danger">Anulado</span>` : 
+          `<button class="btn btn-sm btn-danger py-0 px-2" onclick="cancelarCobro(${t.fila}, '${t.idEvento}', '${t.idCliente}', ${t.montoValor})">Anular</button>`;
+        let celdaMonto = t.cancelado ? `<span class="text-muted small">${t.montoTexto}</span>` : 
+          `<span class="text-success fw-bold">+$${t.montoValor}.00</span>`;
+
+        filasHtml += `
+          <tr ${estiloFila}>
+            <td class="font-monospace fw-bold">${t.idAbono}</td>
+            <td>${t.idEvento}</td>
+            <td>${t.idCliente}</td>
+            <td>${celdaMonto}</td>
+            <td>${t.fecha}</td>
+            <td>${t.cajero}</td>
+            <td class="text-center">${botonAccion}</td>
+          </tr>`;
+      });
+
+      document.getElementById('dash-dinero').innerText = `$${globalRecaudado}.00`;
+      document.getElementById('dash-abono').innerText = globalAsisten;
+      document.getElementById('dash-meta').innerText = `$${globalMeta}.00`;
+      document.getElementById('dash-cancelado').innerText = `$${globalCancelado}.00`;
+      tbody.innerHTML = filasHtml || `<tr><td colspan="7" class="text-center py-3 text-muted">Sin transacciones registradas.</td></tr>`;
+    }
+
+    function cancelarCobro(fila, idEv, idAl, monto) {
+      let motivo = prompt(`¿Deseas anular el cobro de $${monto}.00 MXN?\nEscribe el motivo oficial para la auditoría:`);
+      if (motivo === null) return;
+      if (motivo.trim() === "") return alert("Debes ingresar un motivo.");
+
+      google.script.run.withSuccessHandler(() => {
+        alert("Cobro anulado con éxito y balance restituido.");
+        cargarDashboard();
+        obtenerEfectivoEnCajaActual();
+      }).eliminarCobro(fila, idEv, idAl, monto, motivo);
+    }
+
+    function generarEImprimirDetalleFinanciero() {
+      let filtroSelect = document.getElementById('filtro-stats-evento');
+      let idEventoFiltro = filtroSelect.value;
+      let textoEvento = filtroSelect.options[filtroSelect.selectedIndex].text;
+      let horaEmision = new Date().toLocaleString();
+
+      let filasAuditoria = "";
+      baseDatosTransacciones.forEach(t => {
+        if (idEventoFiltro !== "TODOS" && t.idEvento !== idEventoFiltro) return;
+        let estiloTr = t.cancelado ? 'style="text-decoration: line-through; color: #777;"' : '';
+        filasAuditoria += `
+          <tr ${estiloTr}>
+            <td style="font-family:monospace;">${t.idAbono}</td>
+            <td>${t.idEvento}</td>
+            <td>${t.idCliente}</td>
+            <td style="text-align:right;">${t.cancelado ? t.montoTexto : '$' + t.montoValor + '.00'}</td>
+            <td>${t.fecha}</td>
+            <td>${t.cajero}</td>
+          </tr>`;
+      });
+
+      document.getElementById('print-area-auditoria').innerHTML = `
+        <div style="padding: 15px;">
+          <div class="marco-print-titulo">
+            <h2 style="margin:0; font-size:18px;">COLEGIO BOSTON</h2>
+            <h4 style="margin:2px 0; font-size:14px; font-weight:bold;">EVENTOS BOSTON • REPORTE FINANCIERO CONSOLIDADO</h4>
+            <p style="margin:2px 0; font-size:12px;"><strong>Filtro:</strong> ${textoEvento} | <strong>Emisión:</strong> ${horaEmision}</p>
+          </div>
+          <div style="margin-bottom:14px; font-size:12px; border:1px solid #000; padding:8px;">
+            <strong>Recaudado Neto:</strong> $${globalRecaudado}.00 | <strong>Meta Financiera:</strong> $${globalMeta}.00 | <strong>Total Cancelado:</strong> $${globalCancelado}.00
+          </div>
+          <table class="table-print">
+            <thead><tr><th>Folio</th><th>Evento</th><th>ID Alumno</th><th style="text-align:right;">Monto</th><th>Fecha</th><th>Cajero</th></tr></thead>
+            <tbody>${filasAuditoria || '<tr><td colspan="6">Sin transacciones registradas.</td></tr>'}</tbody>
+          </table>
+        </div>`;
+
+      forzarImpresionAislada('print-area-auditoria');
+    }
+
+    function prepararEImprimirListaLogistica() {
+      let selectLog = document.getElementById('sel-logistica-evento');
+      let idEvento = selectLog.value;
+      if (!idEvento) return alert("Selecciona un evento para generar las listas de logística.");
+      let nombreEvento = selectLog.options[selectLog.selectedIndex].text;
+
+      google.script.run.withSuccessHandler(alumnosInscritos => {
+        if (!alumnosInscritos || alumnosInscritos.length === 0) {
+          return alert("No hay alumnos inscritos con abonos para este evento.");
+        }
+
+        // Agrupar por salón
+        let grupos = {};
+        alumnosInscritos.forEach(al => {
+          let clave = `${al.grado}° "${al.grupo}" Secundaria`;
+          if (!grupos[clave]) grupos[clave] = [];
+          grupos[clave].push(al);
+        });
+
+        let area = document.getElementById('print-area-logistica');
+        let htmlBloques = "";
+
+        Object.keys(grupos).forEach(salon => {
+          let lista = grupos[salon];
+          htmlBloques += `
+            <div class="hoja-grupo-print" style="padding:15px;">
+              <div class="marco-print-titulo">
+                <h2 style="margin:0; font-size:18px;">COLEGIO BOSTON</h2>
+                <h4 style="margin:2px 0; font-size:14px; font-weight:bold;">LISTA DE ASISTENCIA Y LOGÍSTICA ESCOLAR</h4>
+                <p style="margin:2px 0; font-size:12px;"><strong>Evento:</strong> ${nombreEvento} | <strong>Salón:</strong> ${salon}</p>
+              </div>
+              <table class="table-print">
+                <thead>
+                  <tr><th>N°</th><th>ID</th><th>Nombre del Estudiante</th><th style="text-align:right;">Abonado</th><th style="text-align:right;">Resta</th><th>Estatus</th><th style="width:120px;">Firma / Asistencia</th></tr>
+                </thead>
+                <tbody>`;
+          lista.forEach((al, idx) => {
+            htmlBloques += `
+              <tr>
+                <td>${idx + 1}</td>
+                <td style="font-family:monospace;">${al.id}</td>
+                <td>${al.nombre}</td>
+                <td style="text-align:right;">$${al.abonado}.00</td>
+                <td style="text-align:right;">$${al.restante}.00</td>
+                <td>${al.estatus}</td>
+                <td></td>
+              </tr>`;
+          });
+          htmlBloques += `</tbody></table></div>`;
+        });
+
+        area.innerHTML = htmlBloques;
+        forzarImpresionAislada('print-area-logistica');
+      }).obtenerListaLogistica(idEvento);
+    }
+
+    // IMPRESIÓN MÓVIL AISLADA (GARANTIZA CERO DESAJUSTES EN DISPOSITIVOS TÁCTILES)
+    function forzarImpresionAislada(areaId, callback) {
+      let mainApp = document.getElementById('main-app');
+      let printArea = document.getElementById(areaId);
+
+      mainApp.style.setProperty('display', 'none', 'important');
+      printArea.style.display = 'block';
+
+      setTimeout(() => {
+        window.print();
+        setTimeout(() => {
+          printArea.style.display = 'none';
+          mainApp.style.removeProperty('display');
+          if (callback) callback();
+        }, 500);
+      }, 500);
+    }
+  </script>
+</body>
+</html>
