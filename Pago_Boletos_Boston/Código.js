@@ -64,6 +64,16 @@ function doGet(e) {
         .setMimeType(ContentService.MimeType.JSON);
     }
 
+    // Endpoint para asignar asiento
+    if (e && e.parameter && e.parameter.action === 'asignarAsiento') {
+      var idEvAs = e.parameter.idEvento || "EV-730628";
+      var idAlAs = e.parameter.idAlumno || "";
+      var numAs = e.parameter.asiento || "";
+      var resAs = asignarAsientoAlumno(idEvAs, idAlAs, numAs);
+      return ContentService.createTextOutput(JSON.stringify(resAs, null, 2))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
     // Endpoint de inspección para diagnóstico de la base de datos
     if (e && e.parameter && e.parameter.action === 'inspect') {
       var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -1860,14 +1870,57 @@ function obtenerMetricasRecaudacion(idEvento) {
     }
   }
   
-  // 3. Mapear inscripciones para detectar tarifas pactadas con descuento especial
+  // 3. Mapear inscripciones para detectar tarifas pactadas con descuento especial y número de asiento
   var inscData = sheetInsc ? sheetInsc.getDataRange().getValues() : [];
   var costosPersonalizados = {};
+  var asientosPorAlumno = {};
+
+  var mapAsientosDefecto = {
+    'S3A-01': '15', 'S3A-02': '13', 'S3A-03': '08', 'S3A-04': '14', 'S3A-05': '11',
+    'S3A-14': '37', 'S3A-15': '', 'S3A-18': '30', 'S3A-19': '27', 'S3A-20': '18',
+    'S3B-01': '05', 'S3B-03': '10', 'S3B-04': '12', 'S3B-08': '06', 'S3B-09': '02',
+    'S3B-10': '19', 'S3B-17': '04', 'S3B-18': '20', 'S3B-19': '34', 'S3B-22': '07',
+    'S3C-01': '34', 'S3C-02': '03', 'S3C-03': '01', 'S3C-09': '28', 'S3C-11': '16',
+    'S3C-12': '20', 'S3C-13': '27', 'S3C-14': '09', 'S3C-16': '33', 'S3C-19': '25',
+    'S3C-20': '17', 'S3C-21': '31', 'S3C-22': '23'
+  };
+
+  var huboCambioAsiento = false;
   for (var k = 1; k < inscData.length; k++) {
     if (inscData[k][1] == idEvento && inscData[k][2]) {
       var idAlInsc = inscData[k][2].toString().trim();
       var cInsc = parseFloat(inscData[k][3]);
       if (cInsc > 0) costosPersonalizados[idAlInsc] = cInsc;
+      
+      var asInsc = (inscData[k][6] !== undefined && inscData[k][6] !== null && inscData[k][6] !== "") ? inscData[k][6].toString().trim() : "";
+      if (asInsc) {
+        asientosPorAlumno[idAlInsc] = asInsc;
+      } else if (mapAsientosDefecto[idAlInsc]) {
+        asientosPorAlumno[idAlInsc] = mapAsientosDefecto[idAlInsc];
+        huboCambioAsiento = true;
+      }
+    }
+  }
+
+  // Persistir en lote columna 7 (Numero_Asiento) de la hoja Inscripciones si hubo actualizaciones
+  if (huboCambioAsiento && sheetInsc && inscData.length > 1) {
+    try {
+      if (sheetInsc.getLastColumn() < 7) {
+        sheetInsc.getRange(1, 7).setValue("Numero_Asiento").setFontWeight("bold");
+      }
+      var updates = [];
+      for (var r = 1; r < inscData.length; r++) {
+        var idA = inscData[r][2] ? inscData[r][2].toString().trim() : "";
+        var valAs = (inscData[r][6] !== undefined && inscData[r][6] !== null && inscData[r][6] !== "") 
+          ? inscData[r][6].toString().trim() 
+          : (mapAsientosDefecto[idA] || "");
+        updates.push([valAs]);
+      }
+      if (updates.length > 0) {
+        sheetInsc.getRange(2, 7, updates.length, 1).setValues(updates);
+      }
+    } catch(ePersist) {
+      Logger.log("Nota al guardar asientos en lote: " + ePersist.message);
     }
   }
   
@@ -1938,6 +1991,8 @@ function obtenerMetricasRecaudacion(idEvento) {
     if (!salonesMap[claveSalon]) {
       salonesMap[claveSalon] = {
         salon: claveSalon,
+        grado: graCli,
+        grupo: gruCli,
         esExterno: esExterno,
         totalAlumnos: 0,
         recaudado: 0,
@@ -1962,9 +2017,11 @@ function obtenerMetricasRecaudacion(idEvento) {
     else salonesMap[claveSalon].sinPago++;
     
     var porc = costoAlumno > 0 ? Math.min(Math.round((abonadoAlumno / costoAlumno) * 100), 100) : (esCortesia ? 100 : 0);
+    var asientoAlumno = asientosPorAlumno[idCli] || mapAsientosDefecto[idCli] || "";
     
     salonesMap[claveSalon].alumnos.push({
       id: idCli,
+      asiento: asientoAlumno,
       nombre: nomCli,
       grado: graCli,
       grupo: gruCli,
@@ -1977,10 +2034,15 @@ function obtenerMetricasRecaudacion(idEvento) {
     });
   }
   
-  // Ordenar salones y ordenar alumnos en cada salón
+  // Ordenar alumnos en cada salón por # de Asiento numéricamente (1, 2, 3... 40) y luego por nombre
   var salonesArray = [];
   Object.keys(salonesMap).forEach(function(k) {
-    salonesMap[k].alumnos.sort(function(a, b) { return a.nombre.localeCompare(b.nombre); });
+    salonesMap[k].alumnos.sort(function(a, b) {
+      var numA = a.asiento ? parseInt(a.asiento) : 999;
+      var numB = b.asiento ? parseInt(b.asiento) : 999;
+      if (numA !== numB) return numA - numB;
+      return a.nombre.localeCompare(b.nombre);
+    });
     salonesArray.push(salonesMap[k]);
   });
   
@@ -1990,6 +2052,48 @@ function obtenerMetricasRecaudacion(idEvento) {
     return a.salon.localeCompare(b.salon);
   });
   
+  // 5. Construir mapa interactivo del camión de 40 asientos
+  var mapaBus = {};
+  for (var s = 1; s <= 40; s++) {
+    var sPadded = (s < 10 ? "0" : "") + s;
+    mapaBus[s] = {
+      numero: s,
+      numeroStr: sPadded,
+      ocupado: false,
+      alumnos: []
+    };
+  }
+
+  salonesArray.forEach(function(sal) {
+    sal.alumnos.forEach(function(al) {
+      if (al.asiento) {
+        var nAs = parseInt(al.asiento);
+        if (nAs >= 1 && nAs <= 40) {
+          mapaBus[nAs].ocupado = true;
+          mapaBus[nAs].alumnos.push({
+            id: al.id,
+            nombre: al.nombre,
+            salon: sal.esExterno ? "Invitado Externo" : sal.salon,
+            grado: al.grado,
+            grupo: al.grupo,
+            abonado: al.abonado,
+            restante: al.restante,
+            costo: al.costo,
+            estatus: al.estatus,
+            porcentaje: al.porcentaje
+          });
+        }
+      }
+    });
+  });
+
+  var asientosBus = [];
+  var totalAsientosOcupados = 0;
+  for (var s = 1; s <= 40; s++) {
+    if (mapaBus[s].ocupado) totalAsientosOcupados++;
+    asientosBus.push(mapaBus[s]);
+  }
+
   var metaFinanciera = (eventoInfo.cupo > 0) ? (eventoInfo.cupo * eventoInfo.costo) : (totalAlumnosBoston * eventoInfo.costo);
   var saldoRestanteMeta = Math.max(metaFinanciera - totalRecaudadoGlobal, 0);
   
@@ -2004,11 +2108,58 @@ function obtenerMetricasRecaudacion(idEvento) {
       cupoTotal: eventoInfo.cupo,
       totalAlumnosBoston: totalAlumnosBoston,
       totalInvitadosExternos: totalInvitadosExternos,
+      asientosOcupados: totalAsientosOcupados,
+      asientosDisponibles: Math.max(40 - totalAsientosOcupados, 0),
+      capacidadAutobus: 40,
       porcentajeMeta: metaFinanciera > 0 ? Math.min(Math.round((totalRecaudadoGlobal / metaFinanciera) * 100), 100) : 0,
       porcentajeCupo: eventoInfo.cupo > 0 ? Math.min(Math.round((totalLugaresOcupados / eventoInfo.cupo) * 100), 100) : 0
     },
-    salones: salonesArray
+    salones: salonesArray,
+    asientosBus: asientosBus
   };
+}
+
+/**
+ * Asignar o reubicar el número de asiento de un alumno en un evento
+ */
+function asignarAsientoAlumno(idEvento, idAlumno, numeroAsiento) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheetInsc = ss.getSheetByName("Inscripciones");
+  if (!sheetInsc) return { success: false, message: "No se encontró la hoja Inscripciones" };
+  
+  if (sheetInsc.getLastColumn() < 7) {
+    sheetInsc.getRange(1, 7).setValue("Numero_Asiento").setFontWeight("bold");
+  }
+  
+  var dataInsc = sheetInsc.getDataRange().getValues();
+  var rowFound = -1;
+  for (var i = 1; i < dataInsc.length; i++) {
+    if (dataInsc[i][1] == idEvento && dataInsc[i][2] && dataInsc[i][2].toString().trim() === idAlumno) {
+      rowFound = i + 1;
+      break;
+    }
+  }
+  
+  var seatVal = (numeroAsiento !== null && numeroAsiento !== undefined) ? numeroAsiento.toString().trim() : "";
+  if (seatVal && parseInt(seatVal) < 10 && seatVal.length === 1) {
+    seatVal = "0" + seatVal;
+  }
+  
+  if (rowFound > 0) {
+    sheetInsc.getRange(rowFound, 7).setValue(seatVal);
+  } else {
+    var eventosSheet = ss.getSheetByName("Eventos").getDataRange().getValues();
+    var costoEvento = 0;
+    for (var e = 1; e < eventosSheet.length; e++) {
+      if (eventosSheet[e][0] == idEvento) {
+        costoEvento = parseFloat(eventosSheet[e][4]) || 0;
+        break;
+      }
+    }
+    sheetInsc.appendRow(["INS-" + Utilities.getUuid().slice(0, 8), idEvento, idAlumno, costoEvento, 0, "Pendiente", seatVal]);
+  }
+  
+  return { success: true, message: "Asiento #" + seatVal + " asignado con éxito.", asiento: seatVal };
 }
 
 // ============================================================================
