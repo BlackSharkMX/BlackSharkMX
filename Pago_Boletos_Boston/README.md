@@ -6,7 +6,7 @@
 
 ## 📌 Datos de la Secuencia de Comandos
 - **Script ID:** `1Bt2OC0ZbrIyP_esxlyehhcqXtt-L1ep0n42nyrScwOrxyEYUdxf9o3LZ`
-- **Última Versión Desplegada:** Versión 20
+- **Última Versión Desplegada:** Versión 24
 - **URL de Despliegue Web:** `https://script.google.com/macros/s/AKfycbwZd0TjHSodk3cqw64LI1VhhzsR0No-Vk7w47f1HEmOLyP7-JIzPzaDmdtsJLdPlReS6g/exec`
 
 ---
@@ -20,6 +20,26 @@ La aplicación gestiona sus credenciales en la pestaña **`Usuarios`** de la hoj
 | **Cajero** | Cajero Principal | `cajero` | `BostonCaja2026*` | Activo |
 
 *Nota: Desde el apartado de **👥 Usuarios y Accesos** (exclusivo Admin), se pueden generar nuevos usuarios con contraseñas seguras autogeneradas (ej. `BstK83!`) y consultar el directorio completo de contraseñas.*
+
+---
+
+## 🎓 Novedades de la Versión 24: Sincronización de Grupos, Bajas y Nuevas Matrículas Oficiales
+
+1. **🔄 Sincronización Directa de Listas Escolares:**
+   - Módulo automatizado para actualizar el padrón de alumnos desde la hoja de cálculo institucional del ciclo escolar vigente (`1cfQ1ni8TuszbAhiW-jEB-Dk2Q7xSBVtUPjBrNP80I_I` / pestaña `Grupos` o por `gid=25493851`).
+   - Disponible directamente desde la interfaz web del sistema en **👥 Usuarios y Accesos -> 🎓 Actualizar Grupos y Matrículas Escolares** y desde el menú superior nativo de la hoja de cálculo (`🎓 Eventos Boston` -> `🔄 Sincronizar Grupos y Matrículas Escolares`).
+
+2. **🏷️ Generación de Matrículas Institucionales Oficiales:**
+   - Algoritmo de nomenclatura institucional homologado con Boston Medical: `S` (Secundaria) + `[1-3]` (Grado) + `[A-C]` (Grupo) + `-[01-25]` (Número de lista alfabético consecutivo).
+   - Ejemplos: `S1A-01` ... `S1A-21`, `S2B-01` ... `S2B-21`, `S3C-01` ... `S3C-19`.
+
+3. **🛡️ Depuración Segura y Resguardo de Historial Contable (Bajas):**
+   - Identificación de alumnos retirados o no presentes en las listas nuevas:
+     - Si el alumno **no tiene pagos registrados**, se depura de la lista activa.
+     - Si el alumno **cuenta con pagos o abonos previos** en `Historial_Abonos`, se conserva su registro histórico bajo el estatus `"Inactivo / Baja"`, preservando la integridad contable y auditorías sin que aparezca en los selectores de cobro activo de caja.
+
+4. **⚡ Migración Automática de Folios e Historial:**
+   - Si un alumno ya contaba con pagos previos bajo una matrícula anterior o formato preliminar, el sistema actualiza automáticamente los registros en `Historial_Abonos` y en `Inscripciones` hacia su nueva matrícula oficial, manteniendo intactos sus estados de cuenta y saldos acumulados.
 
 ---
 

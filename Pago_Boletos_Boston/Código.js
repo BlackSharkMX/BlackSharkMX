@@ -8,13 +8,23 @@
  */
 function doGet(e) {
   try {
+    // Endpoint para sincronización directa de alumnos desde navegador autenticado
+    if (e && e.parameter && e.parameter.action === 'sync') {
+      var targetUrl = e.parameter.url || e.parameter.id || "1cfQ1ni8TuszbAhiW-jEB-Dk2Q7xSBVtUPjBrNP80I_I";
+      var targetGid = e.parameter.gid || "25493851";
+      var resSync = sincronizarAlumnosDesdeSheetExterna(targetUrl, targetGid);
+      return ContentService.createTextOutput(JSON.stringify(resSync, null, 2))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
     // Endpoint de inspección para diagnóstico de la base de datos
     if (e && e.parameter && e.parameter.action === 'inspect') {
       var ss = SpreadsheetApp.getActiveSpreadsheet();
       var out = {
         ssName: ss ? ss.getName() : null,
         ssId: ss ? ss.getId() : null,
-        sheets: []
+        sheets: [],
+        clientesSample: []
       };
       if (ss) {
         ss.getSheets().forEach(function(s) {
@@ -25,7 +35,43 @@ function doGet(e) {
             cols: s.getLastColumn()
           });
         });
+        var clSheet = ss.getSheetByName("Clientes");
+        if (clSheet && clSheet.getLastRow() > 0) {
+          var clRows = Math.min(clSheet.getLastRow(), 10);
+          var clCols = Math.min(clSheet.getLastColumn(), 10);
+          out.clientesSample = clSheet.getRange(1, 1, clRows, clCols).getValues();
+        }
       }
+
+      // Si se solicita inspeccionar una hoja externa específica por ID
+      if (e.parameter.targetId) {
+        try {
+          var targetSS = SpreadsheetApp.openById(e.parameter.targetId.trim());
+          out.targetSS = {
+            id: targetSS.getId(),
+            name: targetSS.getName(),
+            sheets: []
+          };
+          targetSS.getSheets().forEach(function(s) {
+            var sheetInfo = {
+              name: s.getName(),
+              gid: s.getSheetId(),
+              rows: s.getLastRow(),
+              cols: s.getLastColumn(),
+              sampleData: []
+            };
+            if (s.getLastRow() > 0 && s.getLastColumn() > 0) {
+              var maxR = Math.min(s.getLastRow(), 8);
+              var maxC = Math.min(s.getLastColumn(), 10);
+              sheetInfo.sampleData = s.getRange(1, 1, maxR, maxC).getValues();
+            }
+            out.targetSS.sheets.push(sheetInfo);
+          });
+        } catch(errTarget) {
+          out.targetError = errTarget.message;
+        }
+      }
+
       return ContentService.createTextOutput(JSON.stringify(out, null, 2))
         .setMimeType(ContentService.MimeType.JSON);
     }
@@ -37,6 +83,28 @@ function doGet(e) {
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   } catch(error) {
     return HtmlService.createHtmlOutput('<h3>Error al cargar Eventos Boston:</h3><p>' + error.message + '</p>');
+  }
+}
+
+/**
+ * Menú contextual al abrir la hoja de cálculo de Google
+ */
+function onOpen() {
+  try {
+    SpreadsheetApp.getUi()
+      .createMenu("🎪 Eventos Boston")
+      .addItem("🔄 Sincronizar Grupos y Matrículas Escolares", "menuSincronizarGrupos")
+      .addToUi();
+  } catch(e) {}
+}
+
+function menuSincronizarGrupos() {
+  var ui = SpreadsheetApp.getUi();
+  var res = sincronizarAlumnosDesdeSheetExterna("https://docs.google.com/spreadsheets/d/1cfQ1ni8TuszbAhiW-jEB-Dk2Q7xSBVtUPjBrNP80I_I/edit?gid=25493851#gid=25493851", "25493851");
+  if (res.success) {
+    ui.alert("Sincronización Exitosa", res.message + "\n\nAlumnos activos: " + res.totalActivos + "\nActualizados: " + res.totalActualizados + "\nNuevos: " + res.totalNuevos + "\nBajas: " + res.totalBajas, ui.ButtonSet.OK);
+  } else {
+    ui.alert("Error de Sincronización", res.message, ui.ButtonSet.OK);
   }
 }
 
@@ -412,6 +480,8 @@ function obtenerCatalogoAlumnosLigero() {
   var data = sheetClientes.getDataRange().getValues();
   var lista = [];
   for (var i = 1; i < data.length; i++) {
+    var estatus = data[i][6] ? data[i][6].toString().trim().toLowerCase() : "activo";
+    if (estatus.includes("inactiv") || estatus.includes("baja")) continue;
     if (data[i][0] && data[i][1]) {
       lista.push({
         id: data[i][0].toString().trim(),
@@ -618,6 +688,8 @@ function getAlumnos(grado, grupo) {
   var data = sheet.getDataRange().getValues();
   var filtrados = [];
   for (var i = 1; i < data.length; i++) {
+    var estatus = data[i][6] ? data[i][6].toString().trim().toLowerCase() : "activo";
+    if (estatus.includes("inactiv") || estatus.includes("baja")) continue;
     if (data[i][3].toString() == grado.toString() && data[i][4].toString().trim().toUpperCase() == grupo.toString().trim().toUpperCase()) {
       filtrados.push({ id: data[i][0], nombre: data[i][1], email: data[i][5] || "" });
     }
@@ -781,6 +853,9 @@ function obtenerConcentradoEstatusGrupo(idEvento, grado, grupo, costoTotal) {
   
   var resultadoConcentrado = [];
   for (var i = 1; i < clientesSheet.length; i++) {
+    var estatusAl = clientesSheet[i][6] ? clientesSheet[i][6].toString().trim().toLowerCase() : "activo";
+    if (estatusAl.includes("inactiv") || estatusAl.includes("baja")) continue;
+
     var alGrado = clientesSheet[i][3].toString().trim();
     var alGrupo = clientesSheet[i][4].toString().trim().toUpperCase();
     
@@ -1018,4 +1093,323 @@ function eliminarCobro(fila, idEvento, idCliente, montoAbonoAnulado, motivo) {
     }
   }
   return { success: true };
+}
+
+// ============================================================================
+// 9. SINCRONIZACIÓN OFICIAL DE ALUMNOS, GRUPOS Y MATRÍCULAS ESCOLARES
+// ============================================================================
+
+/**
+ * Sincroniza padrón de alumnos desde Google Sheets externa,
+ * actualiza grados y grupos para el ciclo escolar,
+ * da de baja a quienes ya no pertenezcan a las listas nuevas,
+ * y genera las nuevas matrículas institucionales estándar (ej. S1A-01, S3C-19).
+ */
+function sincronizarAlumnosDesdeSheetExterna(urlOrId, gidForzado) {
+  var idSheet = "1cfQ1ni8TuszbAhiW-jEB-Dk2Q7xSBVtUPjBrNP80I_I";
+  var gidTarget = gidForzado ? gidForzado.toString() : "25493851";
+
+  if (urlOrId && typeof urlOrId === "string" && urlOrId.trim() !== "") {
+    var matchId = urlOrId.match(/\/d\/([a-zA-Z0-9-_]+)/);
+    if (matchId && matchId[1]) {
+      idSheet = matchId[1];
+    } else if (!urlOrId.includes("/") && urlOrId.length > 20) {
+      idSheet = urlOrId.trim();
+    }
+    var matchGid = urlOrId.match(/gid=([0-9]+)/);
+    if (matchGid && matchGid[1]) {
+      gidTarget = matchGid[1];
+    }
+  }
+
+  var targetSS;
+  try {
+    targetSS = SpreadsheetApp.openById(idSheet);
+  } catch (errSS) {
+    return {
+      success: false,
+      message: "No se pudo abrir la hoja de cálculo con ID '" + idSheet + "': " + errSS.message
+    };
+  }
+
+  // 1. Localizar la hoja u hojas origen
+  var hojas = targetSS.getSheets();
+  var hojaSeleccionada = null;
+
+  if (gidTarget) {
+    hojaSeleccionada = hojas.find(function(h) { return h.getSheetId().toString() === gidTarget; });
+  }
+  if (!hojaSeleccionada) {
+    hojaSeleccionada = targetSS.getSheetByName("Grupos");
+  }
+  if (!hojaSeleccionada) {
+    hojaSeleccionada = hojas.find(function(h) { return h.getLastRow() > 10; }) || hojas[0];
+  }
+
+  var listaAlumnosNuevos = [];
+  var mapaCorreosProcesados = {};
+
+  function extraerAlumnosDeHoja(hoja, gradoPorDefecto) {
+    if (!hoja || hoja.getLastRow() < 2) return;
+    var data = hoja.getDataRange().getValues();
+    if (data.length < 2) return;
+
+    var headerRowIdx = 0;
+    var colNombre = -1, colCorreo = -1, colGrado = -1, colGrupo = -1;
+
+    for (var r = 0; r < Math.min(data.length, 5); r++) {
+      for (var c = 0; c < data[r].length; c++) {
+        var val = (data[r][c] || "").toString().trim().toLowerCase();
+        if (val.includes("nombre") || val.includes("alumno") || val.includes("apellidos")) {
+          if (colNombre === -1) colNombre = c;
+        }
+        if (val.includes("correo") || val.includes("email")) {
+          if (colCorreo === -1) colCorreo = c;
+        }
+        if (val.includes("grado")) {
+          if (colGrado === -1) colGrado = c;
+        }
+        if (val.includes("grupo")) {
+          if (colGrupo === -1) colGrupo = c;
+        }
+      }
+      if (colNombre !== -1 && (colCorreo !== -1 || colGrupo !== -1)) {
+        headerRowIdx = r;
+        break;
+      }
+    }
+
+    if (colNombre === -1) colNombre = 1;
+    if (colCorreo === -1 && data[0].length > 2) colCorreo = 2;
+    if (colGrado === -1 && data[0].length > 3) colGrado = 3;
+    if (colGrupo === -1 && data[0].length > 4) colGrupo = 4;
+
+    for (var i = headerRowIdx + 1; i < data.length; i++) {
+      var row = data[i];
+      var rawNombre = colNombre >= 0 && row[colNombre] ? row[colNombre].toString().trim() : "";
+      if (!rawNombre || rawNombre.toLowerCase() === "nombre" || rawNombre.toLowerCase().includes("apellidos")) continue;
+
+      var rawCorreo = colCorreo >= 0 && row[colCorreo] ? row[colCorreo].toString().trim().toLowerCase() : "";
+      var rawGrado = colGrado >= 0 && row[colGrado] ? row[colGrado].toString().trim() : (gradoPorDefecto || "");
+      var rawGrupo = colGrupo >= 0 && row[colGrupo] ? row[colGrupo].toString().trim().toUpperCase() : "";
+
+      var numGrado = rawGrado.replace(/\D/g, "");
+      if (!numGrado && gradoPorDefecto) numGrado = gradoPorDefecto.toString().replace(/\D/g, "");
+      if (!numGrado) numGrado = "1";
+
+      var letGrupo = "A";
+      var matchGrupo = rawGrupo.match(/[A-C]/);
+      if (matchGrupo) letGrupo = matchGrupo[0];
+
+      var nombreLimpio = rawNombre.replace(/\s*\([^)]*\)\s*/g, " ").trim().replace(/\s+/g, " ");
+
+      var claveUnica = rawCorreo || (nombreLimpio.toLowerCase() + "_" + numGrado + letGrupo);
+      if (mapaCorreosProcesados[claveUnica]) continue;
+      mapaCorreosProcesados[claveUnica] = true;
+
+      listaAlumnosNuevos.push({
+        nombre: nombreLimpio,
+        correo: rawCorreo,
+        grado: numGrado,
+        grupo: letGrupo
+      });
+    }
+  }
+
+  // Si la hoja seleccionada es la concentrada 'Grupos' o contiene más de 100 filas
+  if (hojaSeleccionada.getName().toLowerCase() === "grupos" || hojaSeleccionada.getLastRow() > 100) {
+    extraerAlumnosDeHoja(hojaSeleccionada, null);
+  } else {
+    var hojaGrupos = targetSS.getSheetByName("Grupos");
+    if (hojaGrupos && hojaGrupos.getLastRow() > 50) {
+      extraerAlumnosDeHoja(hojaGrupos, null);
+    } else {
+      hojas.forEach(function(h) {
+        var hName = h.getName().toLowerCase();
+        if (hName.includes("1") || hName.includes("primero")) extraerAlumnosDeHoja(h, "1");
+        else if (hName.includes("2") || hName.includes("segundo")) extraerAlumnosDeHoja(h, "2");
+        else if (hName.includes("3") || hName.includes("tercero")) extraerAlumnosDeHoja(h, "3");
+        else if (hName === "grupos") extraerAlumnosDeHoja(h, null);
+      });
+    }
+  }
+
+  if (listaAlumnosNuevos.length === 0) {
+    return {
+      success: false,
+      message: "No se encontraron registros de alumnos en la hoja (" + hojaSeleccionada.getName() + ")."
+    };
+  }
+
+  // 2. Ordenar alumnos alfabéticamente por Grado, Grupo y Nombre
+  listaAlumnosNuevos.sort(function(a, b) {
+    if (a.grado !== b.grado) return parseInt(a.grado) - parseInt(b.grado);
+    if (a.grupo !== b.grupo) return a.grupo.localeCompare(b.grupo);
+    return a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' });
+  });
+
+  // 3. Generar nuevas matrículas institucionales oficiales (ej. S1A-01, S2B-05...)
+  var contadoresSalones = {};
+  listaAlumnosNuevos.forEach(function(al) {
+    var claveSalon = "S" + al.grado + al.grupo;
+    if (!contadoresSalones[claveSalon]) contadoresSalones[claveSalon] = 0;
+    contadoresSalones[claveSalon]++;
+    var numLista = (contadoresSalones[claveSalon] < 10 ? "0" : "") + contadoresSalones[claveSalon];
+    al.matricula = claveSalon + "-" + numLista;
+  });
+
+  // 4. Actualizar hoja 'Clientes' en la base de datos de Eventos Boston
+  var ssActual = SpreadsheetApp.getActiveSpreadsheet();
+  var sheetClientes = ssActual.getSheetByName("Clientes");
+  if (!sheetClientes) {
+    sheetClientes = ssActual.insertSheet("Clientes");
+  }
+
+  var clientesActuales = sheetClientes.getLastRow() > 0 ? sheetClientes.getDataRange().getValues() : [];
+  var headersClientes = ["ID_Alumno", "Nombre", "Nivel", "Grado", "Grupo", "Email", "Estatus", "Fecha_Actualizacion"];
+
+  var mapExistentesPorCorreo = {};
+  var mapExistentesPorNombre = {};
+  var mapMatriculaAntiguaANueva = {};
+
+  for (var i = 1; i < clientesActuales.length; i++) {
+    var idOld = clientesActuales[i][0] ? clientesActuales[i][0].toString().trim() : "";
+    var nomOld = clientesActuales[i][1] ? clientesActuales[i][1].toString().trim() : "";
+    var mailOld = clientesActuales[i][5] ? clientesActuales[i][5].toString().trim().toLowerCase() : "";
+    var normNomOld = nomOld.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ");
+
+    var objOld = {
+      id: idOld,
+      nombre: nomOld,
+      email: mailOld,
+      normNombre: normNomOld
+    };
+
+    if (mailOld) mapExistentesPorCorreo[mailOld] = objOld;
+    if (normNomOld) mapExistentesPorNombre[normNomOld] = objOld;
+  }
+
+  var totalActualizados = 0;
+  var totalNuevos = 0;
+  var totalBajas = 0;
+  var fechaHoy = new Date().toISOString().split('T')[0];
+
+  var nuevasFilasClientes = [];
+  var setCorreosNuevos = {};
+
+  listaAlumnosNuevos.forEach(function(al) {
+    var normNomNuevo = al.nombre.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ");
+    var alExistente = (al.correo && mapExistentesPorCorreo[al.correo]) ? mapExistentesPorCorreo[al.correo] : mapExistentesPorNombre[normNomNuevo];
+
+    if (alExistente) {
+      totalActualizados++;
+      if (alExistente.id && alExistente.id !== al.matricula) {
+        mapMatriculaAntiguaANueva[alExistente.id] = al.matricula;
+      }
+    } else {
+      totalNuevos++;
+    }
+
+    if (al.correo) setCorreosNuevos[al.correo] = true;
+
+    nuevasFilasClientes.push([
+      al.matricula,
+      al.nombre,
+      "Secundaria",
+      parseInt(al.grado),
+      al.grupo,
+      al.correo,
+      "Activo",
+      fechaHoy
+    ]);
+  });
+
+  // Depurar alumnos que ya no estén en estas listas nuevas
+  var sheetAbonos = ssActual.getSheetByName("Historial_Abonos");
+  var idsConPagos = {};
+  if (sheetAbonos && sheetAbonos.getLastRow() > 1) {
+    var abData = sheetAbonos.getDataRange().getValues();
+    for (var a = 1; a < abData.length; a++) {
+      if (abData[a][2]) idsConPagos[abData[a][2].toString().trim()] = true;
+    }
+  }
+
+  for (var i = 1; i < clientesActuales.length; i++) {
+    var idOld = clientesActuales[i][0] ? clientesActuales[i][0].toString().trim() : "";
+    var mailOld = clientesActuales[i][5] ? clientesActuales[i][5].toString().trim().toLowerCase() : "";
+    var nomOld = clientesActuales[i][1] ? clientesActuales[i][1].toString().trim() : "";
+    var normNomOld = nomOld.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ");
+
+    var matchNuevo = (mailOld && setCorreosNuevos[mailOld]) || listaAlumnosNuevos.find(function(n) {
+      return n.nombre.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ") === normNomOld;
+    });
+
+    if (!matchNuevo) {
+      totalBajas++;
+      if (idsConPagos[idOld]) {
+        nuevasFilasClientes.push([
+          idOld,
+          nomOld,
+          clientesActuales[i][2] || "Secundaria",
+          clientesActuales[i][3] || "",
+          clientesActuales[i][4] || "",
+          mailOld,
+          "Inactivo / Baja",
+          fechaHoy
+        ]);
+      }
+    }
+  }
+
+  // Reescribir hoja 'Clientes' con formato estandarizado
+  sheetClientes.clearContents();
+  sheetClientes.getRange(1, 1, 1, 8).setValues([headersClientes]);
+  sheetClientes.getRange(1, 1, 1, 8).setFontWeight("bold").setBackground("#1e293b").setFontColor("#f8fafc");
+
+  if (nuevasFilasClientes.length > 0) {
+    sheetClientes.getRange(2, 1, nuevasFilasClientes.length, 8).setValues(nuevasFilasClientes);
+  }
+
+  // 5. Migrar IDs antiguos en Historial_Abonos e Inscripciones para proteger historial de pagos
+  if (Object.keys(mapMatriculaAntiguaANueva).length > 0) {
+    if (sheetAbonos && sheetAbonos.getLastRow() > 1) {
+      var abRange = sheetAbonos.getRange(2, 3, sheetAbonos.getLastRow() - 1, 1);
+      var abValues = abRange.getValues();
+      var abModificado = false;
+      for (var k = 0; k < abValues.length; k++) {
+        var oldAbonoId = abValues[k][0] ? abValues[k][0].toString().trim() : "";
+        if (mapMatriculaAntiguaANueva[oldAbonoId]) {
+          abValues[k][0] = mapMatriculaAntiguaANueva[oldAbonoId];
+          abModificado = true;
+        }
+      }
+      if (abModificado) abRange.setValues(abValues);
+    }
+
+    var sheetInsc = ssActual.getSheetByName("Inscripciones");
+    if (sheetInsc && sheetInsc.getLastRow() > 1) {
+      var inscRange = sheetInsc.getRange(2, 3, sheetInsc.getLastRow() - 1, 1);
+      var inscValues = inscRange.getValues();
+      var inscModificado = false;
+      for (var m = 0; m < inscValues.length; m++) {
+        var oldInscId = inscValues[m][0] ? inscValues[m][0].toString().trim() : "";
+        if (mapMatriculaAntiguaANueva[oldInscId]) {
+          inscValues[m][0] = mapMatriculaAntiguaANueva[oldInscId];
+          inscModificado = true;
+        }
+      }
+      if (inscModificado) inscRange.setValues(inscValues);
+    }
+  }
+
+  return {
+    success: true,
+    totalNuevos: totalNuevos,
+    totalActualizados: totalActualizados,
+    totalBajas: totalBajas,
+    totalActivos: listaAlumnosNuevos.length,
+    hojaOrigen: hojaSeleccionada.getName(),
+    salones: contadoresSalones,
+    message: "Sincronización completada exitosamente. " + listaAlumnosNuevos.length + " alumnos activos registrados con sus nuevas matrículas oficiales."
+  };
 }
