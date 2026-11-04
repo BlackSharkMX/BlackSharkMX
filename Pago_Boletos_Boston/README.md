@@ -6,8 +6,36 @@
 
 ## 📌 Datos de la Secuencia de Comandos
 - **Script ID:** `1Bt2OC0ZbrIyP_esxlyehhcqXtt-L1ep0n42nyrScwOrxyEYUdxf9o3LZ`
-- **Última Versión Desplegada:** Versión 28
+- **Última Versión Desplegada:** Versión 31
 - **URL de Despliegue Web:** `https://script.google.com/macros/s/AKfycbwZd0TjHSodk3cqw64LI1VhhzsR0No-Vk7w47f1HEmOLyP7-JIzPzaDmdtsJLdPlReS6g/exec`
+
+---
+
+## 🚀 Novedades de la Versión 31: Tablero de Recaudación por Salón, Inferencia en Vivo, Invitados Externos y Depuración Tolantongo
+
+1. **⚡ Inferencia en Vivo y Autocompletado Instantáneo en Búsqueda:**
+   - La barra de búsqueda superior en caja (`input-busqueda-alumno-rapida`) cuenta con un menú flotante de inferencia en tiempo real (`oninput`) que filtra instantáneamente los 219 alumnos activos y participantes externos.
+   - Resalta coincidencias por nombre o matrícula, navegable con teclado (`Flecha Abajo`, `Flecha Arriba`, `Enter`) y clic directo.
+   - **Asignación universal garantizada:** Cualquier alumno buscado (tenga o no historial contable previo) muestra al instante todos los eventos escolares activos vigentes que le aplican (como la Excursión a Tolantongo para 3° de Secundaria) con saldo $0 abonado, saldo pendiente completo y botón de acción directa **`➕ Cobrar a este evento`**.
+
+2. **📊 Nuevo Apartado en Menú Superior: Tablero de Métricas y Recaudación:**
+   - Accesible para Cajero y Administrador desde la barra superior de apartados (`📊 Métricas y Recaudación`).
+   - **Indicadores Monetarios Globales (KPIs):** Total Recaudado en efectivo, Meta Financiera esperada, Saldo Restante por cobrar y Progreso de Ocupación de Cupo con desglose de Alumnos Boston vs Externos.
+   - **Recaudación por Salón (3°A, 3°B, 3°C e Invitados Externos):**
+     - Tarjetas de resumen por salón con total recaudado, saldo faltante, porcentaje de avance y cantidad de alumnos.
+     - **Detalle interactivo:** Acordeones desplegables con la lista completa de cada alumno del salón, estatus del boleto (`PAGADO`, `CON ABONO`, `SIN PAGO`, `CORTESÍA`), **lo que lleva abonado**, **lo que le falta por liquidar**, barra visual de progreso y botón **`💳 Cobrar`** directo.
+
+3. **👥 Soporte Integral para Invitados Externos (Primos / Amigos):**
+   - Toggle interactivo en la ventanilla de cobro: `[ 🎓 Alumno Colegio Boston ]` vs `[ 👥 Invitado Externo ]`.
+   - Permite registrar nuevos invitados externos (Nombre, Teléfono/Correo y Alumno anfitrión de Boston que lo invita) generando matrícula oficial `EXT-XXXXXX`.
+   - Ocupan cupo en el evento, pueden recibir abonos, liquidar o solicitar cortesía/descuento, y reciben su comprobante digital por correo electrónico.
+
+4. **🔒 Cerrar o Terminar Evento y Depuración Anual:**
+   - En el panel de administración se agregó el **Directorio y Control de Eventos Escolares** con filtros `🟢 Activos` e `📁 Histórico / Cerrados`.
+   - **Cerrar Evento:** Bloquea la recepción de nuevos cobros en ventanilla y conserva todo el historial para consulta y auditoría.
+   - **Reabrir Evento:** Permite reactivar un evento archivado en cualquier momento.
+   - **Eliminar Definitivamente:** Permite depurar eventos obsoletos y sus registros asociados cada año con confirmación de seguridad.
+   - **Depuración Tolantongo Ejecutada:** Se eliminaron todos los eventos de prueba anteriores conservando exclusivamente la **Excursión a Tolantongo** (`EV-730628`), configurada específicamente para 3° de Secundaria (`Grados: 3 | Grupos: A, B, C`, Costo: $4,400.00, Cupo: 40) y asignada a todos los cajeros activos.
 
 ---
 

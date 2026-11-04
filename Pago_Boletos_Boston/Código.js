@@ -25,6 +25,21 @@ function doGet(e) {
         .setMimeType(ContentService.MimeType.JSON);
     }
 
+    // Endpoint de depuración: conservar solo Tolantongo (3° Secundaria)
+    if (e && e.parameter && e.parameter.action === 'depurarTolantongo') {
+      var resDep = depurarEventosTolantongo();
+      return ContentService.createTextOutput(JSON.stringify(resDep, null, 2))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // Endpoint de métricas de recaudación en tiempo real
+    if (e && e.parameter && e.parameter.action === 'metricas') {
+      var idEvMetricas = e.parameter.idEvento || "EV-730628";
+      var resMet = obtenerMetricasRecaudacion(idEvMetricas);
+      return ContentService.createTextOutput(JSON.stringify(resMet, null, 2))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
     // Endpoint de inspección para diagnóstico de la base de datos
     if (e && e.parameter && e.parameter.action === 'inspect') {
       var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -32,6 +47,9 @@ function doGet(e) {
         ssName: ss ? ss.getName() : null,
         ssId: ss ? ss.getId() : null,
         sheets: [],
+        eventosData: [],
+        asignacionesData: [],
+        usuariosData: [],
         clientesSample: []
       };
       if (ss) {
@@ -43,6 +61,12 @@ function doGet(e) {
             cols: s.getLastColumn()
           });
         });
+        var evS = ss.getSheetByName("Eventos");
+        if (evS && evS.getLastRow() > 0) out.eventosData = evS.getDataRange().getValues();
+        var asS = ss.getSheetByName("Asignaciones");
+        if (asS && asS.getLastRow() > 0) out.asignacionesData = asS.getDataRange().getValues();
+        var usS = ss.getSheetByName("Usuarios");
+        if (usS && usS.getLastRow() > 0) out.usuariosData = usS.getDataRange().getValues();
         var clSheet = ss.getSheetByName("Clientes");
         if (clSheet && clSheet.getLastRow() > 0) {
           var clRows = Math.min(clSheet.getLastRow(), 10);
@@ -328,7 +352,7 @@ function getCajeros() {
 }
 
 /**
- * Obtener todos los eventos activos
+ * Obtener todos los eventos activos (para selectores de cobro y visualización)
  */
 function getTodosEventosActivos() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -337,7 +361,8 @@ function getTodosEventosActivos() {
   var data = sheet.getDataRange().getValues();
   var eventos = [];
   for (var i = 1; i < data.length; i++) {
-    if (data[i][6] === "Activo") {
+    var estado = data[i][6] ? data[i][6].toString().trim() : "Activo";
+    if (estado === "Activo") {
       var cupoVal = (data[i][5] === "" || data[i][5] === null || isNaN(parseInt(data[i][5]))) ? 0 : parseInt(data[i][5]);
       eventos.push({ 
         id: data[i][0], 
@@ -345,7 +370,8 @@ function getTodosEventosActivos() {
         fecha: data[i][2],
         alcance: data[i][3] ? data[i][3].toString() : "Todos",
         costo: parseFloat(data[i][4]) || 0, 
-        cupo: Math.max(cupoVal, 0)
+        cupo: Math.max(cupoVal, 0),
+        estado: "Activo"
       });
     }
   }
@@ -353,7 +379,33 @@ function getTodosEventosActivos() {
 }
 
 /**
- * Obtener eventos asignados al cajero (o todos si es Admin)
+ * Obtener todos los eventos para el panel de Administrador (tanto Activos como Históricos / Cerrados)
+ */
+function getTodosEventosAdmin() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName("Eventos");
+  if (!sheet) return [];
+  var data = sheet.getDataRange().getValues();
+  var eventos = [];
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0]) {
+      var cupoVal = (data[i][5] === "" || data[i][5] === null || isNaN(parseInt(data[i][5]))) ? 0 : parseInt(data[i][5]);
+      eventos.push({ 
+        id: data[i][0], 
+        nombre: data[i][1], 
+        fecha: data[i][2],
+        alcance: data[i][3] ? data[i][3].toString() : "Todos",
+        costo: parseFloat(data[i][4]) || 0, 
+        cupo: Math.max(cupoVal, 0),
+        estado: data[i][6] ? data[i][6].toString().trim() : "Activo"
+      });
+    }
+  }
+  return eventos;
+}
+
+/**
+ * Obtener eventos asignados al cajero (o todos si es Admin o evento general)
  */
 function getEventosCajero(idCajero, rol) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -366,24 +418,34 @@ function getEventosCajero(idCajero, rol) {
   
   var listaEventos = [];
   for (var i = 1; i < eventos.length; i++) {
-    if (eventos[i][6] === "Activo") {
+    var estado = eventos[i][6] ? eventos[i][6].toString().trim() : "Activo";
+    if (estado === "Activo") {
       var cupoVal = (eventos[i][5] === "" || eventos[i][5] === null || isNaN(parseInt(eventos[i][5]))) ? 0 : parseInt(eventos[i][5]);
       var evObj = { 
         id: eventos[i][0], 
         nombre: eventos[i][1], 
         alcance: eventos[i][3] ? eventos[i][3].toString() : "Todos",
         costo: parseFloat(eventos[i][4]) || 0,
-        cupo: Math.max(cupoVal, 0)
+        cupo: Math.max(cupoVal, 0),
+        estado: "Activo"
       };
 
       if (rol === "Admin") {
         listaEventos.push(evObj);
       } else {
+        // En Colegio Boston, si un evento no tiene restricciones o está asignado al cajero o a "TODOS":
+        var asignacionesDelEvento = [];
         for (var j = 1; j < asignaciones.length; j++) {
-          if (asignaciones[j][1] == eventos[i][0] && asignaciones[j][2] == idCajero) {
-            listaEventos.push(evObj);
-            break;
+          if (asignaciones[j][1] == eventos[i][0]) {
+            asignacionesDelEvento.push(asignaciones[j][2] ? asignaciones[j][2].toString() : "");
           }
+        }
+
+        // Si no tiene asignación en la tabla, es general y está abierto para todos los cajeros
+        if (asignacionesDelEvento.length === 0) {
+          listaEventos.push(evObj);
+        } else if (asignacionesDelEvento.indexOf(idCajero) !== -1 || asignacionesDelEvento.indexOf("TODOS") !== -1) {
+          listaEventos.push(evObj);
         }
       }
     }
@@ -412,11 +474,22 @@ function crearNuevoEvento(nombre, costo, cupo, idCajeroAsignado, alcance) {
   try {
     sheetEventos.appendRow([idEvento, nombre.trim(), fechaActual, alcanceFinal, parseFloat(costo) || 0, cupoFinal, "Activo"]);
     
-    if (idCajeroAsignado) {
-      var sheetAsignaciones = ss.getSheetByName("Asignaciones");
-      if (sheetAsignaciones) {
+    var sheetAsignaciones = ss.getSheetByName("Asignaciones");
+    if (sheetAsignaciones) {
+      if (idCajeroAsignado && idCajeroAsignado !== "TODOS") {
         var idAsignacion = "ASG-" + new Date().getTime().toString().slice(-6);
         sheetAsignaciones.appendRow([idAsignacion, idEvento, idCajeroAsignado]);
+      } else {
+        // Asignar a todos los cajeros
+        var sheetUsuarios = ss.getSheetByName("Usuarios");
+        if (sheetUsuarios && sheetUsuarios.getLastRow() > 1) {
+          var uData = sheetUsuarios.getDataRange().getValues();
+          for (var u = 1; u < uData.length; u++) {
+            if (uData[u][0]) {
+              sheetAsignaciones.appendRow(["ASG-" + new Date().getTime().toString().slice(-5) + u, idEvento, uData[u][0]]);
+            }
+          }
+        }
       }
     }
     return { success: true, message: "Evento '" + nombre + "' creado con éxito.", idEvento: idEvento };
@@ -454,6 +527,103 @@ function modificarEvento(idEvento, nuevoNombre, nuevoCosto, nuevoCupo, nuevoAlca
 }
 
 /**
+ * Cerrar / Terminar evento escolar (queda en histórico para admin y bloqueado para nuevos cobros)
+ */
+function cerrarEvento(idEvento) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheetEventos = ss.getSheetByName("Eventos");
+  if (!sheetEventos) return { success: false, message: "Hoja Eventos no encontrada" };
+  var data = sheetEventos.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0] == idEvento) {
+      sheetEventos.getRange(i + 1, 7).setValue("Cerrado");
+      return { 
+        success: true, 
+        message: "El evento ha sido CERRADO / TERMINADO exitosamente. Ya no recibirá cobros en ventanilla y queda archivado en Histórico para consulta." 
+      };
+    }
+  }
+  return { success: false, message: "Evento no encontrado." };
+}
+
+/**
+ * Reabrir evento escolar cerrado
+ */
+function reabrirEvento(idEvento) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheetEventos = ss.getSheetByName("Eventos");
+  if (!sheetEventos) return { success: false, message: "Hoja Eventos no encontrada" };
+  var data = sheetEventos.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0] == idEvento) {
+      sheetEventos.getRange(i + 1, 7).setValue("Activo");
+      return { 
+        success: true, 
+        message: "El evento ha sido REABIERTO exitosamente. Ya está visible nuevamente en caja para recepción de abonos." 
+      };
+    }
+  }
+  return { success: false, message: "Evento no encontrado." };
+}
+
+/**
+ * Eliminar evento de forma permanente (para depuración anual de ciclo escolar)
+ */
+function eliminarEventoPermanente(idEvento) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheetEventos = ss.getSheetByName("Eventos");
+  var sheetAsig = ss.getSheetByName("Asignaciones");
+  var sheetInsc = ss.getSheetByName("Inscripciones");
+  var sheetAbonos = ss.getSheetByName("Historial_Abonos");
+  
+  if (!sheetEventos) return { success: false, message: "Hoja Eventos no encontrada" };
+  
+  // 1. Eliminar de Eventos
+  var dataEv = sheetEventos.getDataRange().getValues();
+  var borrado = false;
+  for (var i = dataEv.length - 1; i >= 1; i--) {
+    if (dataEv[i][0] == idEvento) {
+      sheetEventos.deleteRow(i + 1);
+      borrado = true;
+      break;
+    }
+  }
+  if (!borrado) return { success: false, message: "Evento no encontrado en la base de datos." };
+  
+  // 2. Eliminar de Asignaciones
+  if (sheetAsig && sheetAsig.getLastRow() > 1) {
+    var dataAs = sheetAsig.getDataRange().getValues();
+    for (var a = dataAs.length - 1; a >= 1; a--) {
+      if (dataAs[a][1] == idEvento) {
+        sheetAsig.deleteRow(a + 1);
+      }
+    }
+  }
+  
+  // 3. Eliminar de Inscripciones
+  if (sheetInsc && sheetInsc.getLastRow() > 1) {
+    var dataIn = sheetInsc.getDataRange().getValues();
+    for (var ins = dataIn.length - 1; ins >= 1; ins--) {
+      if (dataIn[ins][1] == idEvento) {
+        sheetInsc.deleteRow(ins + 1);
+      }
+    }
+  }
+  
+  // 4. Eliminar de Historial_Abonos
+  if (sheetAbonos && sheetAbonos.getLastRow() > 1) {
+    var dataAb = sheetAbonos.getDataRange().getValues();
+    for (var ab = dataAb.length - 1; ab >= 1; ab--) {
+      if (dataAb[ab][1] == idEvento) {
+        sheetAbonos.deleteRow(ab + 1);
+      }
+    }
+  }
+  
+  return { success: true, message: "Evento y sus datos asociados eliminados definitivamente para depuración anual." };
+}
+
+/**
  * Asignar evento a cajero adicional
  */
 function asignarEventoACajero(idEvento, idCajero) {
@@ -474,12 +644,170 @@ function asignarEventoACajero(idEvento, idCajero) {
   }
 }
 
+/**
+ * Parser de texto de alcance escolar en Backend
+ */
+function parsearAlcanceBackend(alcanceStr) {
+  if (!alcanceStr || typeof alcanceStr !== 'string' || alcanceStr.trim() === "" || alcanceStr.trim().toLowerCase() === "todos") {
+    return { esTodos: true, grados: ["1", "2", "3"], grupos: ["A", "B", "C"] };
+  }
+  var segs = alcanceStr.split("|");
+  var grados = [];
+  var grupos = [];
+  for (var i = 0; i < segs.length; i++) {
+    var str = segs[i].trim();
+    if (/^grados?/i.test(str)) {
+      var val = str.split(":")[1] || "";
+      if (val.toLowerCase().includes("todo")) {
+        grados = ["1", "2", "3"];
+      } else {
+        var matches = val.match(/\d+/g);
+        if (matches) {
+          for (var g = 0; g < matches.length; g++) {
+            if (grados.indexOf(matches[g]) === -1) grados.push(matches[g]);
+          }
+        }
+      }
+    } else if (/^grupos?/i.test(str)) {
+      var valG = str.split(":")[1] || "";
+      if (valG.toLowerCase().includes("todo")) {
+        grupos = ["A", "B", "C"];
+      } else {
+        var matchesG = valG.toUpperCase().match(/[A-Z]/g);
+        if (matchesG) {
+          for (var gr = 0; gr < matchesG.length; gr++) {
+            if (grupos.indexOf(matchesG[gr]) === -1) grupos.push(matchesG[gr]);
+          }
+        }
+      }
+    }
+  }
+  if (grados.length === 0) grados = ["1", "2", "3"];
+  if (grupos.length === 0) grupos = ["A", "B", "C"];
+  var esTodos = (grados.length === 3 && grupos.length === 3);
+  return { esTodos: esTodos, grados: grados, grupos: grupos };
+}
+
+/**
+ * Depuración de base de datos de eventos:
+ * Conserva únicamente la 'Excursión a Tolantongo' dirigida a 3° de Secundaria (A, B, C)
+ * con costo $4,400.00 y cupo 40, asignándola a todos los cajeros activos.
+ */
+function depurarEventosTolantongo() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheetEventos = ss.getSheetByName("Eventos");
+  var sheetAsig = ss.getSheetByName("Asignaciones");
+  var sheetInsc = ss.getSheetByName("Inscripciones");
+  var sheetAbonos = ss.getSheetByName("Historial_Abonos");
+  var sheetUsuarios = ss.getSheetByName("Usuarios");
+
+  if (!sheetEventos) return { success: false, message: "Hoja Eventos no existe" };
+
+  var idTolantongo = "EV-730628";
+  var headersEventos = ["ID_Evento", "Nombre_Evento", "Fecha", "Grupos_Permitidos", "Costo_Por_Persona", "Cupo_Total", "Estado"];
+  
+  var filaTolantongo = [
+    idTolantongo,
+    "Excursión a Tolantongo",
+    new Date().toISOString().split('T')[0],
+    "Grados: 3 | Grupos: A, B, C",
+    4400,
+    40,
+    "Activo"
+  ];
+  
+  // 1. Limpiar y dejar solo Tolantongo en 'Eventos'
+  sheetEventos.clearContents();
+  sheetEventos.getRange(1, 1, 1, 7).setValues([headersEventos]);
+  sheetEventos.getRange(1, 1, 1, 7).setFontWeight("bold").setBackground("#1e293b").setFontColor("#f8fafc");
+  sheetEventos.getRange(2, 1, 1, 7).setValues([filaTolantongo]);
+  
+  // 2. Vincular Tolantongo a TODOS los usuarios (Cajeros y Admin)
+  var listaUsuarios = [];
+  if (sheetUsuarios && sheetUsuarios.getLastRow() > 1) {
+    var uData = sheetUsuarios.getDataRange().getValues();
+    for (var u = 1; u < uData.length; u++) {
+      if (uData[u][0]) {
+        listaUsuarios.push(uData[u][0].toString().trim());
+      }
+    }
+  }
+  
+  var headersAsig = ["ID_Asignacion", "ID_Evento", "ID_Cajero"];
+  var nuevasAsignaciones = [];
+  listaUsuarios.forEach(function(idUsr, idx) {
+    nuevasAsignaciones.push([
+      "ASG-" + (730000 + idx),
+      idTolantongo,
+      idUsr
+    ]);
+  });
+  
+  if (sheetAsig) {
+    sheetAsig.clearContents();
+    sheetAsig.getRange(1, 1, 1, 3).setValues([headersAsig]);
+    sheetAsig.getRange(1, 1, 1, 3).setFontWeight("bold").setBackground("#1e293b").setFontColor("#f8fafc");
+    if (nuevasAsignaciones.length > 0) {
+      sheetAsig.getRange(2, 1, nuevasAsignaciones.length, 3).setValues(nuevasAsignaciones);
+    }
+  }
+  
+  // 3. Limpiar Inscripciones que NO sean de Tolantongo
+  var totalInscConservadas = 0;
+  if (sheetInsc && sheetInsc.getLastRow() > 1) {
+    var inscData = sheetInsc.getDataRange().getValues();
+    var headersInsc = inscData[0];
+    var inscFiltradas = [];
+    for (var m = 1; m < inscData.length; m++) {
+      if (inscData[m][1] == idTolantongo) {
+        inscFiltradas.push(inscData[m]);
+      }
+    }
+    sheetInsc.clearContents();
+    sheetInsc.getRange(1, 1, 1, headersInsc.length).setValues([headersInsc]);
+    sheetInsc.getRange(1, 1, 1, headersInsc.length).setFontWeight("bold").setBackground("#1e293b").setFontColor("#f8fafc");
+    if (inscFiltradas.length > 0) {
+      sheetInsc.getRange(2, 1, inscFiltradas.length, headersInsc.length).setValues(inscFiltradas);
+    }
+    totalInscConservadas = inscFiltradas.length;
+  }
+  
+  // 4. Limpiar Historial_Abonos que NO sean de Tolantongo
+  var totalAbonosConservados = 0;
+  if (sheetAbonos && sheetAbonos.getLastRow() > 1) {
+    var abData = sheetAbonos.getDataRange().getValues();
+    var headersAbonos = abData[0];
+    var abFiltrados = [];
+    for (var n = 1; n < abData.length; n++) {
+      if (abData[n][1] == idTolantongo) {
+        abFiltrados.push(abData[n]);
+      }
+    }
+    sheetAbonos.clearContents();
+    sheetAbonos.getRange(1, 1, 1, headersAbonos.length).setValues([headersAbonos]);
+    sheetAbonos.getRange(1, 1, 1, headersAbonos.length).setFontWeight("bold").setBackground("#1e293b").setFontColor("#f8fafc");
+    if (abFiltrados.length > 0) {
+      sheetAbonos.getRange(2, 1, abFiltrados.length, headersAbonos.length).setValues(abFiltrados);
+    }
+    totalAbonosConservados = abFiltrados.length;
+  }
+  
+  return {
+    success: true,
+    message: "Depuración completada. Se eliminaron todos los eventos anteriores conservando únicamente 'Excursión a Tolantongo' para 3° de Secundaria (A, B, C), Costo $4,400.00, Cupo 40. Asignado a todos los cajeros.",
+    eventoConservado: filaTolantongo,
+    cajerosAsignados: listaUsuarios.length,
+    inscripcionesConservadas: totalInscConservadas,
+    abonosConservados: totalAbonosConservados
+  };
+}
+
 // ============================================================================
 // 3. GESTIÓN DE ALUMNOS, BALANCES Y COBROS
 // ============================================================================
 
 /**
- * Obtener catálogo ligero de todos los alumnos para autocompletado en búsqueda rápida
+ * Obtener catálogo ligero de todos los alumnos e invitados para autocompletado en búsqueda rápida en vivo
  */
 function obtenerCatalogoAlumnosLigero() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -491,11 +819,14 @@ function obtenerCatalogoAlumnosLigero() {
     var estatus = data[i][6] ? data[i][6].toString().trim().toLowerCase() : "activo";
     if (estatus.includes("inactiv") || estatus.includes("baja")) continue;
     if (data[i][0] && data[i][1]) {
+      var idAl = data[i][0].toString().trim();
+      var esExt = idAl.startsWith("EXT-") || (data[i][2] && data[i][2].toString().toLowerCase() === "externo") || (data[i][4] && data[i][4].toString().toUpperCase() === "EXT");
       lista.push({
-        id: data[i][0].toString().trim(),
+        id: idAl,
         nombre: data[i][1].toString().trim(),
-        grado: data[i][3] ? data[i][3].toString().trim() : "",
-        grupo: data[i][4] ? data[i][4].toString().trim() : ""
+        grado: esExt ? "Invitado" : (data[i][3] ? data[i][3].toString().trim() : ""),
+        grupo: esExt ? "EXT" : (data[i][4] ? data[i][4].toString().trim() : ""),
+        esExterno: esExt
       });
     }
   }
@@ -503,7 +834,83 @@ function obtenerCatalogoAlumnosLigero() {
 }
 
 /**
- * Consulta integral del historial de pagos y abonos de un alumno en todos los eventos
+ * Registrar un nuevo participante como Invitado Externo (primos, amigos externos)
+ */
+function registrarInvitadoExterno(nombreInvitado, contacto, idAlumnoAnfitrion, nombreAnfitrion) {
+  if (!nombreInvitado || nombreInvitado.trim() === "") {
+    return { success: false, message: "El nombre del invitado externo es obligatorio." };
+  }
+  
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheetClientes = ss.getSheetByName("Clientes");
+  if (!sheetClientes) return { success: false, message: "No se encontró la hoja Clientes en la base de datos." };
+  
+  var idExt = "EXT-" + new Date().getTime().toString().slice(-6);
+  var fechaHoy = new Date().toISOString();
+  var contactoFinal = contacto ? contacto.trim() : "";
+  var etiquetaAnfitrion = (nombreAnfitrion && nombreAnfitrion.trim() !== "") ? " (Inv. de " + nombreAnfitrion.trim() + ")" : "";
+  var nombreCompleto = nombreInvitado.trim() + etiquetaAnfitrion;
+  
+  sheetClientes.appendRow([
+    idExt,
+    nombreCompleto,
+    "Externo",
+    "Invitado",
+    "EXT",
+    contactoFinal,
+    "Activo",
+    fechaHoy
+  ]);
+  
+  return {
+    success: true,
+    message: "Invitado externo registrado con éxito.",
+    invitado: {
+      id: idExt,
+      nombre: nombreCompleto,
+      nivel: "Externo",
+      grado: "Invitado",
+      grupo: "EXT",
+      email: contactoFinal,
+      anfitrion: nombreAnfitrion || idAlumnoAnfitrion || ""
+    }
+  };
+}
+
+/**
+ * Obtener la lista de todos los invitados externos registrados
+ */
+function obtenerInvitadosExternos() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheetClientes = ss.getSheetByName("Clientes");
+  if (!sheetClientes) return [];
+  var data = sheetClientes.getDataRange().getValues();
+  var lista = [];
+  for (var i = 1; i < data.length; i++) {
+    var idAl = data[i][0] ? data[i][0].toString().trim() : "";
+    var nivAl = data[i][2] ? data[i][2].toString().trim().toLowerCase() : "";
+    var gruAl = data[i][4] ? data[i][4].toString().trim().toUpperCase() : "";
+    var estAl = data[i][6] ? data[i][6].toString().trim().toLowerCase() : "activo";
+    
+    if (estAl.includes("inactiv") || estAl.includes("baja")) continue;
+    
+    if (idAl.startsWith("EXT-") || nivAl === "externo" || gruAl === "EXT") {
+      lista.push({
+        id: idAl,
+        nombre: data[i][1] ? data[i][1].toString().trim() : idAl,
+        email: data[i][5] ? data[i][5].toString().trim() : "",
+        grado: "Invitado",
+        grupo: "EXT"
+      });
+    }
+  }
+  return lista;
+}
+
+/**
+ * Consulta integral del historial de pagos y abonos de un alumno en todos los eventos.
+ * Muestra el estado de abonos de eventos con movimientos y asocia automáticamente
+ * todos los eventos activos escolares vigentes (incluso si tiene $0 abonos) para cobro inmediato.
  */
 function consultarHistorialCompletoAlumno(criterio) {
   if (!criterio || criterio.toString().trim() === "") {
@@ -524,12 +931,13 @@ function consultarHistorialCompletoAlumno(criterio) {
   var clientesData = sheetClientes.getDataRange().getValues();
   var busqueda = criterio.toString().trim().toLowerCase();
   
-  // 1. Localizar alumnos coincidentes por ID o Nombre (priorizando alumnos activos)
+  // 1. Localizar alumnos o invitados coincidentes por ID o Nombre (priorizando activos)
   var coincidentesActivos = [];
   var coincidentesBajas = [];
   for (var i = 1; i < clientesData.length; i++) {
     var idAl = clientesData[i][0] ? clientesData[i][0].toString().trim() : "";
     var nomAl = clientesData[i][1] ? clientesData[i][1].toString().trim() : "";
+    var nivelAl = clientesData[i][2] ? clientesData[i][2].toString().trim() : "Secundaria";
     var gradoAl = clientesData[i][3] ? clientesData[i][3].toString().trim() : "";
     var grupoAl = clientesData[i][4] ? clientesData[i][4].toString().trim() : "";
     var emailAl = clientesData[i][5] ? clientesData[i][5].toString().trim() : "";
@@ -539,10 +947,12 @@ function consultarHistorialCompletoAlumno(criterio) {
       var itemAl = {
         id: idAl,
         nombre: nomAl,
+        nivel: nivelAl,
         grado: gradoAl,
         grupo: grupoAl,
         email: emailAl,
-        estatus: estatusAl
+        estatus: estatusAl,
+        esExterno: idAl.startsWith("EXT-") || nivelAl.toLowerCase() === "externo" || grupoAl === "EXT"
       };
       if (estatusAl.toLowerCase().includes("baja") || estatusAl.toLowerCase().includes("inactiv")) {
         coincidentesBajas.push(itemAl);
@@ -554,7 +964,7 @@ function consultarHistorialCompletoAlumno(criterio) {
   var alumnosCoincidentes = coincidentesActivos.concat(coincidentesBajas).slice(0, 15);
   
   if (alumnosCoincidentes.length === 0) {
-    return { success: false, message: "No se encontró ningún alumno con el criterio: '" + criterio + "'." };
+    return { success: false, message: "No se encontró ningún alumno o invitado con el criterio: '" + criterio + "'." };
   }
   
   // 2. Diccionario de Eventos
@@ -564,7 +974,9 @@ function consultarHistorialCompletoAlumno(criterio) {
     for (var k = 1; k < evData.length; k++) {
       if (evData[k][0]) {
         dictEventos[evData[k][0]] = {
+          id: evData[k][0],
           nombre: evData[k][1] ? evData[k][1].toString() : evData[k][0],
+          alcance: evData[k][3] ? evData[k][3].toString() : "Todos",
           costo: parseFloat(evData[k][4]) || 0,
           estatus: evData[k][6] ? evData[k][6].toString() : "Activo"
         };
@@ -597,7 +1009,7 @@ function consultarHistorialCompletoAlumno(criterio) {
     for (var inx = 1; inx < dataInsc.length; inx++) {
       if (dataInsc[inx][2] && dataInsc[inx][2].toString().trim() === al.id) {
         var idEv = dataInsc[inx][1].toString().trim();
-        var evInfo = dictEventos[idEv] || { nombre: idEv, costo: parseFloat(dataInsc[inx][3]) || 0, estatus: "Activo" };
+        var evInfo = dictEventos[idEv] || { nombre: idEv, costo: parseFloat(dataInsc[inx][3]) || 0, estatus: "Activo", alcance: "Todos" };
         var costoTotalEv = parseFloat(dataInsc[inx][3]) || evInfo.costo || 0;
         var pagadoInsc = parseFloat(dataInsc[inx][4]) || 0;
         var estatusInsc = dataInsc[inx][5] ? dataInsc[inx][5].toString() : "Parcial";
@@ -628,7 +1040,7 @@ function consultarHistorialCompletoAlumno(criterio) {
         var estatusCorte = dataAbonos[ab][6] ? dataAbonos[ab][6].toString() : "Pendiente";
         
         if (!eventosMap[idEventoAbono]) {
-          var evDef = dictEventos[idEventoAbono] || { nombre: idEventoAbono, costo: 0, estatus: "Activo" };
+          var evDef = dictEventos[idEventoAbono] || { nombre: idEventoAbono, costo: 0, estatus: "Activo", alcance: "Todos" };
           eventosMap[idEventoAbono] = {
             idEvento: idEventoAbono,
             nombreEvento: evDef.nombre,
@@ -652,6 +1064,41 @@ function consultarHistorialCompletoAlumno(criterio) {
       }
     }
     
+    // 5. Vincular automáticamente TODOS los eventos escolares activos aplicables a este alumno
+    // para que aparezcan en su expediente con saldo $0 abonado y listos para cobrar con un clic
+    Object.keys(dictEventos).forEach(function(idEvActivo) {
+      var evInfoActivo = dictEventos[idEvActivo];
+      var estadoEv = evInfoActivo.estatus ? evInfoActivo.estatus.trim() : "Activo";
+      if (estadoEv === "Activo" && !eventosMap[idEvActivo]) {
+        var parsedAlc = parsearAlcanceBackend(evInfoActivo.alcance);
+        var aplica = false;
+        
+        if (al.esExterno || al.grado === "Invitado" || al.grupo === "EXT") {
+          // Invitados externos aplican a los eventos activos escolares
+          aplica = true;
+        } else if (parsedAlc.esTodos) {
+          aplica = true;
+        } else {
+          var tieneGrado = parsedAlc.grados.indexOf(al.grado.toString()) !== -1;
+          var tieneGrupo = parsedAlc.grupos.indexOf(al.grupo.toString().toUpperCase()) !== -1;
+          aplica = tieneGrado && tieneGrupo;
+        }
+        
+        if (aplica) {
+          eventosMap[idEvActivo] = {
+            idEvento: idEvActivo,
+            nombreEvento: evInfoActivo.nombre,
+            costoTotal: evInfoActivo.costo,
+            totalAbonado: 0,
+            restante: evInfoActivo.costo,
+            estatus: "SIN PAGO",
+            abonos: [],
+            disponible: true
+          };
+        }
+      }
+    });
+
     // Totalizar importes de cada evento y del alumno
     var listaEventos = [];
     var granCosto = 0;
@@ -841,8 +1288,8 @@ function registrarPago(idEvento, nombreEvento, idCliente, nombreCliente, emailCl
         </div>
         <table style="width: 100%; font-size: 14px; border-collapse: collapse; margin-bottom: 16px;">
           <tr><td style="padding: 6px 0; color: #64748b; width: 38%;"><strong>Concepto / Evento:</strong></td><td style="padding: 6px 0; font-weight: bold; color: #0b1f3f;">${nombreEvento}</td></tr>
-          <tr><td style="padding: 6px 0; color: #64748b;"><strong>Alumno:</strong></td><td style="padding: 6px 0; font-weight: 600;">${nombreCliente}</td></tr>
-          <tr><td style="padding: 6px 0; color: #64748b;"><strong>Grado y Grupo:</strong></td><td style="padding: 6px 0;">${grado}° Secundaria - Sección "${grupo}"</td></tr>
+          <tr><td style="padding: 6px 0; color: #64748b;"><strong>Participante:</strong></td><td style="padding: 6px 0; font-weight: 600;">${nombreCliente}</td></tr>
+          <tr><td style="padding: 6px 0; color: #64748b;"><strong>${(grado === 'Invitado' || grupo === 'EXT') ? 'Modalidad:' : 'Grado y Grupo:'}</strong></td><td style="padding: 6px 0;">${(grado === 'Invitado' || grupo === 'EXT') ? 'Invitado Externo (Boleto Especial)' : (grado + '° Secundaria - Sección "' + grupo + '"')}</td></tr>
           <tr><td style="padding: 6px 0; color: #64748b;"><strong>Fecha y Hora:</strong></td><td style="padding: 6px 0;">${fechaHora.toLocaleString()}</td></tr>
         </table>
         <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; padding: 16px; border-radius: 8px; border-left: 6px solid #16a34a;">
@@ -1070,7 +1517,240 @@ function procesarCierreDeCajaBD(idCajero) {
 }
 
 // ============================================================================
-// 6. AUDITORÍA, ANULACIÓN Y ESTADÍSTICAS (ADMIN)
+// 6. DASHBOARD DE MÉTRICAS FINANCIERAS Y RECAUDACIÓN POR SALÓN
+// ============================================================================
+
+/**
+ * Obtener métricas y KPIs de recaudación financiera y avance por salón para un evento escolar
+ * Retorna: Total recaudado, meta financiera, saldo por recaudar, lugares ocupados,
+ * desglose de alumnos Boston vs externos, y lista por salón con nombres, abonado y lo que falta.
+ */
+function obtenerMetricasRecaudacion(idEvento) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheetEventos = ss.getSheetByName("Eventos");
+  var sheetClientes = ss.getSheetByName("Clientes");
+  var sheetInsc = ss.getSheetByName("Inscripciones");
+  var sheetAbonos = ss.getSheetByName("Historial_Abonos");
+  
+  if (!sheetEventos) return { success: false, message: "No se encontró la hoja Eventos" };
+  
+  // 1. Obtener datos del evento
+  var eventosData = sheetEventos.getDataRange().getValues();
+  var eventoInfo = null;
+  for (var i = 1; i < eventosData.length; i++) {
+    if (eventosData[i][0] == idEvento) {
+      var cupo = (eventosData[i][5] === "" || isNaN(parseInt(eventosData[i][5]))) ? 0 : parseInt(eventosData[i][5]);
+      eventoInfo = {
+        id: eventosData[i][0],
+        nombre: eventosData[i][1],
+        fecha: eventosData[i][2],
+        alcance: eventosData[i][3] ? eventosData[i][3].toString() : "Todos",
+        costo: parseFloat(eventosData[i][4]) || 0,
+        cupo: Math.max(cupo, 0),
+        estado: eventosData[i][6] ? eventosData[i][6].toString() : "Activo"
+      };
+      break;
+    }
+  }
+  
+  // Si no se pasó evento o no se encontró, tomar el primer evento activo
+  if (!eventoInfo) {
+    for (var e = 1; e < eventosData.length; e++) {
+      if (eventosData[e][6] === "Activo") {
+        var cupoAlt = (eventosData[e][5] === "" || isNaN(parseInt(eventosData[e][5]))) ? 0 : parseInt(eventosData[e][5]);
+        eventoInfo = {
+          id: eventosData[e][0],
+          nombre: eventosData[e][1],
+          fecha: eventosData[e][2],
+          alcance: eventosData[e][3] ? eventosData[e][3].toString() : "Todos",
+          costo: parseFloat(eventosData[e][4]) || 0,
+          cupo: Math.max(cupoAlt, 0),
+          estado: eventosData[e][6] ? eventosData[e][6].toString() : "Activo"
+        };
+        idEvento = eventoInfo.id;
+        break;
+      }
+    }
+  }
+  
+  if (!eventoInfo) return { success: false, message: "No hay eventos activos registrados para consultar métricas." };
+  
+  // 2. Mapear abonos por alumno para este evento
+  var abonosData = sheetAbonos ? sheetAbonos.getDataRange().getValues() : [];
+  var totalRecaudadoGlobal = 0;
+  var abonosPorAlumno = {};
+  var cortesiasPorAlumno = {};
+  
+  for (var j = 1; j < abonosData.length; j++) {
+    if (abonosData[j][1] == idEvento) {
+      var montoStr = abonosData[j][3] ? abonosData[j][3].toString().toUpperCase() : "0";
+      if (montoStr.includes("CANCELADO")) continue;
+      
+      var idAl = abonosData[j][2] ? abonosData[j][2].toString().trim() : "";
+      if (montoStr.includes("CORTES")) {
+        cortesiasPorAlumno[idAl] = true;
+      } else {
+        var montoNum = parseFloat(montoStr) || 0;
+        totalRecaudadoGlobal += montoNum;
+        if (!abonosPorAlumno[idAl]) abonosPorAlumno[idAl] = 0;
+        abonosPorAlumno[idAl] += montoNum;
+      }
+    }
+  }
+  
+  // 3. Mapear inscripciones para detectar tarifas pactadas con descuento especial
+  var inscData = sheetInsc ? sheetInsc.getDataRange().getValues() : [];
+  var costosPersonalizados = {};
+  for (var k = 1; k < inscData.length; k++) {
+    if (inscData[k][1] == idEvento && inscData[k][2]) {
+      var idAlInsc = inscData[k][2].toString().trim();
+      var cInsc = parseFloat(inscData[k][3]);
+      if (cInsc > 0) costosPersonalizados[idAlInsc] = cInsc;
+    }
+  }
+  
+  // 4. Mapear alumnos activos y participantes externos
+  var clientesData = sheetClientes ? sheetClientes.getDataRange().getValues() : [];
+  var parseAlcance = parsearAlcanceBackend(eventoInfo.alcance);
+  
+  var salonesMap = {};
+  var totalLugaresOcupados = 0;
+  var totalAlumnosBoston = 0;
+  var totalInvitadosExternos = 0;
+  
+  for (var c = 1; c < clientesData.length; c++) {
+    var idCli = clientesData[c][0] ? clientesData[c][0].toString().trim() : "";
+    if (!idCli) continue;
+    
+    var nomCli = clientesData[c][1] ? clientesData[c][1].toString().trim() : "";
+    var nivCli = clientesData[c][2] ? clientesData[c][2].toString().trim() : "";
+    var graCli = clientesData[c][3] ? clientesData[c][3].toString().trim() : "";
+    var gruCli = clientesData[c][4] ? clientesData[c][4].toString().trim().toUpperCase() : "";
+    var estCli = clientesData[c][6] ? clientesData[c][6].toString().trim().toLowerCase() : "activo";
+    
+    if (estCli.includes("inactiv") || estCli.includes("baja")) continue;
+    
+    var esExterno = idCli.startsWith("EXT-") || nivCli.toLowerCase() === "externo" || gruCli === "EXT";
+    var aplica = false;
+    
+    if (esExterno) {
+      if (abonosPorAlumno[idCli] > 0 || cortesiasPorAlumno[idCli] || costosPersonalizados[idCli]) {
+        aplica = true;
+      }
+    } else {
+      if (parseAlcance.esTodos) {
+        aplica = true;
+      } else {
+        var matchGrado = parseAlcance.grados.indexOf(graCli) !== -1;
+        var matchGrupo = parseAlcance.grupos.indexOf(gruCli) !== -1;
+        aplica = matchGrado && matchGrupo;
+      }
+    }
+    
+    if (!aplica) continue;
+    
+    var costoAlumno = costosPersonalizados[idCli] || eventoInfo.costo;
+    var abonadoAlumno = abonosPorAlumno[idCli] || 0;
+    var esCortesia = cortesiasPorAlumno[idCli] || false;
+    var restanteAlumno = esCortesia ? 0 : Math.max(costoAlumno - abonadoAlumno, 0);
+    
+    var estatusBadge = "SIN PAGO";
+    if (esCortesia) {
+      estatusBadge = "CORTESÍA";
+      totalLugaresOcupados++;
+    } else if (abonadoAlumno >= costoAlumno && costoAlumno > 0) {
+      estatusBadge = "PAGADO";
+      totalLugaresOcupados++;
+    } else if (abonadoAlumno > 0) {
+      estatusBadge = "CON ABONO";
+      totalLugaresOcupados++;
+    }
+    
+    if (esExterno) {
+      totalInvitadosExternos++;
+    } else {
+      totalAlumnosBoston++;
+    }
+    
+    var claveSalon = esExterno ? "Invitados Externos" : (graCli + "° \"" + gruCli + "\"");
+    if (!salonesMap[claveSalon]) {
+      salonesMap[claveSalon] = {
+        salon: claveSalon,
+        esExterno: esExterno,
+        totalAlumnos: 0,
+        recaudado: 0,
+        comprometido: 0,
+        restante: 0,
+        pagados: 0,
+        conAbono: 0,
+        sinPago: 0,
+        cortesias: 0,
+        alumnos: []
+      };
+    }
+    
+    salonesMap[claveSalon].totalAlumnos++;
+    salonesMap[claveSalon].recaudado += abonadoAlumno;
+    salonesMap[claveSalon].comprometido += costoAlumno;
+    salonesMap[claveSalon].restante += restanteAlumno;
+    
+    if (estatusBadge === "PAGADO") salonesMap[claveSalon].pagados++;
+    else if (estatusBadge === "CON ABONO") salonesMap[claveSalon].conAbono++;
+    else if (estatusBadge === "CORTESÍA") salonesMap[claveSalon].cortesias++;
+    else salonesMap[claveSalon].sinPago++;
+    
+    var porc = costoAlumno > 0 ? Math.min(Math.round((abonadoAlumno / costoAlumno) * 100), 100) : (esCortesia ? 100 : 0);
+    
+    salonesMap[claveSalon].alumnos.push({
+      id: idCli,
+      nombre: nomCli,
+      grado: graCli,
+      grupo: gruCli,
+      costo: costoAlumno,
+      abonado: abonadoAlumno,
+      restante: restanteAlumno,
+      estatus: estatusBadge,
+      porcentaje: porc,
+      esExterno: esExterno
+    });
+  }
+  
+  // Ordenar salones y ordenar alumnos en cada salón
+  var salonesArray = [];
+  Object.keys(salonesMap).forEach(function(k) {
+    salonesMap[k].alumnos.sort(function(a, b) { return a.nombre.localeCompare(b.nombre); });
+    salonesArray.push(salonesMap[k]);
+  });
+  
+  salonesArray.sort(function(a, b) {
+    if (a.esExterno && !b.esExterno) return 1;
+    if (!a.esExterno && b.esExterno) return -1;
+    return a.salon.localeCompare(b.salon);
+  });
+  
+  var metaFinanciera = (eventoInfo.cupo > 0) ? (eventoInfo.cupo * eventoInfo.costo) : (totalAlumnosBoston * eventoInfo.costo);
+  var saldoRestanteMeta = Math.max(metaFinanciera - totalRecaudadoGlobal, 0);
+  
+  return {
+    success: true,
+    evento: eventoInfo,
+    kpis: {
+      totalRecaudado: totalRecaudadoGlobal,
+      metaFinanciera: metaFinanciera,
+      saldoRestanteMeta: saldoRestanteMeta,
+      lugaresOcupados: totalLugaresOcupados,
+      cupoTotal: eventoInfo.cupo,
+      totalAlumnosBoston: totalAlumnosBoston,
+      totalInvitadosExternos: totalInvitadosExternos,
+      porcentajeMeta: metaFinanciera > 0 ? Math.min(Math.round((totalRecaudadoGlobal / metaFinanciera) * 100), 100) : 0,
+      porcentajeCupo: eventoInfo.cupo > 0 ? Math.min(Math.round((totalLugaresOcupados / eventoInfo.cupo) * 100), 100) : 0
+    },
+    salones: salonesArray
+  };
+}
+
+// ============================================================================
+// 7. AUDITORÍA, ANULACIÓN Y ESTADÍSTICAS (ADMIN)
 // ============================================================================
 
 /**
