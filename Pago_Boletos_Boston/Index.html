@@ -1022,38 +1022,279 @@
       <section id="apartado-caja" class="apartado-content d-none">
         <div class="card-boston">
           
-          <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-2 mb-3">
+          <!-- Encabezado y Política Institucional (Requerimiento 1) -->
+          <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-3 border-bottom pb-3">
             <div>
-              <h5 class="section-title m-0 border-0">💰 Arqueo de Caja y Entrega de Efectivo</h5>
-              <p class="small text-muted m-0">Movimientos de cobro en efectivo bajo custodia del cajero activo.</p>
+              <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="fs-4">💰</span>
+                <h5 class="section-title m-0 border-0 p-0">Arqueo de Caja y Entrega de Efectivo</h5>
+              </div>
+              <p class="small text-muted m-0">
+                <strong>Recuerda realizar el corte diario cuando termines tus cobros.</strong> 
+                Este dinero entra directamente a la <strong>Caja General</strong> institucional para su custodia, registro contable y depósito bancario; es indispensable realizarlo al finalizar tu turno.
+              </p>
             </div>
-            <button class="btn btn-success btn-lg fw-bold" onclick="abrirModalCorteCaja()">
-              🖨️ Realizar Corte de Caja Oficial
-            </button>
+            <div class="d-flex flex-wrap gap-2">
+              <button class="btn btn-outline-primary btn-sm fw-bold px-3 py-2" onclick="imprimirCorteDelDia()" title="Imprimir o descargar en PDF el reporte de cobros del día">
+                📄 Imprimir / Exportar PDF de Hoy
+              </button>
+              <button class="btn btn-success btn-sm fw-bold px-3 py-2 shadow-sm" onclick="iniciarCorteDeCajaOficial()" title="Generar corte oficial y acta de entrega con doble firma">
+                🖨️ Realizar Corte y Entrega Oficial
+              </button>
+            </div>
           </div>
 
-          <!-- Tarjeta de Saldo en Caja -->
-          <div class="p-3 mb-3 bg-light border border-success border-opacity-50 rounded-3 text-center">
-            <span class="small fw-bold text-success text-uppercase letter-spacing-1">Efectivo Total Pendiente de Entrega:</span>
-            <div id="arqueo-gran-total" class="text-success fw-bold font-monospace" style="font-size: 2.2rem;">$0.00 MXN</div>
+          <!-- Alerta Institucional de Custodia -->
+          <div class="alert alert-warning border-start border-4 border-warning d-flex align-items-start gap-3 py-2 px-3 mb-4 rounded-3 shadow-sm" style="font-size: 13px;">
+            <span class="fs-4">🏛️</span>
+            <div>
+              <strong class="text-dark">Aviso Institucional de Custodia de Fondos:</strong>
+              Todo el efectivo cobrado en ventanilla está bajo la custodia temporal del cajero activo. Al concluir tus cobros diarios, es requisito obligatorio emitir el acta oficial de entrega con el desglose físico de billetes y monedas, entregando el efectivo correspondiente en <strong>Caja General</strong> con doble firma.
+            </div>
           </div>
 
-          <h6 class="fw-bold text-secondary mb-2" style="font-size: 13px;">FOLIOS PENDIENTES DE CORTE:</h6>
-          <div class="table-responsive-movil">
-            <table class="table table-sm table-striped align-middle m-0">
-              <thead class="table-secondary" style="font-size: 12.5px;">
-                <tr>
-                  <th>Folio</th>
-                  <th>Fecha y Hora</th>
-                  <th>Alumno</th>
-                  <th>Concepto / Evento</th>
-                  <th style="text-align: right;">Monto</th>
-                </tr>
-              </thead>
-              <tbody id="tabla-desglose-caja" style="font-size: 12px;">
-                <tr><td colspan="5" class="text-center py-3 text-muted">No hay folios pendientes de arqueo. Caja en ceros.</td></tr>
-              </tbody>
-            </table>
+          <!-- Tarjetas de Métricas en Vivo de Caja (Requerimiento 2 y 4) -->
+          <div class="row g-3 mb-4">
+            <div class="col-12 col-sm-6 col-xl-3">
+              <div class="kpi-metric-card border-success bg-white h-100">
+                <span class="small fw-bold text-success text-uppercase letter-spacing-1">Efectivo en Caja Activa:</span>
+                <div id="arqueo-gran-total" class="kpi-val text-success font-monospace">$0.00</div>
+                <small class="text-muted d-block">Pendiente de entrega a Caja General</small>
+              </div>
+            </div>
+            <div class="col-12 col-sm-6 col-xl-3">
+              <div class="kpi-metric-card border-primary bg-white h-100">
+                <span class="small fw-bold text-primary text-uppercase letter-spacing-1">Cobrado Hoy (Efectivo Real):</span>
+                <div id="caja-cobrado-hoy" class="kpi-val text-primary font-monospace">$0.00</div>
+                <small class="text-muted d-block" id="caja-fecha-hoy-sub">Solo dinero ingresado hoy</small>
+              </div>
+            </div>
+            <div class="col-12 col-sm-6 col-xl-3">
+              <div class="kpi-metric-card border-info bg-white h-100">
+                <span class="small fw-bold text-info text-uppercase letter-spacing-1">Ya Entregado a Caja General:</span>
+                <div id="caja-entregado-hoy" class="kpi-val text-info font-monospace">$0.00</div>
+                <small class="text-muted d-block">Amparado en cortes previos de hoy</small>
+              </div>
+            </div>
+            <div class="col-12 col-sm-6 col-xl-3">
+              <div class="kpi-metric-card border-secondary bg-white h-100">
+                <span class="small fw-bold text-secondary text-uppercase letter-spacing-1">Alumnos Cobrados Hoy:</span>
+                <div id="caja-transacciones-hoy" class="kpi-val text-dark font-monospace">0</div>
+                <small class="text-muted d-block">Excluye cortesías de $0</small>
+              </div>
+            </div>
+          </div>
+
+          <!-- Funcionalidad Sugerida (Requerimiento 4): Calculadora de Conciliación Física de Efectivo -->
+          <div class="card border border-primary border-opacity-25 rounded-3 mb-4 shadow-sm">
+            <div class="card-header bg-light d-flex flex-wrap justify-content-between align-items-center py-2 px-3 gap-2">
+              <div class="d-flex align-items-center gap-2">
+                <span class="fs-5">💵</span>
+                <strong class="text-primary small text-uppercase letter-spacing-1">Calculadora de Arqueo Físico (Billetes y Monedas)</strong>
+              </div>
+              <div class="d-flex gap-2">
+                <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2" style="font-size: 11.5px;" onclick="sugerirDesgloseOptimo()" title="Desglosar automáticamente según el saldo teórico en caja">
+                  ⚡ Sugerir Desglose
+                </button>
+                <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2" style="font-size: 11.5px;" onclick="limpiarDesgloseBilletes()" title="Poner en ceros los contadores">
+                  🧹 Limpiar
+                </button>
+              </div>
+            </div>
+            <div class="card-body p-3">
+              <div class="row g-2 align-items-center text-center">
+                <!-- Billetes -->
+                <div class="col-6 col-sm-4 col-md-2">
+                  <label class="form-label small fw-bold text-muted mb-1">$1,000 MXN</label>
+                  <div class="input-group input-group-sm">
+                    <span class="input-group-text p-1">💵</span>
+                    <input type="number" min="0" step="1" id="den-1000" class="form-control text-center fw-bold den-input" value="0" oninput="calcularArqueoFisico()">
+                  </div>
+                  <small id="sub-1000" class="text-muted d-block mt-1 font-monospace" style="font-size: 11px;">$0</small>
+                </div>
+                <div class="col-6 col-sm-4 col-md-2">
+                  <label class="form-label small fw-bold text-muted mb-1">$500 MXN</label>
+                  <div class="input-group input-group-sm">
+                    <span class="input-group-text p-1">💵</span>
+                    <input type="number" min="0" step="1" id="den-500" class="form-control text-center fw-bold den-input" value="0" oninput="calcularArqueoFisico()">
+                  </div>
+                  <small id="sub-500" class="text-muted d-block mt-1 font-monospace" style="font-size: 11px;">$0</small>
+                </div>
+                <div class="col-6 col-sm-4 col-md-2">
+                  <label class="form-label small fw-bold text-muted mb-1">$200 MXN</label>
+                  <div class="input-group input-group-sm">
+                    <span class="input-group-text p-1">💵</span>
+                    <input type="number" min="0" step="1" id="den-200" class="form-control text-center fw-bold den-input" value="0" oninput="calcularArqueoFisico()">
+                  </div>
+                  <small id="sub-200" class="text-muted d-block mt-1 font-monospace" style="font-size: 11px;">$0</small>
+                </div>
+                <div class="col-6 col-sm-4 col-md-2">
+                  <label class="form-label small fw-bold text-muted mb-1">$100 MXN</label>
+                  <div class="input-group input-group-sm">
+                    <span class="input-group-text p-1">💵</span>
+                    <input type="number" min="0" step="1" id="den-100" class="form-control text-center fw-bold den-input" value="0" oninput="calcularArqueoFisico()">
+                  </div>
+                  <small id="sub-100" class="text-muted d-block mt-1 font-monospace" style="font-size: 11px;">$0</small>
+                </div>
+                <div class="col-6 col-sm-4 col-md-2">
+                  <label class="form-label small fw-bold text-muted mb-1">$50 MXN</label>
+                  <div class="input-group input-group-sm">
+                    <span class="input-group-text p-1">💵</span>
+                    <input type="number" min="0" step="1" id="den-50" class="form-control text-center fw-bold den-input" value="0" oninput="calcularArqueoFisico()">
+                  </div>
+                  <small id="sub-50" class="text-muted d-block mt-1 font-monospace" style="font-size: 11px;">$0</small>
+                </div>
+                <div class="col-6 col-sm-4 col-md-2">
+                  <label class="form-label small fw-bold text-muted mb-1">$20 / Monedas</label>
+                  <div class="input-group input-group-sm">
+                    <span class="input-group-text p-1">🪙</span>
+                    <input type="number" min="0" step="1" id="den-monedas" class="form-control text-center fw-bold den-input" value="0" oninput="calcularArqueoFisico()" placeholder="$ Monto">
+                  </div>
+                  <small id="sub-monedas" class="text-muted d-block mt-1 font-monospace" style="font-size: 11px;">$0</small>
+                </div>
+              </div>
+
+              <!-- Barra de Conciliación en Vivo -->
+              <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-2 mt-3 pt-3 border-top">
+                <div class="d-flex align-items-center gap-3">
+                  <div>
+                    <span class="small text-muted d-block">Efectivo Físico Contado:</span>
+                    <strong id="label-efectivo-fisico" class="font-monospace fs-5 text-dark">$0.00</strong>
+                  </div>
+                  <div class="border-start ps-3">
+                    <span class="small text-muted d-block">Teórico en Sistema:</span>
+                    <strong id="label-efectivo-teorico" class="font-monospace fs-5 text-secondary">$0.00</strong>
+                  </div>
+                </div>
+                <div id="badge-cuadre-caja" class="badge bg-secondary p-2 fs-6">
+                  ⏳ Pendiente de contar efectivo físico
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Pestañas de Detalle de Caja -->
+          <ul class="nav nav-pills mb-3 gap-2" id="pills-caja-tab" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button class="nav-link active fw-bold btn-sm py-2 px-3" id="tab-caja-pendientes-btn" type="button" onclick="mostrarSubTabCaja('pendientes')">
+                🟡 En Caja Pendientes (<span id="badge-cant-pendientes">0</span>)
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link fw-bold btn-sm py-2 px-3" id="tab-caja-hoy-btn" type="button" onclick="mostrarSubTabCaja('hoy')">
+                📋 Cobros del Día (Solo dinero) (<span id="badge-cant-hoy">0</span>)
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link fw-bold btn-sm py-2 px-3" id="tab-caja-historico-btn" type="button" onclick="mostrarSubTabCaja('historico')">
+                📜 Cortes Históricos Entregados (<span id="badge-cant-historicos">0</span>)
+              </button>
+            </li>
+          </ul>
+
+          <!-- Contenido de Subpestañas -->
+          <div class="tab-content" id="cajaSubTabContent">
+            
+            <!-- SUBTAB 1: Pendientes de Corte -->
+            <div id="subtab-caja-pendientes" class="subtab-caja-pane">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="small fw-bold text-secondary text-uppercase letter-spacing-1">Recibos actualmente en caja activa:</span>
+                <span class="small text-muted">Amparados bajo custodia de ventanilla</span>
+              </div>
+              <div class="table-responsive-movil">
+                <table class="table table-sm table-hover align-middle m-0" style="font-size: 13px;">
+                  <thead class="table-dark">
+                    <tr>
+                      <th style="width: 130px;">Folio</th>
+                      <th style="width: 140px;">Fecha y Hora</th>
+                      <th>Alumno / Asistente</th>
+                      <th style="width: 130px;">Salón</th>
+                      <th>Concepto / Evento</th>
+                      <th style="text-align: right; width: 130px;">Monto</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tabla-desglose-caja">
+                    <tr><td colspan="6" class="text-center py-4 text-muted">No hay folios pendientes de arqueo. Caja en ceros.</td></tr>
+                  </tbody>
+                  <tfoot id="tfoot-desglose-caja" class="table-light d-none">
+                    <tr class="fw-bold">
+                      <td colspan="5" style="text-align: right;">TOTAL PENDIENTE DE ENTREGA:</td>
+                      <td id="tfoot-monto-pendiente" style="text-align: right;" class="text-success font-monospace fs-6">$0.00</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+
+            <!-- SUBTAB 2: Cobros del Día (Requerimiento 2: Solo dinero en efectivo) -->
+            <div id="subtab-caja-hoy" class="subtab-caja-pane d-none">
+              <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-2 mb-2">
+                <div>
+                  <span class="small fw-bold text-primary text-uppercase letter-spacing-1">Cobros en Efectivo Realizados el Día de Hoy:</span>
+                  <small class="text-muted d-block" style="font-size: 11.5px;">Mostrando exclusivamente a estudiantes e invitados que abonaron dinero real (excluye cortesías de $0 y cancelaciones).</small>
+                </div>
+                <button class="btn btn-primary btn-sm fw-bold px-3" onclick="imprimirCorteDelDia()">
+                  🖨️ Imprimir / Guardar en PDF Este Reporte
+                </button>
+              </div>
+              <div class="table-responsive-movil">
+                <table class="table table-sm table-striped table-hover align-middle m-0" style="font-size: 13px;">
+                  <thead class="table-primary">
+                    <tr>
+                      <th style="width: 130px;">Folio</th>
+                      <th style="width: 90px;">Hora</th>
+                      <th>Estudiante / Participante</th>
+                      <th style="width: 130px;">Salón</th>
+                      <th>Evento</th>
+                      <th style="text-align: right; width: 130px;">Monto Cobrado</th>
+                      <th style="text-align: center; width: 160px;">Estatus de Entrega</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tabla-cobros-del-dia">
+                    <tr><td colspan="7" class="text-center py-4 text-muted">No se han registrado cobros en efectivo el día de hoy.</td></tr>
+                  </tbody>
+                  <tfoot id="tfoot-cobros-del-dia" class="table-light d-none">
+                    <tr class="fw-bold">
+                      <td colspan="5" style="text-align: right;">TOTAL COBRADO EN EFECTIVO HOY:</td>
+                      <td id="tfoot-monto-hoy" style="text-align: right;" class="text-primary font-monospace fs-6">$0.00</td>
+                      <td></td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+
+            <!-- SUBTAB 3: Cortes Históricos (Requerimiento 3) -->
+            <div id="subtab-caja-historico" class="subtab-caja-pane d-none">
+              <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-2 mb-2">
+                <div>
+                  <span class="small fw-bold text-secondary text-uppercase letter-spacing-1">Historial de Cortes de Caja Entregados a Caja General:</span>
+                  <small class="text-muted d-block" style="font-size: 11.5px;">Consulta y reimprime cualquier corte o acta de entrega anterior.</small>
+                </div>
+                <button class="btn btn-outline-secondary btn-sm fw-bold" onclick="cargarCortesHistoricos()">
+                  🔄 Actualizar Historial
+                </button>
+              </div>
+              <div class="table-responsive-movil">
+                <table class="table table-sm table-striped table-hover align-middle m-0" style="font-size: 13px;">
+                  <thead class="table-secondary">
+                    <tr>
+                      <th style="width: 160px;">Folio de Corte</th>
+                      <th style="width: 150px;">Fecha y Hora</th>
+                      <th>Cajero Responsable</th>
+                      <th style="text-align: center; width: 90px;">Folios</th>
+                      <th style="text-align: right; width: 130px;">Total Entregado</th>
+                      <th style="text-align: center; width: 140px;">Cuadre Físico</th>
+                      <th style="text-align: center; width: 150px;">Acción</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tabla-cortes-historicos">
+                    <tr><td colspan="7" class="text-center py-4 text-muted">Cargando cortes históricos...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
           </div>
 
         </div>
@@ -1531,6 +1772,64 @@
     </div>
   </div>
 
+  <!-- MODAL: CONFIRMAR CORTE OFICIAL Y ENTREGA A CAJA GENERAL -->
+  <div class="modal fade d-none" id="modalConfirmarCorteCaja" tabindex="-1" style="background: rgba(11,31,63,0.65); z-index: 2000;">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0 shadow-lg rounded-4">
+        <div class="modal-header bg-success text-white py-3 px-4">
+          <div class="d-flex align-items-center gap-2">
+            <span class="fs-5">🏛️</span>
+            <h5 class="modal-title fw-bold fs-6 m-0 text-white">Acta Oficial de Corte y Entrega a Caja General</h5>
+          </div>
+          <button type="button" class="btn btn-sm btn-link text-white p-0 fs-5 text-decoration-none" onclick="cerrarModalConfirmarCorte()">&times;</button>
+        </div>
+        <div class="modal-body p-4">
+          <div class="alert alert-warning border-warning border-opacity-25 d-flex align-items-start gap-2 py-2 mb-3" style="font-size: 12.5px;">
+            <span>⚠️</span>
+            <div>
+              <strong>Importante:</strong> Al confirmar, los recibos pendientes se marcarán como entregados formalmente a <strong>Caja General</strong> y tu saldo en caja se reiniciará a $0.00. Se emitirá el acta oficial para firma física.
+            </div>
+          </div>
+
+          <div class="p-3 bg-light rounded-3 border mb-3">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <span class="text-muted small">Cajero Responsable:</span>
+              <strong id="modal-corte-cajero-nom" class="text-dark">-</strong>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <span class="text-muted small">Cantidad de Folios a Entregar:</span>
+              <strong id="modal-corte-cant-folios" class="font-monospace text-dark">0</strong>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <span class="text-muted small">Monto Total a Entregar:</span>
+              <strong id="modal-corte-monto-total" class="font-monospace text-success fs-5">$0.00 MXN</strong>
+            </div>
+            <div class="d-flex justify-content-between align-items-center border-top pt-2 mt-2">
+              <span class="text-muted small">Conteo Físico Conciliado:</span>
+              <strong id="modal-corte-conteo-fisico" class="font-monospace text-dark">$0.00 MXN</strong>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mt-1">
+              <span class="text-muted small">Estado de Cuadre:</span>
+              <span id="modal-corte-cuadre-status" class="badge bg-secondary">Sin contar</span>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label small fw-bold text-secondary">Observaciones o Notas de Entrega (Opcional):</label>
+            <textarea id="modal-corte-observaciones" class="form-control" rows="2" placeholder="Ej. Entrega turno vespertino, billetes completos sin diferencias..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer bg-light py-2 px-4">
+          <button type="button" class="btn btn-secondary btn-sm fw-bold px-3" onclick="cerrarModalConfirmarCorte()">Cancelar</button>
+          <button type="button" class="btn btn-success btn-sm fw-bold px-4" onclick="ejecutarCierreDeCajaOficial()">
+            <span id="txtBtnConfirmarCorte">🖨️ Generar Acta y Entregar</span>
+            <span id="spinnerConfirmarCorte" class="spinner-sm d-none"></span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ==============================================================
        JAVASCRIPT DEL CLIENTE
        ============================================================== -->
@@ -1595,9 +1894,55 @@
                       data = { 
                         totalCaja: 1150, 
                         transacciones: [
-                          { folio: "FOL-10921", fecha: new Date().toLocaleString(), alumno: "Álvarez Morales Santiago", evento: "Excursión Six Flags 2026", monto: 850 },
-                          { folio: "FOL-10922", fecha: new Date().toLocaleString(), alumno: "Benítez Gómez Sofía", evento: "Excursión Six Flags 2026", monto: 300 }
+                          { folio: "FOL-10921", fechaCompleta: new Date().toLocaleString(), fecha: new Date().toLocaleString(), hora: "10:15", alumno: "Álvarez Morales Santiago", salon: "1° A", evento: "Excursión a Tolantongo", monto: 850, estatusCorte: "Pendiente" },
+                          { folio: "FOL-10922", fechaCompleta: new Date().toLocaleString(), fecha: new Date().toLocaleString(), hora: "11:30", alumno: "Benítez Gómez Sofía", salon: "2° B", evento: "Excursión a Tolantongo", monto: 300, estatusCorte: "Pendiente" }
+                        ],
+                        resumenHoy: {
+                          totalCobradoHoy: 1150,
+                          totalPendienteHoy: 1150,
+                          totalEntregadoHoy: 0,
+                          conteoCobrosHoy: 2,
+                          fechaHoyTexto: new Date().toLocaleDateString()
+                        },
+                        cobrosDelDia: [
+                          { folio: "FOL-10921", fechaCompleta: new Date().toLocaleString(), hora: "10:15", alumno: "Álvarez Morales Santiago", salon: "1° A", evento: "Excursión a Tolantongo", monto: 850, estatusCorte: "Pendiente" },
+                          { folio: "FOL-10922", fechaCompleta: new Date().toLocaleString(), hora: "11:30", alumno: "Benítez Gómez Sofía", salon: "2° B", evento: "Excursión a Tolantongo", monto: 300, estatusCorte: "Pendiente" }
                         ]
+                      };
+                    } else if (prop === 'obtenerCortesHistoricos') {
+                      data = [
+                        {
+                          idCorte: "CORTE-20261103-143000",
+                          fechaHora: "03/11/2026 14:30:00",
+                          idCajero: "CJ-101",
+                          nombreCajero: "Cajero Principal",
+                          montoTotal: 4400,
+                          totalFolios: 1,
+                          transacciones: [
+                            { folio: "FOL-10850", fecha: "03/11/2026 12:00", alumno: "García Albarrán Diego", salon: "3° C", evento: "Excursión a Tolantongo", monto: 4400 }
+                          ],
+                          desgloseBilletes: { b1000: 4, b200: 2, monedas: 0 },
+                          diferenciaCuadre: 0,
+                          observaciones: "Entrega completa en Caja General",
+                          estatus: "Entregado a Caja General"
+                        }
+                      ];
+                    } else if (prop === 'procesarCierreDeCajaBD') {
+                      data = {
+                        success: true,
+                        message: "Corte de caja oficial generado exitosamente.",
+                        idCorte: "CORTE-" + new Date().getTime(),
+                        fechaHora: new Date().toLocaleString(),
+                        idCajero: "CJ-101",
+                        nombreCajero: "Cajero Principal",
+                        totalCorte: 1150,
+                        totalFolios: 2,
+                        transacciones: [
+                          { folio: "FOL-10921", fecha: new Date().toLocaleString(), alumno: "Álvarez Morales Santiago", salon: "1° A", evento: "Excursión a Tolantongo", monto: 850 },
+                          { folio: "FOL-10922", fecha: new Date().toLocaleString(), alumno: "Benítez Gómez Sofía", salon: "2° B", evento: "Excursión a Tolantongo", monto: 300 }
+                        ],
+                        desgloseBilletes: args[2] || {},
+                        diferenciaCuadre: args[3] || 0
                       };
                     } else if (prop === 'getEstadisticasAdmin') {
                       data = {
@@ -1801,7 +2146,15 @@
     }
 
     function cerrarSesionApp() {
-      if (!confirm("¿Deseas cerrar tu sesión en Eventos Boston?")) return;
+      let totalEnCaja = sesion.ultimoTotalCaja || 0;
+      if (totalEnCaja > 0) {
+        if (!confirm(`⚠️ ALERTA DE CAJA - CUSTODIA DE FONDOS:\n\nTienes $${totalEnCaja.toLocaleString()}.00 en efectivo pendiente por entregar a Caja General.\n\nRecuerda realizar tu corte diario cuando termines tus cobros.\n\n¿Deseas salir del sistema de todos modos?`)) {
+          cambiarApartado('apartado-caja');
+          return;
+        }
+      } else {
+        if (!confirm("¿Deseas cerrar tu sesión en Eventos Boston?")) return;
+      }
       sesion = {};
       localStorage.removeItem('boston_session');
       document.getElementById('pass').value = "";
@@ -3425,86 +3778,580 @@
       forzarImpresionAislada('print-area-concentrado');
     }
 
-    // 5. APARTADO: MI CAJA Y ARQUEO
+    // 5. APARTADO: MI CAJA, ARQUEO Y CORTES HISTÓRICOS
+    function mostrarSubTabCaja(subtab) {
+      document.getElementById('subtab-caja-pendientes').classList.toggle('d-none', subtab !== 'pendientes');
+      document.getElementById('subtab-caja-hoy').classList.toggle('d-none', subtab !== 'hoy');
+      document.getElementById('subtab-caja-historico').classList.toggle('d-none', subtab !== 'historico');
+      
+      document.getElementById('tab-caja-pendientes-btn').classList.toggle('active', subtab === 'pendientes');
+      document.getElementById('tab-caja-hoy-btn').classList.toggle('active', subtab === 'hoy');
+      document.getElementById('tab-caja-historico-btn').classList.toggle('active', subtab === 'historico');
+      
+      if (subtab === 'historico') {
+        cargarCortesHistoricos();
+      }
+    }
+
+    function calcularArqueoFisico() {
+      let b1000 = parseInt(document.getElementById('den-1000').value) || 0;
+      let b500 = parseInt(document.getElementById('den-500').value) || 0;
+      let b200 = parseInt(document.getElementById('den-200').value) || 0;
+      let b100 = parseInt(document.getElementById('den-100').value) || 0;
+      let b50 = parseInt(document.getElementById('den-50').value) || 0;
+      let monedas = parseFloat(document.getElementById('den-monedas').value) || 0;
+
+      let sub1000 = b1000 * 1000;
+      let sub500 = b500 * 500;
+      let sub200 = b200 * 200;
+      let sub100 = b100 * 100;
+      let sub50 = b50 * 50;
+      let subMonedas = monedas;
+
+      document.getElementById('sub-1000').innerText = `$${sub1000.toLocaleString()}`;
+      document.getElementById('sub-500').innerText = `$${sub500.toLocaleString()}`;
+      document.getElementById('sub-200').innerText = `$${sub200.toLocaleString()}`;
+      document.getElementById('sub-100').innerText = `$${sub100.toLocaleString()}`;
+      document.getElementById('sub-50').innerText = `$${sub50.toLocaleString()}`;
+      document.getElementById('sub-monedas').innerText = `$${subMonedas.toLocaleString()}`;
+
+      let totalFisico = sub1000 + sub500 + sub200 + sub100 + sub50 + subMonedas;
+      let totalTeorico = sesion.ultimoTotalCaja || 0;
+
+      document.getElementById('label-efectivo-fisico').innerText = `$${totalFisico.toLocaleString()}.00`;
+      document.getElementById('label-efectivo-teorico').innerText = `$${totalTeorico.toLocaleString()}.00`;
+
+      let badge = document.getElementById('badge-cuadre-caja');
+      let dif = totalFisico - totalTeorico;
+
+      if (totalFisico === 0 && totalTeorico > 0) {
+        badge.className = 'badge bg-secondary p-2 fs-6';
+        badge.innerHTML = `⏳ Pendiente de contar efectivo físico`;
+      } else if (dif === 0) {
+        badge.className = 'badge bg-success p-2 fs-6';
+        badge.innerHTML = `✅ Cuadre Exacto ($0.00 diferencia)`;
+      } else if (dif < 0) {
+        badge.className = 'badge bg-danger p-2 fs-6';
+        badge.innerHTML = `❌ Faltante de Efectivo: -$${Math.abs(dif).toLocaleString()}.00`;
+      } else {
+        badge.className = 'badge bg-warning text-dark p-2 fs-6';
+        badge.innerHTML = `⚠️ Sobrante de Efectivo: +$${dif.toLocaleString()}.00`;
+      }
+
+      return {
+        totalFisico: totalFisico,
+        totalTeorico: totalTeorico,
+        diferencia: dif,
+        desglose: {
+          b1000: b1000,
+          b500: b500,
+          b200: b200,
+          b100: b100,
+          b50: b50,
+          monedas: monedas
+        }
+      };
+    }
+
+    function sugerirDesgloseOptimo() {
+      let monto = sesion.ultimoTotalCaja || 0;
+      if (monto <= 0) return alert("Tu caja está en ceros ($0.00). No hay saldo que sugerir.");
+
+      let resto = monto;
+      let b1000 = Math.floor(resto / 1000); resto %= 1000;
+      let b500 = Math.floor(resto / 500); resto %= 500;
+      let b200 = Math.floor(resto / 200); resto %= 200;
+      let b100 = Math.floor(resto / 100); resto %= 100;
+      let b50 = Math.floor(resto / 50); resto %= 50;
+      let monedas = resto;
+
+      document.getElementById('den-1000').value = b1000;
+      document.getElementById('den-500').value = b500;
+      document.getElementById('den-200').value = b200;
+      document.getElementById('den-100').value = b100;
+      document.getElementById('den-50').value = b50;
+      document.getElementById('den-monedas').value = monedas;
+
+      calcularArqueoFisico();
+    }
+
+    function limpiarDesgloseBilletes() {
+      document.getElementById('den-1000').value = 0;
+      document.getElementById('den-500').value = 0;
+      document.getElementById('den-200').value = 0;
+      document.getElementById('den-100').value = 0;
+      document.getElementById('den-50').value = 0;
+      document.getElementById('den-monedas').value = 0;
+      calcularArqueoFisico();
+    }
+
     function obtenerEfectivoEnCajaActual() {
       if (!sesion.id) return;
       google.script.run.withSuccessHandler(res => {
         let total = res ? res.totalCaja : 0;
-        document.getElementById('badge-efectivo-usuario').innerText = `Mi Caja: $${total}.00`;
-        document.getElementById('arqueo-gran-total').innerText = `$${total}.00 MXN`;
+        sesion.ultimoTotalCaja = total;
+        sesion.datosCajaActual = res || {};
 
-        let tbody = document.getElementById('tabla-desglose-caja');
-        if (res && res.transacciones && res.transacciones.length > 0) {
-          let html = res.transacciones.map(t => `
+        let badgeUsuario = document.getElementById('badge-efectivo-usuario');
+        if (badgeUsuario) badgeUsuario.innerText = `Mi Caja: $${total}.00`;
+        
+        let arqueoGranTotal = document.getElementById('arqueo-gran-total');
+        if (arqueoGranTotal) arqueoGranTotal.innerText = `$${total.toLocaleString()}.00 MXN`;
+
+        // Resumen de hoy
+        let resHoy = (res && res.resumenHoy) ? res.resumenHoy : {};
+        let cobradoHoy = resHoy.totalCobradoHoy || 0;
+        let entregadoHoy = resHoy.totalEntregadoHoy || 0;
+        let cantHoy = resHoy.conteoCobrosHoy || 0;
+
+        let elCobradoHoy = document.getElementById('caja-cobrado-hoy');
+        if (elCobradoHoy) elCobradoHoy.innerText = `$${cobradoHoy.toLocaleString()}.00`;
+        
+        let elEntregadoHoy = document.getElementById('caja-entregado-hoy');
+        if (elEntregadoHoy) elEntregadoHoy.innerText = `$${entregadoHoy.toLocaleString()}.00`;
+
+        let elTransHoy = document.getElementById('caja-transacciones-hoy');
+        if (elTransHoy) elTransHoy.innerText = cantHoy;
+
+        let elSubHoy = document.getElementById('caja-fecha-hoy-sub');
+        if (elSubHoy && resHoy.fechaHoyTexto) elSubHoy.innerText = `Fecha: ${resHoy.fechaHoyTexto} (Solo efectivo)`;
+
+        // 1. Tabla de Pendientes
+        let tbodyPend = document.getElementById('tabla-desglose-caja');
+        let tfootPend = document.getElementById('tfoot-desglose-caja');
+        let badgeCantPend = document.getElementById('badge-cant-pendientes');
+        
+        let trans = (res && res.transacciones) ? res.transacciones : [];
+        if (badgeCantPend) badgeCantPend.innerText = trans.length;
+
+        if (trans.length > 0) {
+          let html = trans.map(t => `
             <tr>
               <td class="font-monospace fw-bold text-danger">${t.folio}</td>
-              <td>${t.fecha}</td>
+              <td>${t.fechaCompleta || t.fecha || 'N/A'}</td>
               <td class="fw-bold">${t.alumno}</td>
+              <td><span class="badge bg-light text-dark border">${t.salon || 'Secundaria'}</span></td>
               <td>${t.evento}</td>
-              <td style="text-align: right;" class="text-success fw-bold">+$${t.monto}.00</td>
+              <td style="text-align: right;" class="text-success fw-bold font-monospace">+$${t.monto.toLocaleString()}.00</td>
             </tr>`).join('');
-          tbody.innerHTML = html;
+          tbodyPend.innerHTML = html;
+          if (tfootPend) {
+            tfootPend.classList.remove('d-none');
+            document.getElementById('tfoot-monto-pendiente').innerText = `$${total.toLocaleString()}.00 MXN`;
+          }
         } else {
-          tbody.innerHTML = `<tr><td colspan="5" class="text-center py-3 text-muted">No hay folios pendientes de arqueo. Caja en ceros.</td></tr>`;
+          tbodyPend.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-muted">No hay folios pendientes de arqueo. Caja en ceros ($0.00).</td></tr>`;
+          if (tfootPend) tfootPend.classList.add('d-none');
         }
+
+        // 2. Tabla de Cobros del Día (Solo dinero en efectivo ingresado)
+        let tbodyHoy = document.getElementById('tabla-cobros-del-dia');
+        let tfootHoy = document.getElementById('tfoot-cobros-del-dia');
+        let badgeCantHoy = document.getElementById('badge-cant-hoy');
+        
+        let cobrosHoy = (res && res.cobrosDelDia) ? res.cobrosDelDia : [];
+        if (badgeCantHoy) badgeCantHoy.innerText = cobrosHoy.length;
+
+        if (cobrosHoy.length > 0) {
+          let sumaDia = 0;
+          let htmlHoy = cobrosHoy.map(c => {
+            sumaDia += c.monto;
+            let esPendiente = (c.estatusCorte === 'Pendiente');
+            let badgeEstatus = esPendiente 
+              ? `<span class="badge bg-warning text-dark">🟡 En Caja (Pendiente)</span>`
+              : `<span class="badge bg-success">🟢 Entregado a Caja General</span>`;
+
+            return `
+              <tr>
+                <td class="font-monospace fw-bold text-primary">${c.folio}</td>
+                <td class="small text-muted">${c.hora || 'N/A'}</td>
+                <td class="fw-bold">${c.alumno}</td>
+                <td><span class="badge bg-light text-dark border">${c.salon || 'Secundaria'}</span></td>
+                <td>${c.evento}</td>
+                <td style="text-align: right;" class="text-primary fw-bold font-monospace">+$${c.monto.toLocaleString()}.00</td>
+                <td style="text-align: center;">${badgeEstatus}</td>
+              </tr>`;
+          }).join('');
+          tbodyHoy.innerHTML = htmlHoy;
+          if (tfootHoy) {
+            tfootHoy.classList.remove('d-none');
+            document.getElementById('tfoot-monto-hoy').innerText = `$${sumaDia.toLocaleString()}.00 MXN`;
+          }
+        } else {
+          tbodyHoy.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-muted">No se han registrado cobros en efectivo el día de hoy.</td></tr>`;
+          if (tfootHoy) tfootHoy.classList.add('d-none');
+        }
+
+        // Actualizar calculadora de arqueo físico
+        calcularArqueoFisico();
+
       }).obtenerEfectivoPendienteCajero(sesion.id);
+
+      // También cargar cortes históricos
+      cargarCortesHistoricos();
     }
 
-    function abrirModalCorteCaja() {
-      if (!confirm("¿Deseas generar el arqueo oficial de caja para entregar el efectivo acumulado?")) return;
+    function cargarCortesHistoricos() {
+      if (!sesion.id) return;
+      let tbodyHist = document.getElementById('tabla-cortes-historicos');
+      if (!tbodyHist) return;
+
+      google.script.run.withSuccessHandler(cortes => {
+        sesion.cortesHistoricos = cortes || [];
+        let badgeCantHist = document.getElementById('badge-cant-historicos');
+        if (badgeCantHist) badgeCantHist.innerText = (cortes ? cortes.length : 0);
+
+        if (cortes && cortes.length > 0) {
+          let html = cortes.map(c => {
+            let badgeCuadre = (c.diferenciaCuadre === 0)
+              ? `<span class="badge bg-success text-white">✅ Cuadrado ($0.00)</span>`
+              : (c.diferenciaCuadre < 0 
+                  ? `<span class="badge bg-danger text-white">Faltante: -$${Math.abs(c.diferenciaCuadre)}</span>`
+                  : `<span class="badge bg-warning text-dark">Sobrante: +$${c.diferenciaCuadre}</span>`);
+
+            return `
+              <tr>
+                <td class="font-monospace fw-bold text-danger">${c.idCorte}</td>
+                <td>${c.fechaHora}</td>
+                <td class="fw-bold">${c.nombreCajero}</td>
+                <td style="text-align: center;"><span class="badge bg-secondary">${c.totalFolios}</span></td>
+                <td style="text-align: right;" class="fw-bold font-monospace text-success">$${c.montoTotal.toLocaleString()}.00</td>
+                <td style="text-align: center;">${badgeCuadre}</td>
+                <td style="text-align: center;">
+                  <button class="btn btn-outline-primary btn-sm py-1 px-2 fw-bold" onclick="reimprimirActaCorteHistorico('${c.idCorte}')" title="Reimprimir o guardar en PDF esta acta de entrega">
+                    🖨️ Reimprimir
+                  </button>
+                </td>
+              </tr>`;
+          }).join('');
+          tbodyHist.innerHTML = html;
+        } else {
+          tbodyHist.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-muted">Aún no hay cortes de caja registrados en el histórico.</td></tr>`;
+        }
+      }).obtenerCortesHistoricos(sesion.id, sesion.rol);
+    }
+
+    function iniciarCorteDeCajaOficial() {
+      let totalTeorico = sesion.ultimoTotalCaja || 0;
+      if (totalTeorico <= 0) {
+        return alert("Tu caja actualmente se encuentra en ceros ($0.00). No hay cobros pendientes de corte.");
+      }
+
+      let arqueo = calcularArqueoFisico();
+      let modalEl = document.getElementById('modalConfirmarCorteCaja');
+      if (!modalEl) return;
+
+      document.getElementById('modal-corte-cajero-nom').innerText = sesion.nombre || sesion.id;
       
+      let trans = (sesion.datosCajaActual && sesion.datosCajaActual.transacciones) ? sesion.datosCajaActual.transacciones : [];
+      document.getElementById('modal-corte-cant-folios').innerText = trans.length;
+      document.getElementById('modal-corte-monto-total').innerText = `$${totalTeorico.toLocaleString()}.00 MXN`;
+      document.getElementById('modal-corte-conteo-fisico').innerText = `$${arqueo.totalFisico.toLocaleString()}.00 MXN`;
+
+      let badgeCuadre = document.getElementById('modal-corte-cuadre-status');
+      if (arqueo.diferencia === 0) {
+        badgeCuadre.className = 'badge bg-success';
+        badgeCuadre.innerText = '✅ Cuadre Exacto ($0.00)';
+      } else if (arqueo.diferencia < 0) {
+        badgeCuadre.className = 'badge bg-danger';
+        badgeCuadre.innerText = `❌ Faltante: -$${Math.abs(arqueo.diferencia)}.00`;
+      } else {
+        badgeCuadre.className = 'badge bg-warning text-dark';
+        badgeCuadre.innerText = `⚠️ Sobrante: +$${arqueo.diferencia}.00`;
+      }
+
+      document.getElementById('modal-corte-observaciones').value = "";
+
+      modalEl.classList.remove('d-none');
+      modalEl.style.display = 'block';
+      modalEl.classList.add('show');
+      document.body.classList.add('modal-open');
+    }
+
+    function cerrarModalConfirmarCorte() {
+      let modalEl = document.getElementById('modalConfirmarCorteCaja');
+      if (modalEl) {
+        modalEl.classList.add('d-none');
+        modalEl.style.display = 'none';
+        modalEl.classList.remove('show');
+        document.body.classList.remove('modal-open');
+      }
+    }
+
+    function ejecutarCierreDeCajaOficial() {
+      let btnTxt = document.getElementById('txtBtnConfirmarCorte');
+      let spnr = document.getElementById('spinnerConfirmarCorte');
+      if (btnTxt) btnTxt.classList.add('d-none');
+      if (spnr) spnr.classList.remove('d-none');
+
+      let arqueo = calcularArqueoFisico();
+      let observaciones = document.getElementById('modal-corte-observaciones').value.trim();
+
       google.script.run.withSuccessHandler(res => {
-        if (!res || res.totalCaja === 0) return alert("Tu caja actualmente se encuentra en ceros ($0.00).");
+        if (btnTxt) btnTxt.classList.remove('d-none');
+        if (spnr) spnr.classList.add('d-none');
+        cerrarModalConfirmarCorte();
 
-        let horaImpresion = new Date().toLocaleString();
-        let tablaFilas = res.transacciones.map(t => `
-          <tr>
-            <td style="font-family:monospace; font-weight:bold;">${t.folio}</td>
-            <td>${t.fecha}</td>
-            <td>${t.alumno}</td>
-            <td>${t.evento}</td>
-            <td style="text-align:right; font-weight:bold;">$${t.monto}.00</td>
-          </tr>`).join('');
+        if (!res || !res.success) {
+          return alert(res ? res.message : "Error al procesar el corte de caja.");
+        }
 
-        let printHtml = `
-          <div style="padding: 15px;">
-            <div class="marco-print-titulo">
-              <h2 style="margin:0; font-size:18px;">COLEGIO BOSTON</h2>
-              <h4 style="margin:2px 0; font-size:14px; font-weight:bold;">RECIBO OFICIAL DE CORTE Y ARQUEO DE CAJA</h4>
-              <p style="margin:2px 0; font-size:12px;"><strong>Cajero Responsable:</strong> ${sesion.nombre} | <strong>Fecha:</strong> ${horaImpresion}</p>
-            </div>
-            <table class="table-print">
-              <thead><tr><th>Folio</th><th>Fecha</th><th>Estudiante</th><th>Concepto</th><th style="text-align:right;">Monto</th></tr></thead>
-              <tbody>
-                ${tablaFilas}
-                <tr style="font-weight:bold; background-color:#eee;">
-                  <td colspan="4" style="text-align:right;">EFECTIVO TOTAL ENTREGADO:</td>
-                  <td style="text-align:right; font-size:14px;">$${res.totalCaja}.00</td>
-                </tr>
-              </tbody>
-            </table>
-            <div style="margin-top: 40px; display: flex; justify-content: space-around; text-align: center;">
-              <div style="width: 200px; border-top: 1px solid #000; padding-top: 5px;">
-                Firma del Cajero<br><small>${sesion.nombre}</small>
-              </div>
-              <div style="width: 200px; border-top: 1px solid #000; padding-top: 5px;">
-                Recibió Conforme<br><small>Dirección / Administración</small>
-              </div>
-            </div>
-          </div>`;
-
+        // Generar formato de acta oficial de corte para impresión / PDF
+        let printHtml = generarHtmlActaCorte(res);
         document.getElementById('print-area-caja').innerHTML = printHtml;
 
         forzarImpresionAislada('print-area-caja', () => {
-          if (confirm("¿El arqueo de caja se imprimió correctamente? Al presionar ACEPTAR tu caja se reiniciará a $0.00.")) {
-            google.script.run.withSuccessHandler(() => {
-              alert("✅ Corte procesado. Caja reiniciada.");
-              obtenerEfectivoEnCajaActual();
-              if (sesion.rol === 'Admin') cargarDashboard();
-            }).procesarCierreDeCajaBD(sesion.id);
-          }
+          alert(`✅ ${res.message}\nFolio de Corte: ${res.idCorte}\nTotal Entregado a Caja General: $${res.totalCorte}.00 MXN`);
+          limpiarDesgloseBilletes();
+          obtenerEfectivoEnCajaActual();
+          if (sesion.rol === 'Admin') cargarDashboard();
         });
-      }).obtenerEfectivoPendienteCajero(sesion.id);
+
+      }).withFailureHandler(err => {
+        if (btnTxt) btnTxt.classList.remove('d-none');
+        if (spnr) spnr.classList.add('d-none');
+        alert("Error en el servidor: " + err.message);
+      }).procesarCierreDeCajaBD(sesion.id, sesion.nombre, arqueo.desglose, arqueo.diferencia, observaciones);
+    }
+
+    function generarHtmlActaCorte(corte) {
+      let transacciones = corte.transacciones || [];
+      let filas = transacciones.map(t => `
+        <tr>
+          <td style="font-family:monospace; font-weight:bold; color:#0b1f3f;">${t.folio}</td>
+          <td>${t.fecha || 'N/A'}</td>
+          <td style="font-weight:600;">${t.alumno}</td>
+          <td>${t.salon || 'Secundaria'}</td>
+          <td>${t.evento}</td>
+          <td style="text-align:right; font-weight:bold; font-family:monospace;">+$${(t.monto || 0).toLocaleString()}.00</td>
+        </tr>`).join('');
+
+      // Desglose de billetes si se ingresó
+      let desgloseHtml = '';
+      if (corte.desgloseBilletes) {
+        let d = corte.desgloseBilletes;
+        let b1000 = d.b1000 || 0;
+        let b500 = d.b500 || 0;
+        let b200 = d.b200 || 0;
+        let b100 = d.b100 || 0;
+        let b50 = d.b50 || 0;
+        let mon = d.monedas || 0;
+        let totalContado = (b1000*1000) + (b500*500) + (b200*200) + (b100*100) + (b50*50) + mon;
+
+        if (totalContado > 0) {
+          desgloseHtml = `
+            <div style="background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px 14px; margin-bottom: 16px; font-size: 11.5px;">
+              <strong style="color: #0b1f3f; display: block; margin-bottom: 6px; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px;">
+                Conciliación Física de Denominaciones:
+              </strong>
+              <table style="width: 100%; border-collapse: collapse; text-align: center;">
+                <tr style="font-weight: bold; background: #e2e8f0;">
+                  <td style="padding: 4px; border: 1px solid #cbd5e1;">$1,000</td>
+                  <td style="padding: 4px; border: 1px solid #cbd5e1;">$500</td>
+                  <td style="padding: 4px; border: 1px solid #cbd5e1;">$200</td>
+                  <td style="padding: 4px; border: 1px solid #cbd5e1;">$100</td>
+                  <td style="padding: 4px; border: 1px solid #cbd5e1;">$50</td>
+                  <td style="padding: 4px; border: 1px solid #cbd5e1;">Monedas</td>
+                  <td style="padding: 4px; border: 1px solid #cbd5e1;">Total Físico</td>
+                </tr>
+                <tr>
+                  <td style="padding: 4px; border: 1px solid #cbd5e1;">${b1000} ($${(b1000*1000).toLocaleString()})</td>
+                  <td style="padding: 4px; border: 1px solid #cbd5e1;">${b500} ($${(b500*500).toLocaleString()})</td>
+                  <td style="padding: 4px; border: 1px solid #cbd5e1;">${b200} ($${(b200*200).toLocaleString()})</td>
+                  <td style="padding: 4px; border: 1px solid #cbd5e1;">${b100} ($${(b100*100).toLocaleString()})</td>
+                  <td style="padding: 4px; border: 1px solid #cbd5e1;">${b50} ($${(b50*50).toLocaleString()})</td>
+                  <td style="padding: 4px; border: 1px solid #cbd5e1;">$${mon.toLocaleString()}</td>
+                  <td style="padding: 4px; border: 1px solid #cbd5e1; font-weight: bold; font-family: monospace;">$${totalContado.toLocaleString()}.00</td>
+                </tr>
+              </table>
+            </div>`;
+        }
+      }
+
+      let totalFinal = corte.totalCorte || corte.montoTotal || 0;
+
+      return `
+        <div style="padding: 20px; font-family: 'Segoe UI', Arial, sans-serif; color: #1e293b; max-width: 820px; margin: 0 auto;">
+          <!-- ENCABEZADO -->
+          <div style="text-align: center; border-bottom: 2.5px solid #0b1f3f; padding-bottom: 10px; margin-bottom: 16px;">
+            <div style="font-size: 12px; font-weight: 800; letter-spacing: 2px; color: #c59b27; text-transform: uppercase;">Colegio Boston • Cuernavaca, Morelos</div>
+            <h2 style="color: #0b1f3f; margin: 4px 0 2px 0; font-size: 19px; font-weight: 800;">ACTA OFICIAL DE CORTE Y ARQUEO DE CAJA</h2>
+            <h4 style="color: #475569; margin: 0; font-size: 13px; font-weight: 600;">ENTREGA FORMAL DE EFECTIVO A CAJA GENERAL</h4>
+          </div>
+
+          <!-- METADATOS -->
+          <table style="width: 100%; font-size: 12px; border-collapse: collapse; margin-bottom: 14px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px;">
+            <tr>
+              <td style="padding: 6px 12px; width: 25%;"><strong>Folio de Corte:</strong></td>
+              <td style="padding: 6px 12px; width: 35%; font-family: monospace; font-weight: bold; color: #c83e2b; font-size: 14px;">${corte.idCorte}</td>
+              <td style="padding: 6px 12px; width: 20%;"><strong>Fecha y Hora:</strong></td>
+              <td style="padding: 6px 12px; width: 20%;">${corte.fechaHora}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 12px;"><strong>Cajero Entrega:</strong></td>
+              <td style="padding: 6px 12px; font-weight: bold;">${corte.nombreCajero}</td>
+              <td style="padding: 6px 12px;"><strong>Destino:</strong></td>
+              <td style="padding: 6px 12px; font-weight: bold; color: #0b1f3f;">Caja General Escolar</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 12px;"><strong>Folios Amparados:</strong></td>
+              <td style="padding: 6px 12px;">${transacciones.length} pagos en efectivo</td>
+              <td style="padding: 6px 12px;"><strong>Estatus:</strong></td>
+              <td style="padding: 6px 12px;"><span style="color: #16a34a; font-weight: bold;">🟢 Entregado Conforme</span></td>
+            </tr>
+          </table>
+
+          ${desgloseHtml}
+
+          <!-- TABLA DE RECIBOS -->
+          <table class="table-print" style="margin-bottom: 16px;">
+            <thead>
+              <tr>
+                <th style="width: 120px;">Folio</th>
+                <th style="width: 130px;">Fecha / Hora</th>
+                <th>Alumno / Participante</th>
+                <th style="width: 90px;">Salón</th>
+                <th>Evento / Concepto</th>
+                <th style="text-align: right; width: 110px;">Monto</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${filas}
+              <tr style="font-weight: bold; background-color: #f1f5f9; font-size: 13px;">
+                <td colspan="5" style="text-align: right;">TOTAL ENTREGADO A CAJA GENERAL:</td>
+                <td style="text-align: right; color: #166534; font-family: monospace; font-size: 15px;">$${totalFinal.toLocaleString()}.00</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <!-- CLÁUSULA INSTITUCIONAL -->
+          <p style="font-size: 10.5px; color: #64748b; text-align: justify; margin: 18px 0 45px 0; line-height: 1.4;">
+            Por medio de la presente acta se formaliza la entrega física y conciliación contable del dinero en efectivo amparado por los folios arriba descritos, los cuales ingresan a la Caja General del Colegio Boston para su debida custodia institucional y depósito bancario correspondiente.
+          </p>
+
+          <!-- DOBLE FIRMA -->
+          <table style="width: 100%; text-align: center; font-size: 11.5px; border-collapse: collapse;">
+            <tr>
+              <td style="width: 45%; vertical-align: top;">
+                <div style="border-top: 1.5px solid #000; width: 85%; margin: 0 auto; padding-top: 6px;">
+                  <strong>ENTREGÓ (Cajero Responsable)</strong><br>
+                  <span>${corte.nombreCajero}</span><br>
+                  <small style="color: #64748b;">Firma de conformidad</small>
+                </div>
+              </td>
+              <td style="width: 10%;"></td>
+              <td style="width: 45%; vertical-align: top;">
+                <div style="border-top: 1.5px solid #000; width: 85%; margin: 0 auto; padding-top: 6px;">
+                  <strong>RECIBIÓ DE CONFORMIDAD</strong><br>
+                  <span>Caja General / Administración Colegio Boston</span><br>
+                  <small style="color: #64748b;">Firma y sello institucional</small>
+                </div>
+              </td>
+            </tr>
+          </table>
+        </div>`;
+    }
+
+    function imprimirCorteDelDia() {
+      let datosCaja = sesion.datosCajaActual || {};
+      let cobrosHoy = datosCaja.cobrosDelDia || [];
+
+      if (cobrosHoy.length === 0) {
+        return alert("No se registraron cobros en efectivo el día de hoy para imprimir.");
+      }
+
+      let resHoy = datosCaja.resumenHoy || {};
+      let fechaHoy = resHoy.fechaHoyTexto || new Date().toLocaleDateString();
+      let horaActual = new Date().toLocaleTimeString();
+
+      let sumaTotal = 0;
+      let filas = cobrosHoy.map(c => {
+        sumaTotal += c.monto;
+        let estadoTexto = (c.estatusCorte === 'Pendiente') ? 'En Caja (Pendiente)' : 'Entregado a Caja General';
+        return `
+          <tr>
+            <td style="font-family:monospace; font-weight:bold; color:#0b1f3f;">${c.folio}</td>
+            <td>${c.hora || 'N/A'}</td>
+            <td style="font-weight:600;">${c.alumno}</td>
+            <td>${c.salon || 'Secundaria'}</td>
+            <td>${c.evento}</td>
+            <td style="text-align:right; font-weight:bold; font-family:monospace;">+$${c.monto.toLocaleString()}.00</td>
+            <td style="text-align:center; font-size:10.5px;">${estadoTexto}</td>
+          </tr>`;
+      }).join('');
+
+      let printHtml = `
+        <div style="padding: 20px; font-family: 'Segoe UI', Arial, sans-serif; color: #1e293b; max-width: 820px; margin: 0 auto;">
+          <!-- ENCABEZADO -->
+          <div style="text-align: center; border-bottom: 2.5px solid #0b1f3f; padding-bottom: 10px; margin-bottom: 16px;">
+            <div style="font-size: 12px; font-weight: 800; letter-spacing: 2px; color: #c59b27; text-transform: uppercase;">Colegio Boston • Cuernavaca, Morelos</div>
+            <h2 style="color: #0b1f3f; margin: 4px 0 2px 0; font-size: 19px; font-weight: 800;">CONTROL DIARIO DE INGRESOS EN EFECTIVO</h2>
+            <h4 style="color: #475569; margin: 0; font-size: 13px; font-weight: 600;">REPORTE DE ALUMNOS CON ABONO REALIZADO</h4>
+          </div>
+
+          <!-- METADATOS -->
+          <table style="width: 100%; font-size: 12px; border-collapse: collapse; margin-bottom: 14px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px;">
+            <tr>
+              <td style="padding: 6px 12px; width: 25%;"><strong>Fecha de Cobro:</strong></td>
+              <td style="padding: 6px 12px; width: 35%; font-weight: bold; color: #0b1f3f;">${fechaHoy}</td>
+              <td style="padding: 6px 12px; width: 20%;"><strong>Hora Emisión:</strong></td>
+              <td style="padding: 6px 12px; width: 20%;">${horaActual}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 12px;"><strong>Cajero Responsable:</strong></td>
+              <td style="padding: 6px 12px; font-weight: bold;">${sesion.nombre || sesion.id}</td>
+              <td style="padding: 6px 12px;"><strong>Total Alumnos:</strong></td>
+              <td style="padding: 6px 12px; font-weight: bold;">${cobrosHoy.length} con pago en efectivo</td>
+            </tr>
+          </table>
+
+          <!-- TABLA DE COBROS -->
+          <table class="table-print" style="margin-bottom: 16px;">
+            <thead>
+              <tr>
+                <th style="width: 120px;">Folio</th>
+                <th style="width: 80px;">Hora</th>
+                <th>Estudiante / Participante</th>
+                <th style="width: 90px;">Salón</th>
+                <th>Evento / Concepto</th>
+                <th style="text-align: right; width: 110px;">Importe</th>
+                <th style="text-align: center; width: 130px;">Estatus</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${filas}
+              <tr style="font-weight: bold; background-color: #f1f5f9; font-size: 13px;">
+                <td colspan="5" style="text-align: right;">TOTAL COBRADO EN EFECTIVO HOY:</td>
+                <td style="text-align: right; color: #166534; font-family: monospace; font-size: 15px;">+$${sumaTotal.toLocaleString()}.00</td>
+                <td></td>
+              </tr>
+            </tbody>
+          </table>
+
+          <!-- FIRMA -->
+          <div style="margin-top: 40px; text-align: center;">
+            <div style="border-top: 1.5px solid #000; width: 300px; margin: 0 auto; padding-top: 6px; font-size: 12px;">
+              <strong>Firma del Cajero Responsable</strong><br>
+              <span>${sesion.nombre || sesion.id}</span>
+            </div>
+          </div>
+        </div>`;
+
+      document.getElementById('print-area-caja').innerHTML = printHtml;
+      forzarImpresionAislada('print-area-caja');
+    }
+
+    function reimprimirActaCorteHistorico(idCorte) {
+      let cortes = sesion.cortesHistoricos || [];
+      let encontrado = cortes.find(c => c.idCorte === idCorte);
+
+      if (!encontrado) {
+        return alert("No se encontró el corte histórico seleccionado.");
+      }
+
+      let printHtml = generarHtmlActaCorte(encontrado);
+      document.getElementById('print-area-caja').innerHTML = printHtml;
+      forzarImpresionAislada('print-area-caja');
     }
 
     // 6. APARTADO: EVENTOS Y COSTOS (ADMIN)

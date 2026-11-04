@@ -40,6 +40,23 @@ function doGet(e) {
         .setMimeType(ContentService.MimeType.JSON);
     }
 
+    // Endpoint de consulta de cortes históricos
+    if (e && e.parameter && e.parameter.action === 'cortes') {
+      var idCajParam = e.parameter.idCajero || "";
+      var rolParam = e.parameter.rol || "Admin";
+      var resCortes = obtenerCortesHistoricos(idCajParam, rolParam);
+      return ContentService.createTextOutput(JSON.stringify(resCortes, null, 2))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // Endpoint de consulta de caja activa y cobros del día
+    if (e && e.parameter && e.parameter.action === 'caja') {
+      var idCajParam2 = e.parameter.idCajero || "USR-001";
+      var resCaja = obtenerEfectivoPendienteCajero(idCajParam2);
+      return ContentService.createTextOutput(JSON.stringify(resCaja, null, 2))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
     // Endpoint de inspección para diagnóstico de la base de datos
     if (e && e.parameter && e.parameter.action === 'inspect') {
       var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -1450,13 +1467,147 @@ function obtenerListaLogistica(idEvento) {
 }
 
 // ============================================================================
-// 5. CORTE Y ARQUEO DE CAJA
+// 5. CORTE Y ARQUEO DE CAJA - ENTREGA A CAJA GENERAL Y CORTES HISTÓRICOS
 // ============================================================================
 
 /**
- * Obtener efectivo pendiente de entrega para el cajero activo
+ * Asegurar existencia y estructura de la hoja Cortes_Caja
+ */
+function asegurarHojaCortesCaja(ss) {
+  var sheet = ss.getSheetByName("Cortes_Caja");
+  if (!sheet) {
+    sheet = ss.insertSheet("Cortes_Caja");
+    var headers = [
+      "ID_Corte", 
+      "Fecha_Hora", 
+      "ID_Cajero", 
+      "Nombre_Cajero", 
+      "Monto_Total", 
+      "Total_Folios", 
+      "Folios_Detalle_JSON", 
+      "Desglose_Billetes_JSON", 
+      "Diferencia_Cuadre", 
+      "Observaciones", 
+      "Estatus"
+    ];
+    sheet.appendRow(headers);
+    sheet.getRange(1, 1, 1, headers.length).setFontWeight("bold").setBackground("#0b1f3f").setFontColor("#ffffff");
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
+}
+
+/**
+ * Obtener efectivo pendiente de entrega para el cajero activo y detalle de cobros del día
+ * Filtra SOLO aquellos registros donde se abonó dinero real en efectivo (excluye cortesías $0 y cancelados).
  */
 function obtenerEfectivoPendienteCajero(idCajero) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var abonosSheet = ss.getSheetByName("Historial_Abonos");
+  var clientesSheet = ss.getSheetByName("Clientes").getDataRange().getValues();
+  var eventosSheet = ss.getSheetByName("Eventos").getDataRange().getValues();
+  var dataAbonos = abonosSheet ? abonosSheet.getDataRange().getValues() : [];
+  
+  var dictAlumnos = {}; 
+  var dictGrados = {};
+  for (var i = 1; i < clientesSheet.length; i++) {
+    var idAl = clientesSheet[i][0] ? clientesSheet[i][0].toString().trim() : "";
+    var nomAl = clientesSheet[i][1] ? clientesSheet[i][1].toString().trim() : "";
+    var grAl = clientesSheet[i][3] !== undefined ? clientesSheet[i][3].toString().trim() : "";
+    var gpAl = clientesSheet[i][4] !== undefined ? clientesSheet[i][4].toString().trim() : "";
+    dictAlumnos[idAl] = nomAl;
+    dictGrados[idAl] = (grAl && gpAl) ? (grAl + "° " + gpAl) : (grAl || gpAl || "Invitado");
+  }
+  
+  var dictEventos = {}; 
+  for (var k = 1; k < eventosSheet.length; k++) {
+    dictEventos[eventosSheet[k][0]] = eventosSheet[k][1];
+  }
+  
+  var hoyStr = Utilities.formatDate(new Date(), "GMT-6", "yyyy-MM-dd");
+  
+  var desglosePendiente = [];
+  var cobrosDelDia = [];
+  var totalPendiente = 0;
+  var totalCobradoHoy = 0;
+  var totalEntregadoHoy = 0;
+  var conteoCobrosHoy = 0;
+  
+  for (var j = 1; j < dataAbonos.length; j++) {
+    if (dataAbonos[j][5] == idCajero) {
+      var montoTexto = dataAbonos[j][3] ? dataAbonos[j][3].toString() : "";
+      if (montoTexto.includes("CANCELADO") || montoTexto.toUpperCase().includes("CORTES")) continue;
+      
+      var montoVal = parseFloat(montoTexto) || 0;
+      if (montoVal <= 0) continue; // Solo quienes efectivamente abonaron dinero
+      
+      var estatusCorte = dataAbonos[j][6] ? dataAbonos[j][6].toString().trim() : "Pendiente";
+      var rawFecha = dataAbonos[j][4];
+      var fechaObj = rawFecha ? new Date(rawFecha) : new Date();
+      var fechaItemStr = "";
+      var horaItemStr = "";
+      try {
+        fechaItemStr = Utilities.formatDate(fechaObj, "GMT-6", "yyyy-MM-dd");
+        horaItemStr = Utilities.formatDate(fechaObj, "GMT-6", "HH:mm");
+      } catch(eF) {
+        fechaItemStr = "";
+        horaItemStr = "";
+      }
+      
+      var itemCobro = {
+        folio: dataAbonos[j][0],
+        evento: dictEventos[dataAbonos[j][1]] || dataAbonos[j][1],
+        idAlumno: dataAbonos[j][2],
+        alumno: dictAlumnos[dataAbonos[j][2]] || "ID: " + dataAbonos[j][2],
+        salon: dictGrados[dataAbonos[j][2]] || "Secundaria",
+        monto: montoVal,
+        fechaCompleta: fechaObj.toLocaleString(),
+        hora: horaItemStr || "N/A",
+        estatusCorte: estatusCorte
+      };
+      
+      // 1. Si está pendiente de corte, entra al gran total en caja activa
+      if (estatusCorte === "Pendiente") {
+        totalPendiente += montoVal;
+        desglosePendiente.push(itemCobro);
+      }
+      
+      // 2. Si fue realizado hoy
+      if (fechaItemStr === hoyStr) {
+        totalCobradoHoy += montoVal;
+        conteoCobrosHoy++;
+        if (estatusCorte !== "Pendiente") {
+          totalEntregadoHoy += montoVal;
+        }
+        cobrosDelDia.push(itemCobro);
+      }
+    }
+  }
+  
+  // Ordenar cobros del día por fecha más reciente
+  cobrosDelDia.sort(function(a, b) {
+    return new Date(b.fechaCompleta) - new Date(a.fechaCompleta);
+  });
+  
+  return {
+    totalCaja: totalPendiente,
+    transacciones: desglosePendiente,
+    resumenHoy: {
+      totalCobradoHoy: totalCobradoHoy,
+      totalPendienteHoy: totalPendiente,
+      totalEntregadoHoy: totalEntregadoHoy,
+      conteoCobrosHoy: conteoCobrosHoy,
+      fechaHoyTexto: Utilities.formatDate(new Date(), "GMT-6", "dd/MM/yyyy")
+    },
+    cobrosDelDia: cobrosDelDia
+  };
+}
+
+/**
+ * Procesar el cierre oficial de caja, generar el folio de corte, registrar en Cortes_Caja
+ * y marcar los folios como Entregado a Caja General.
+ */
+function procesarCierreDeCajaBD(idCajero, nombreCajero, desgloseBilletes, diferenciaCuadre, observaciones) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var abonosSheet = ss.getSheetByName("Historial_Abonos");
   var clientesSheet = ss.getSheetByName("Clientes").getDataRange().getValues();
@@ -1464,56 +1615,130 @@ function obtenerEfectivoPendienteCajero(idCajero) {
   var dataAbonos = abonosSheet.getDataRange().getValues();
   
   var dictAlumnos = {}; 
-  for (var i = 1; i < clientesSheet.length; i++) dictAlumnos[clientesSheet[i][0]] = clientesSheet[i][1];
+  var dictGrados = {};
+  for (var i = 1; i < clientesSheet.length; i++) {
+    dictAlumnos[clientesSheet[i][0]] = clientesSheet[i][1];
+    dictGrados[clientesSheet[i][0]] = (clientesSheet[i][3] && clientesSheet[i][4]) ? (clientesSheet[i][3] + "° " + clientesSheet[i][4]) : "";
+  }
   var dictEventos = {}; 
   for (var k = 1; k < eventosSheet.length; k++) dictEventos[eventosSheet[k][0]] = eventosSheet[k][1];
   
-  var desglose = [];
-  var granTotal = 0;
+  var ahora = new Date();
+  var timestamp = Utilities.formatDate(ahora, "GMT-6", "yyyyMMdd-HHmmss");
+  var idCorte = "CORTE-" + timestamp;
+  
+  var foliosDetalle = [];
+  var totalCorte = 0;
+  var filasAModificar = [];
   
   for (var j = 1; j < dataAbonos.length; j++) {
     if (dataAbonos[j][5] == idCajero) {
-      var montoTexto = dataAbonos[j][3].toString();
-      if (montoTexto.includes("CANCELADO")) continue;
+      var montoTexto = dataAbonos[j][3] ? dataAbonos[j][3].toString() : "";
+      if (montoTexto.includes("CANCELADO") || montoTexto.toUpperCase().includes("CORTES")) continue;
       
-      var estatusCorte = dataAbonos[j][6] ? dataAbonos[j][6].toString().trim() : "Pendiente";
-      if (estatusCorte === "Entregado" || estatusCorte.includes("N/A")) continue;
-      
-      var montoVal = parseFloat(montoTexto) || 0;
-      granTotal += montoVal;
-      
-      desglose.push({
-        folio: dataAbonos[j][0], 
-        evento: dictEventos[dataAbonos[j][1]] || dataAbonos[j][1],
-        alumno: dictAlumnos[dataAbonos[j][2]] || "ID: " + dataAbonos[j][2], 
-        monto: montoVal,
-        fecha: dataAbonos[j][4] ? new Date(dataAbonos[j][4]).toLocaleString() : "N/A"
-      });
-    }
-  }
-  return { totalCaja: granTotal, transacciones: desglose };
-}
-
-/**
- * Procesar el cierre de caja y marcar folios como 'Entregado'
- */
-function procesarCierreDeCajaBD(idCajero) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var abonosSheet = ss.getSheetByName("Historial_Abonos");
-  var dataAbonos = abonosSheet.getDataRange().getValues();
-  var contador = 0;
-  
-  for (var j = 1; j < dataAbonos.length; j++) {
-    if (dataAbonos[j][5] == idCajero) {
-      if (dataAbonos[j][3].toString().includes("CANCELADO")) continue;
       var estatusCorte = dataAbonos[j][6] ? dataAbonos[j][6].toString().trim() : "Pendiente";
       if (estatusCorte === "Pendiente") {
-        abonosSheet.getRange(j + 1, 7).setValue("Entregado");
-        contador++;
+        var montoVal = parseFloat(montoTexto) || 0;
+        if (montoVal > 0) {
+          totalCorte += montoVal;
+          foliosDetalle.push({
+            folio: dataAbonos[j][0],
+            evento: dictEventos[dataAbonos[j][1]] || dataAbonos[j][1],
+            idAlumno: dataAbonos[j][2],
+            alumno: dictAlumnos[dataAbonos[j][2]] || "ID: " + dataAbonos[j][2],
+            salon: dictGrados[dataAbonos[j][2]] || "Secundaria",
+            monto: montoVal,
+            fecha: dataAbonos[j][4] ? new Date(dataAbonos[j][4]).toLocaleString() : "N/A"
+          });
+          filasAModificar.push(j + 1);
+        }
       }
     }
   }
-  return { success: true, modificados: contador };
+  
+  if (foliosDetalle.length === 0 || totalCorte === 0) {
+    return { success: false, message: "No hay efectivo pendiente por entregar en este momento ($0.00)." };
+  }
+  
+  // Marcar folios en Historial_Abonos
+  for (var m = 0; m < filasAModificar.length; m++) {
+    abonosSheet.getRange(filasAModificar[m], 7).setValue("Entregado (" + idCorte + ")");
+  }
+  
+  // Registrar en hoja Cortes_Caja
+  var cortesSheet = asegurarHojaCortesCaja(ss);
+  var fechaHoraStr = Utilities.formatDate(ahora, "GMT-6", "dd/MM/yyyy HH:mm:ss");
+  
+  cortesSheet.appendRow([
+    idCorte,
+    fechaHoraStr,
+    idCajero,
+    nombreCajero || "Cajero " + idCajero,
+    totalCorte,
+    foliosDetalle.length,
+    JSON.stringify(foliosDetalle),
+    JSON.stringify(desgloseBilletes || {}),
+    diferenciaCuadre || 0,
+    observaciones || "Entrega de cobros diarios a Caja General",
+    "Entregado a Caja General"
+  ]);
+  
+  return {
+    success: true,
+    message: "Corte de caja oficial generado exitosamente.",
+    idCorte: idCorte,
+    fechaHora: fechaHoraStr,
+    idCajero: idCajero,
+    nombreCajero: nombreCajero,
+    totalCorte: totalCorte,
+    totalFolios: foliosDetalle.length,
+    transacciones: foliosDetalle,
+    desgloseBilletes: desgloseBilletes || {},
+    diferenciaCuadre: diferenciaCuadre || 0
+  };
+}
+
+/**
+ * Obtener historial de cortes de caja entregados
+ */
+function obtenerCortesHistoricos(idCajero, rol) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var cortesSheet = ss.getSheetByName("Cortes_Caja");
+  if (!cortesSheet || cortesSheet.getLastRow() <= 1) {
+    return [];
+  }
+  
+  var data = cortesSheet.getDataRange().getValues();
+  var resultado = [];
+  
+  for (var i = 1; i < data.length; i++) {
+    var cajeroRow = data[i][2] ? data[i][2].toString().trim() : "";
+    if (rol === 'Admin' || cajeroRow === idCajero) {
+      var foliosParsed = [];
+      try { foliosParsed = JSON.parse(data[i][6]); } catch(e) { foliosParsed = []; }
+      
+      var desgloseParsed = {};
+      try { desgloseParsed = JSON.parse(data[i][7]); } catch(e) { desgloseParsed = {}; }
+      
+      resultado.push({
+        idCorte: data[i][0],
+        fechaHora: data[i][1],
+        idCajero: data[i][2],
+        nombreCajero: data[i][3],
+        montoTotal: parseFloat(data[i][4]) || 0,
+        totalFolios: parseInt(data[i][5]) || 0,
+        transacciones: foliosParsed,
+        desgloseBilletes: desgloseParsed,
+        diferenciaCuadre: parseFloat(data[i][8]) || 0,
+        observaciones: data[i][9],
+        estatus: data[i][10] || "Entregado a Caja General"
+      });
+    }
+  }
+  
+  // Ordenar más recientes primero
+  resultado.reverse();
+  return resultado;
 }
 
 // ============================================================================
