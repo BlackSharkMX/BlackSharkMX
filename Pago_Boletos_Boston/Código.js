@@ -190,6 +190,16 @@ function doGet(e) {
         .setMimeType(ContentService.MimeType.JSON);
     }
 
+    // Endpoint para probar getTodosEventosActivos y getEventosCajero
+    if (e && e.parameter && e.parameter.action === 'eventos') {
+      var idCajTest = e.parameter.idCajero || "USR-002";
+      var rolTest = e.parameter.rol || "Cajero";
+      var todos = getTodosEventosActivos();
+      var cajero = getEventosCajero(idCajTest, rolTest);
+      return ContentService.createTextOutput(JSON.stringify({ todos: todos, cajero: cajero }, null, 2))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
     return HtmlService.createTemplateFromFile('Index')
       .evaluate()
       .setTitle('Eventos Boston | Pagos, Abonos y Cooperaciones')
@@ -446,10 +456,18 @@ function getTodosEventosActivos() {
     var estado = data[i][6] ? data[i][6].toString().trim() : "Activo";
     if (estado === "Activo") {
       var cupoVal = (data[i][5] === "" || data[i][5] === null || isNaN(parseInt(data[i][5]))) ? 0 : parseInt(data[i][5]);
+      var fechaStr = "";
+      if (data[i][2]) {
+        try {
+          fechaStr = (data[i][2] instanceof Date) ? Utilities.formatDate(data[i][2], "GMT-6", "yyyy-MM-dd") : data[i][2].toString();
+        } catch(e) {
+          fechaStr = data[i][2].toString();
+        }
+      }
       eventos.push({ 
-        id: data[i][0], 
-        nombre: data[i][1], 
-        fecha: data[i][2],
+        id: data[i][0] ? data[i][0].toString() : "", 
+        nombre: data[i][1] ? data[i][1].toString() : "", 
+        fecha: fechaStr,
         alcance: data[i][3] ? data[i][3].toString() : "Todos",
         costo: parseFloat(data[i][4]) || 0, 
         cupo: Math.max(cupoVal, 0),
@@ -472,10 +490,18 @@ function getTodosEventosAdmin() {
   for (var i = 1; i < data.length; i++) {
     if (data[i][0]) {
       var cupoVal = (data[i][5] === "" || data[i][5] === null || isNaN(parseInt(data[i][5]))) ? 0 : parseInt(data[i][5]);
+      var fechaStr = "";
+      if (data[i][2]) {
+        try {
+          fechaStr = (data[i][2] instanceof Date) ? Utilities.formatDate(data[i][2], "GMT-6", "yyyy-MM-dd") : data[i][2].toString();
+        } catch(e) {
+          fechaStr = data[i][2].toString();
+        }
+      }
       eventos.push({ 
-        id: data[i][0], 
-        nombre: data[i][1], 
-        fecha: data[i][2],
+        id: data[i][0] ? data[i][0].toString() : "", 
+        nombre: data[i][1] ? data[i][1].toString() : "", 
+        fecha: fechaStr,
         alcance: data[i][3] ? data[i][3].toString() : "Todos",
         costo: parseFloat(data[i][4]) || 0, 
         cupo: Math.max(cupoVal, 0),
@@ -487,52 +513,10 @@ function getTodosEventosAdmin() {
 }
 
 /**
- * Obtener eventos asignados al cajero (o todos si es Admin o evento general)
+ * Obtener eventos asignados al cajero (en Colegio Boston todos los eventos activos están abiertos para cobro de todos los cajeros)
  */
 function getEventosCajero(idCajero, rol) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheetEventos = ss.getSheetByName("Eventos");
-  var sheetAsig = ss.getSheetByName("Asignaciones");
-  
-  if (!sheetEventos) return [];
-  var eventos = sheetEventos.getDataRange().getValues();
-  var asignaciones = sheetAsig ? sheetAsig.getDataRange().getValues() : [];
-  
-  var listaEventos = [];
-  for (var i = 1; i < eventos.length; i++) {
-    var estado = eventos[i][6] ? eventos[i][6].toString().trim() : "Activo";
-    if (estado === "Activo") {
-      var cupoVal = (eventos[i][5] === "" || eventos[i][5] === null || isNaN(parseInt(eventos[i][5]))) ? 0 : parseInt(eventos[i][5]);
-      var evObj = { 
-        id: eventos[i][0], 
-        nombre: eventos[i][1], 
-        alcance: eventos[i][3] ? eventos[i][3].toString() : "Todos",
-        costo: parseFloat(eventos[i][4]) || 0,
-        cupo: Math.max(cupoVal, 0),
-        estado: "Activo"
-      };
-
-      if (rol === "Admin") {
-        listaEventos.push(evObj);
-      } else {
-        // En Colegio Boston, si un evento no tiene restricciones o está asignado al cajero o a "TODOS":
-        var asignacionesDelEvento = [];
-        for (var j = 1; j < asignaciones.length; j++) {
-          if (asignaciones[j][1] == eventos[i][0]) {
-            asignacionesDelEvento.push(asignaciones[j][2] ? asignaciones[j][2].toString() : "");
-          }
-        }
-
-        // Si no tiene asignación en la tabla, es general y está abierto para todos los cajeros
-        if (asignacionesDelEvento.length === 0) {
-          listaEventos.push(evObj);
-        } else if (asignacionesDelEvento.indexOf(idCajero) !== -1 || asignacionesDelEvento.indexOf("TODOS") !== -1) {
-          listaEventos.push(evObj);
-        }
-      }
-    }
-  }
-  return listaEventos;
+  return getTodosEventosActivos();
 }
 
 /**
@@ -1629,15 +1613,33 @@ function obtenerLogisticaGrupo(idEvento, grado, grupo) {
     'S3B-17': { permiso_firmado: true },
     'S3B-18': { permiso_firmado: true }
   };
+
+  var mapAsientosDefectoLogistica = {
+    'S3A-01': '15', 'S3A-02': '13', 'S3A-03': '08', 'S3A-04': '14', 'S3A-05': '11',
+    'S3A-13': '36', 'S3A-14': '37', 'S3A-15': '', 'S3A-18': '30', 'S3A-19': '27', 'S3A-20': '18',
+    'S3B-01': '05', 'S3B-03': '10', 'S3B-04': '12', 'S3B-08': '06', 'S3B-09': '02',
+    'S3B-10': '19', 'S3B-11': '35', 'S3B-17': '04', 'S3B-18': '20', 'S3B-19': '34', 'S3B-22': '07',
+    'S3C-01': '34', 'S3C-02': '03', 'S3C-03': '01', 'S3C-09': '28', 'S3C-11': '16',
+    'S3C-12': '20', 'S3C-13': '27', 'S3C-14': '09', 'S3C-16': '33', 'S3C-17': '29', 'S3C-19': '25',
+    'S3C-20': '17', 'S3C-21': '31', 'S3C-22': '23'
+  };
   
   for (var k = 1; k < inscData.length; k++) {
     if (inscData[k][1] == idEvento && inscData[k][2]) {
       var idAlInsc = inscData[k][2].toString().trim();
       var cInsc = parseFloat(inscData[k][3]);
-      if (cInsc > 0) costosPersonalizados[idAlInsc] = cInsc;
+      if (idAlInsc === 'S3B-08' || idAlInsc === 'S3B-17') {
+        costosPersonalizados[idAlInsc] = 2400; // Alumnos con precio especial / cortesía autorizada
+      } else if (cInsc > 0) {
+        costosPersonalizados[idAlInsc] = cInsc;
+      }
       
       var asInsc = (inscData[k][6] !== undefined && inscData[k][6] !== null) ? inscData[k][6].toString().trim() : "";
-      if (asInsc) asientosPorAlumno[idAlInsc] = asInsc;
+      if (asInsc) {
+        asientosPorAlumno[idAlInsc] = asInsc;
+      } else if (mapAsientosDefectoLogistica[idAlInsc]) {
+        asientosPorAlumno[idAlInsc] = mapAsientosDefectoLogistica[idAlInsc];
+      }
       
       var rawChecklist = inscData[k][7];
       if (rawChecklist) {
@@ -2377,11 +2379,11 @@ function obtenerMetricasRecaudacion(idEvento) {
 
   var mapAsientosDefecto = {
     'S3A-01': '15', 'S3A-02': '13', 'S3A-03': '08', 'S3A-04': '14', 'S3A-05': '11',
-    'S3A-14': '37', 'S3A-15': '', 'S3A-18': '30', 'S3A-19': '27', 'S3A-20': '18',
+    'S3A-13': '36', 'S3A-14': '37', 'S3A-15': '', 'S3A-18': '30', 'S3A-19': '27', 'S3A-20': '18',
     'S3B-01': '05', 'S3B-03': '10', 'S3B-04': '12', 'S3B-08': '06', 'S3B-09': '02',
-    'S3B-10': '19', 'S3B-17': '04', 'S3B-18': '20', 'S3B-19': '34', 'S3B-22': '07',
+    'S3B-10': '19', 'S3B-11': '35', 'S3B-17': '04', 'S3B-18': '20', 'S3B-19': '34', 'S3B-22': '07',
     'S3C-01': '34', 'S3C-02': '03', 'S3C-03': '01', 'S3C-09': '28', 'S3C-11': '16',
-    'S3C-12': '20', 'S3C-13': '27', 'S3C-14': '09', 'S3C-16': '33', 'S3C-19': '25',
+    'S3C-12': '20', 'S3C-13': '27', 'S3C-14': '09', 'S3C-16': '33', 'S3C-17': '29', 'S3C-19': '25',
     'S3C-20': '17', 'S3C-21': '31', 'S3C-22': '23'
   };
 
@@ -2390,7 +2392,11 @@ function obtenerMetricasRecaudacion(idEvento) {
     if (inscData[k][1] == idEvento && inscData[k][2]) {
       var idAlInsc = inscData[k][2].toString().trim();
       var cInsc = parseFloat(inscData[k][3]);
-      if (cInsc > 0) costosPersonalizados[idAlInsc] = cInsc;
+      if (idAlInsc === 'S3B-08' || idAlInsc === 'S3B-17') {
+        costosPersonalizados[idAlInsc] = 2400; // Descuento autorizado hijo de maestro / cortesía
+      } else if (cInsc > 0) {
+        costosPersonalizados[idAlInsc] = cInsc;
+      }
       
       var asInsc = (inscData[k][6] !== undefined && inscData[k][6] !== null && inscData[k][6] !== "") ? inscData[k][6].toString().trim() : "";
       if (asInsc) {
@@ -3076,6 +3082,7 @@ function ejecutarCargaMasivaTolantongo() {
     { idCliente: 'S3A-03', nombreCliente: 'Aguirre Sedano Mariana', grado: '3', grupo: 'A', abonos: [2400, 2000], asiento: '08', autorizacion: false },
     { idCliente: 'S3A-04', nombreCliente: 'Betancourt Manrique Matías', grado: '3', grupo: 'A', abonos: [2200], asiento: '14', autorizacion: false },
     { idCliente: 'S3A-05', nombreCliente: 'Corro García Danna Adriel', grado: '3', grupo: 'A', abonos: [2400], asiento: '11', autorizacion: false },
+    { idCliente: 'S3A-13', nombreCliente: 'Ramirez Ruiz Patricio Alexander', grado: '3', grupo: 'A', abonos: [], asiento: '36', autorizacion: false },
     { idCliente: 'S3A-14', nombreCliente: 'Reyes Medina Sofía', grado: '3', grupo: 'A', abonos: [2400], asiento: '37', autorizacion: false },
     { idCliente: 'S3A-15', nombreCliente: 'Román Roldán María Fernanda', grado: '3', grupo: 'A', abonos: [2500], asiento: '', autorizacion: false },
     { idCliente: 'S3A-18', nombreCliente: 'Soto Alcaraz Emiliano', grado: '3', grupo: 'A', abonos: [2000], asiento: '30', autorizacion: false },
@@ -3086,10 +3093,11 @@ function ejecutarCargaMasivaTolantongo() {
     { idCliente: 'S3B-01', nombreCliente: 'Amable Nájera Esteban', grado: '3', grupo: 'B', abonos: [2400, 2000], asiento: '05', autorizacion: false },
     { idCliente: 'S3B-03', nombreCliente: 'Arillo García Constanza Giselle', grado: '3', grupo: 'B', abonos: [3000], asiento: '10', autorizacion: false },
     { idCliente: 'S3B-04', nombreCliente: 'Aznar Velázquez Joshua', grado: '3', grupo: 'B', abonos: [2000], asiento: '12', autorizacion: false },
-    { idCliente: 'S3B-08', nombreCliente: 'Cortés Sotelo Maximiliano', grado: '3', grupo: 'B', abonos: [2400], asiento: '06', autorizacion: true },
+    { idCliente: 'S3B-08', nombreCliente: 'Cortés Sotelo Maximiliano', grado: '3', grupo: 'B', abonos: [2400], asiento: '06', costoTotal: 2400, esPrecioEspecial: true, autorizacion: true },
     { idCliente: 'S3B-09', nombreCliente: 'Cuata Moreno Leah', grado: '3', grupo: 'B', abonos: [2500, 1900], asiento: '02', autorizacion: true },
     { idCliente: 'S3B-10', nombreCliente: 'Delgado Álvarez Alejandra', grado: '3', grupo: 'B', abonos: [2400], asiento: '19', autorizacion: false },
-    { idCliente: 'S3B-17', nombreCliente: 'Malo Estrella Fernanda Isabella', grado: '3', grupo: 'B', abonos: [1000, 1400], asiento: '04', costoTotal: 2400, esPrecioEspecial: true, autorizacion: false },
+    { idCliente: 'S3B-11', nombreCliente: 'Escobedo Gamero Emilio Gael', grado: '3', grupo: 'B', abonos: [], asiento: '35', autorizacion: false },
+    { idCliente: 'S3B-17', nombreCliente: 'Malo Estrella Fernanda Isabella', grado: '3', grupo: 'B', abonos: [1000, 1400], asiento: '04', costoTotal: 2400, esPrecioEspecial: true, autorizacion: true },
     { idCliente: 'S3B-18', nombreCliente: 'Martínez Nava Leonardo', grado: '3', grupo: 'B', abonos: [2200], asiento: '20', autorizacion: true },
     { idCliente: 'S3B-19', nombreCliente: 'Padilla Hernández Estefanía', grado: '3', grupo: 'B', abonos: [2000], asiento: '34', autorizacion: false },
     { idCliente: 'S3B-22', nombreCliente: 'Villegas Estrada Karla', grado: '3', grupo: 'B', abonos: [2400], asiento: '07', autorizacion: false },
@@ -3104,6 +3112,7 @@ function ejecutarCargaMasivaTolantongo() {
     { idCliente: 'S3C-13', nombreCliente: 'González Luna Valeria', grado: '3', grupo: 'C', abonos: [2200], asiento: '27', autorizacion: false },
     { idCliente: 'S3C-14', nombreCliente: 'Hernández Narváez Lisandra', grado: '3', grupo: 'C', abonos: [2400], asiento: '09', autorizacion: false },
     { idCliente: 'S3C-16', nombreCliente: 'Martínez Montaño Paola', grado: '3', grupo: 'C', abonos: [2400], asiento: '33', autorizacion: false },
+    { idCliente: 'S3C-17', nombreCliente: 'Méndez Batalla Héctor', grado: '3', grupo: 'C', abonos: [2400], asiento: '29', autorizacion: false },
     { idCliente: 'S3C-19', nombreCliente: 'Ocampo Abarca Zara Lilian', grado: '3', grupo: 'C', abonos: [1000], asiento: '25', autorizacion: false },
     { idCliente: 'S3C-20', nombreCliente: 'Pardavé Gómez Diego', grado: '3', grupo: 'C', abonos: [2400], asiento: '17', autorizacion: false },
     { idCliente: 'S3C-21', nombreCliente: 'Taylor Verdeja Hilda Renata', grado: '3', grupo: 'C', abonos: [1500], asiento: '31', autorizacion: false },
@@ -3134,39 +3143,35 @@ function ejecutarCargaMasivaTolantongo() {
       }
     }
 
-    for (var b = 0; b < abonosArr.length; b++) {
-      var monto = parseFloat(abonosArr[b]) || 0;
-      if (monto <= 0) continue;
-
-      acumulado += monto;
-      totalRecaudadoLote += monto;
+    var yaAbonadoTotalEsperado = abonosArr.reduce(function(acc, val) { return acc + (parseFloat(val) || 0); }, 0);
+    if (acumulado < yaAbonadoTotalEsperado) {
+      var montoFaltante = yaAbonadoTotalEsperado - acumulado;
       contadorFolio++;
-
       var rand = Math.floor(100 + Math.random() * 900);
       var folio = (esEsp ? "DESC-" : "FOLIO-") + contadorFolio + "-" + rand;
-
       filasAbonosNuevos.push([
         folio,
         idEvento,
         idAl,
-        monto,
+        montoFaltante,
         fechaHora,
         idCajero,
         estatusCorteBD
       ]);
-
       abonosExistentes.push([
         folio,
         idEvento,
         idAl,
-        monto,
+        montoFaltante,
         fechaHora,
         idCajero,
         estatusCorteBD
       ]);
+      acumulado += montoFaltante;
+      totalRecaudadoLote += montoFaltante;
     }
 
-    var estatusFinal = (acumulado >= costoEventoAlumno) ? "Total" : "Parcial";
+    var estatusFinal = (acumulado >= costoEventoAlumno) ? "Total" : (acumulado > 0 ? "Parcial" : "Sin Abono");
 
     // Actualizar o insertar en Inscripciones
     var filaInsc = -1;
@@ -3177,14 +3182,17 @@ function ejecutarCargaMasivaTolantongo() {
       }
     }
 
+    var checkObj = p.autorizacion ? { permiso_firmado: true } : {};
     if (filaInsc !== -1) {
       inscripcionesSheet.getRange(filaInsc, 4).setValue(costoEventoAlumno);
       inscripcionesSheet.getRange(filaInsc, 5).setValue(acumulado);
       inscripcionesSheet.getRange(filaInsc, 6).setValue(estatusFinal);
+      if (p.asiento) inscripcionesSheet.getRange(filaInsc, 7).setValue(p.asiento);
+      if (p.autorizacion) inscripcionesSheet.getRange(filaInsc, 8).setValue(JSON.stringify(checkObj));
     } else {
       var idInsc = "INS-" + (2000 + i);
-      inscripcionesSheet.appendRow([idInsc, idEvento, idAl, costoEventoAlumno, acumulado, estatusFinal]);
-      inscripcionesExistentes.push([idInsc, idEvento, idAl, costoEventoAlumno, acumulado, estatusFinal]);
+      inscripcionesSheet.appendRow([idInsc, idEvento, idAl, costoEventoAlumno, acumulado, estatusFinal, p.asiento || "", JSON.stringify(checkObj), ""]);
+      inscripcionesExistentes.push([idInsc, idEvento, idAl, costoEventoAlumno, acumulado, estatusFinal, p.asiento || "", JSON.stringify(checkObj), ""]);
     }
 
     resumenAlumnos.push({

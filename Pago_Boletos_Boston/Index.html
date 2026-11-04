@@ -1030,8 +1030,8 @@
           <div class="row g-2 mb-3">
             <div class="col-12 col-md-4">
               <label class="form-label small fw-bold text-secondary">1. Evento Escolar</label>
-              <select id="sel-evento" class="form-select" onchange="actualizarCosto()">
-                <option value="">Cargando eventos activos...</option>
+              <select id="sel-evento" class="form-select fw-bold" onchange="actualizarCosto()">
+                <option value="EV-730628" selected>Excursión a Tolantongo ($4,400.00)</option>
               </select>
               <div id="badge-evento-alcance-info" class="mt-1" style="min-height: 20px;"></div>
             </div>
@@ -1087,19 +1087,19 @@
 
               <!-- Tarjeta de Saldo en Vivo -->
               <div id="balance-box" class="p-3 bg-light border rounded-3 d-none">
+                <div class="d-flex justify-content-between mb-1 small">
+                  <span class="text-secondary fw-bold">Total Abonado:</span>
+                  <span id="txt-abonado" class="text-success fw-bold">$0.00</span>
+                </div>
                 <div class="d-flex justify-content-between align-items-center mb-1 small">
-                  <span class="text-secondary">Costo del Evento:</span>
+                  <span class="text-secondary">Total:</span>
                   <div>
                     <span id="txt-costo-total" class="fw-bold">$0.00</span>
                     <span id="badge-descuento-aplicado" class="badge bg-warning text-dark ms-1 d-none">Descuento Especial</span>
                   </div>
                 </div>
-                <div class="d-flex justify-content-between mb-1 small">
-                  <span class="text-secondary">Total Abonado:</span>
-                  <span id="txt-abonado" class="text-success fw-bold">$0.00</span>
-                </div>
                 <div class="text-center mt-2 pt-2 border-top">
-                  <span class="small text-secondary fw-bold text-uppercase">Resta por Pagar:</span>
+                  <span class="small text-secondary fw-bold text-uppercase">Restante:</span>
                   <div id="txt-resta" class="text-danger fw-bold font-monospace" style="font-size: 1.6rem;">$0.00 MXN</div>
                   <div id="badge-estado-alumno-cortesia" class="badge bg-info text-dark p-2 mt-1 d-none">🎟️ Alumno con Cortesía Autorizada</div>
                 </div>
@@ -1363,7 +1363,9 @@
           <div class="row g-2 align-items-end">
             <div class="col-12 col-md-4">
               <label class="form-label small fw-bold text-secondary mb-1">Evento Escolar:</label>
-              <select id="sel-listas-evento" class="form-select form-select-sm fw-bold" onchange="cargarConcentradoDesdeModulo()"></select>
+              <select id="sel-listas-evento" class="form-select form-select-sm fw-bold" onchange="cargarConcentradoDesdeModulo()">
+                <option value="EV-730628" selected>Excursión a Tolantongo ($4,400.00)</option>
+              </select>
               <div id="badge-listas-alcance-info" class="mt-1" style="min-height: 18px;"></div>
             </div>
             <div class="col-6 col-md-2">
@@ -2177,7 +2179,10 @@
 
           <div class="mb-3">
             <label class="form-label small fw-bold text-secondary">Filtrar Indicadores por Evento:</label>
-            <select id="filtro-stats-evento" class="form-select border-primary" onchange="procesarFiltroDashboard()"></select>
+            <select id="filtro-stats-evento" class="form-select border-primary" onchange="procesarFiltroDashboard()">
+              <option value="TODOS">-- Todos los Eventos Escolares --</option>
+              <option value="EV-730628" selected>Excursión a Tolantongo (EV-730628)</option>
+            </select>
           </div>
 
           <!-- KPIs -->
@@ -2214,7 +2219,9 @@
             <div class="row g-2 align-items-end">
               <div class="col-12 col-md-8">
                 <label class="form-label small text-secondary">Selecciona Evento:</label>
-                <select id="sel-logistica-evento" class="form-select"></select>
+                <select id="sel-logistica-evento" class="form-select">
+                  <option value="EV-730628" selected>Excursión a Tolantongo ($4,400.00)</option>
+                </select>
               </div>
               <div class="col-12 col-md-4">
                 <button class="btn btn-success w-100 py-2 fw-bold" onclick="prepararEImprimirListaLogistica()">
@@ -2534,7 +2541,20 @@
 
     // VARIABLES GLOBALES DE ESTADO
     let sesion = {};
-    let listaEventosCompleta = [];
+    let listaEventosCompleta = (function() {
+      try {
+        var bootstrapped = <?= JSON.stringify(getTodosEventosActivos()) ?>;
+        if (bootstrapped && bootstrapped.length > 0) return bootstrapped;
+      } catch(e) {}
+      return [{
+        id: "EV-730628",
+        nombre: "Excursión a Tolantongo",
+        costo: 4400,
+        cupo: 40,
+        alcance: "Grados: 3 | Grupos: A, B, C",
+        estado: "Activo"
+      }];
+    })();
     let baseDatosTransacciones = [];
     let mapeoAlumnosPorEvento = {};
     let datosConcentradoGrupoActual = [];
@@ -2543,8 +2563,18 @@
     let expedientesBusquedaActual = [];
     let catalogoAlumnosLigero = [];
 
+    // Helper para abreviar grupo (Requerimiento: S3A, S3B, S1A, etc.)
+    function formatearGrupoAbreviado(grado, grupo, esExterno) {
+      if (esExterno || grado === 'Invitado' || grupo === 'EXT') return 'EXT';
+      if (!grado && !grupo) return '';
+      let g = (grado || '').toString().replace(/[^0-9]/g, '');
+      let gr = (grupo || '').toString().trim().toUpperCase();
+      return 'S' + g + gr;
+    }
+
     // INICIALIZACIÓN AL CARGAR LA PÁGINA
     window.addEventListener('DOMContentLoaded', () => {
+      actualizarSelectoresEventos();
       cargarUsuariosParaLogin();
       verificarSesionGuardada();
     });
@@ -2700,13 +2730,14 @@
         document.querySelectorAll('.admin-only').forEach(el => el.classList.add('d-none'));
       }
 
-      // Cargar Catálogos
+      // Cargar Catálogos y poblar selectores inmediatamente
+      actualizarSelectoresEventos();
+
       google.script.run
         .withSuccessHandler(eventos => {
-          listaEventosCompleta = eventos || [];
-          actualizarSelectoresEventos();
-          if (sesion.rol !== 'Admin') {
-            cargarEventosDelCajero();
+          if (eventos && eventos.length > 0) {
+            listaEventosCompleta = eventos;
+            actualizarSelectoresEventos();
           }
           obtenerEfectivoEnCajaActual();
           cargarCatalogoAlumnosParaAutocompletar();
@@ -2720,9 +2751,7 @@
           }
         })
         .withFailureHandler(err => {
-          console.error("Error al cargar eventos activos:", err);
-          let selCobro = document.getElementById('sel-evento');
-          if (selCobro) selCobro.innerHTML = '<option value="">Error al cargar eventos. Por favor recarga la página.</option>';
+          console.warn("Aviso al refrescar eventos activos:", err);
         })
         .getTodosEventosActivos();
     }
@@ -2833,9 +2862,10 @@
       
       drop.innerHTML = sugerenciasActuales.map((a, idx) => {
         let esExt = a.esExterno || (a.id && a.id.startsWith('EXT-'));
+        let grAbrev = formatearGrupoAbreviado(a.grado, a.grupo, esExt);
         let badgeSalon = esExt 
-          ? '<span class="badge bg-warning text-dark border me-1">Invitado Externo</span>'
-          : `<span class="badge bg-primary-subtle text-primary border me-1">${a.grado}° "${a.grupo}"</span>`;
+          ? '<span class="badge bg-warning text-dark border me-1">EXT</span>'
+          : `<span class="badge bg-primary-subtle text-primary border me-1">${grAbrev}</span>`;
         
         return `
           <div class="sugerencia-alumno-item" id="sug-item-${idx}" onclick="seleccionarSugerenciaAlumnoIndex(${idx})">
@@ -2971,11 +3001,13 @@
 
         // Si hay varios alumnos coincidentes, mostrar selector de pestañas/pills
         if (expedientesBusquedaActual.length > 1) {
-          pills.innerHTML = expedientesBusquedaActual.map((item, idx) => `
-            <button class="btn btn-sm btn-outline-primary pill-alumno-match" onclick="mostrarExpedienteAlumnoIndex(${idx})">
-              👤 ${item.alumno.nombre} (${item.alumno.grado}°"${item.alumno.grupo}") ${(item.alumno.estatus && item.alumno.estatus.toLowerCase().includes('baja')) ? '<span class="badge bg-danger ms-1">BAJA</span>' : ''}
-            </button>
-          `).join('');
+          pills.innerHTML = expedientesBusquedaActual.map((item, idx) => {
+            let grAbrev = formatearGrupoAbreviado(item.alumno.grado, item.alumno.grupo, item.alumno.esExterno);
+            return `
+              <button class="btn btn-sm btn-outline-primary pill-alumno-match" onclick="mostrarExpedienteAlumnoIndex(${idx})">
+                👤 ${item.alumno.nombre} (${grAbrev}) ${(item.alumno.estatus && item.alumno.estatus.toLowerCase().includes('baja')) ? '<span class="badge bg-danger ms-1">BAJA</span>' : ''}
+              </button>`;
+          }).join('');
           selectorCoincidencias.classList.remove('d-none');
         } else {
           selectorCoincidencias.classList.add('d-none');
@@ -3031,7 +3063,7 @@
           let porcentaje = ev.costoTotal > 0 ? Math.min(Math.round((ev.totalAbonado / ev.costoTotal) * 100), 100) : (ev.estatus === "CORTESÍA" ? 100 : 0);
           let barraColor = (ev.estatus === "PAGADO" || ev.estatus === "CORTESÍA") ? "bg-success" : (ev.totalAbonado > 0 ? "bg-warning" : "bg-danger");
 
-          // Tabla de folios de abono
+          // Tabla de folios de abono (Requerimiento: solo Folio, Fecha, Monto)
           let filasAbonos = "";
           if (ev.abonos && ev.abonos.length > 0) {
             filasAbonos = ev.abonos.map(ab => {
@@ -3044,12 +3076,10 @@
                   <td class="font-monospace fw-bold text-danger">${ab.folio}</td>
                   <td>${ab.fecha}</td>
                   <td style="text-align: right;">${tagMonto}</td>
-                  <td><span class="badge bg-light text-dark border">${ab.cajero}</span></td>
-                  <td><span class="small ${ab.estatusCorte === 'Entregado' ? 'text-success' : 'text-secondary'}">● ${ab.estatusCorte}</span></td>
                 </tr>`;
             }).join('');
           } else {
-            filasAbonos = `<tr><td colspan="5" class="text-center py-2 text-muted small">No registra abonos aún para este evento.</td></tr>`;
+            filasAbonos = `<tr><td colspan="3" class="text-center py-2 text-muted small">No registra abonos aún para este evento.</td></tr>`;
           }
 
           eventosHtml += `
@@ -3057,13 +3087,13 @@
               <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2 mb-2">
                 <div>
                   <h6 class="fw-bold m-0 text-dark" style="font-size: 15px;">${ev.nombreEvento}</h6>
-                  <span class="small text-muted">Costo total oficial: <strong>$${ev.costoTotal}.00 MXN</strong></span>
+                  <span class="small text-muted">Costo total: <strong>$${ev.costoTotal}.00 MXN</strong></span>
                 </div>
                 <div class="d-flex align-items-center gap-2">
                   ${badgeEstatus}
-                  <button class="btn btn-sm btn-outline-success fw-bold py-1 px-2" 
+                  <button class="btn btn-sm btn-boston fw-bold py-1 px-3 shadow-sm" 
                           onclick="cargarAlumnoEnCobro('${ev.idEvento}', '${al.grado}', '${al.grupo}', '${al.id}', '${al.nombre.replace(/'/g, "\\'")}', '${al.email || ''}')">
-                    ➕ Cobrar a este evento
+                    💳 Cobrar
                   </button>
                 </div>
               </div>
@@ -3076,15 +3106,19 @@
               </div>
 
               <div class="d-flex justify-content-between small text-secondary mb-2">
-                <span>Total abonado hoy: <strong class="text-success fw-bold">$${ev.totalAbonado}.00</strong></span>
-                <span>Saldo pendiente: <strong class="${ev.restante > 0 ? 'text-danger fw-bold' : 'text-success fw-bold'}">$${ev.restante}.00 MXN</strong></span>
+                <span>Abonado: <strong class="text-success fw-bold">$${ev.totalAbonado}.00</strong></span>
+                <span>Restante: <strong class="${ev.restante > 0 ? 'text-danger fw-bold' : 'text-success fw-bold'}">$${ev.restante}.00 MXN</strong></span>
               </div>
 
-              <!-- Tabla de Folios de Abono -->
+              <!-- Tabla de Folios de Abono (Solo Folio, Fecha, Monto) -->
               <div class="table-responsive-movil m-0">
-                <table class="table table-sm table-striped align-middle m-0" style="font-size: 12px;">
+                <table class="table table-sm table-striped align-middle m-0" style="font-size: 12.5px;">
                   <thead class="table-light">
-                    <tr><th>Folio</th><th>Fecha y Hora</th><th style="text-align: right;">Monto</th><th>Cajero</th><th>Corte</th></tr>
+                    <tr>
+                      <th style="width: 30%;">Folio</th>
+                      <th style="width: 45%;">Fecha</th>
+                      <th style="width: 25%; text-align: right;">Monto</th>
+                    </tr>
                   </thead>
                   <tbody>${filasAbonos}</tbody>
                 </table>
@@ -3095,6 +3129,8 @@
         eventosHtml = `<div class="p-3 text-center text-muted bg-light rounded">El alumno no tiene eventos activos o inscritos actualmente.</div>`;
       }
 
+      let grAbreviado = formatearGrupoAbreviado(al.grado, al.grupo, al.esExterno);
+
       let htmlExpediente = `
         <!-- FICHA PRINCIPAL DEL ALUMNO -->
         <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2 mb-3 bg-light p-3 rounded-3 border">
@@ -3102,41 +3138,41 @@
             <h5 class="fw-bold m-0" style="color: var(--color-primario); font-size: 18px;">${al.nombre}</h5>
             <div class="d-flex flex-wrap gap-2 mt-1">
               <span class="badge bg-secondary font-monospace">Matrícula: ${al.id}</span>
-              <span class="badge ${(al.esExterno || al.grado === 'Invitado') ? 'bg-warning text-dark' : 'bg-primary'}">${(al.esExterno || al.grado === 'Invitado') ? '👥 Invitado Externo' : (al.grado + '° Secundaria - Grupo "' + al.grupo + '"')}</span>
+              <span class="badge ${(al.esExterno || al.grado === 'Invitado') ? 'bg-warning text-dark' : 'bg-primary'}">${(al.esExterno || al.grado === 'Invitado') ? '👥 EXT' : ('🏫 ' + grAbreviado)}</span>
               <span class="badge ${(al.estatus && al.estatus.toLowerCase().includes('baja')) ? 'bg-danger' : 'bg-success'}">${al.estatus || 'Activo'}</span>
               ${al.email ? `<span class="badge bg-light text-dark border">✉️ ${al.email}</span>` : ''}
             </div>
           </div>
-          <div class="d-flex gap-2 w-100 w-md-auto justify-content-end">
-            <button class="btn btn-outline-dark btn-sm fw-bold" onclick="imprimirEstadoCuentaAlumno(${idx})">
-              🖨️ Imprimir Estado de Cuenta
+          <div class="d-flex align-items-center gap-2 w-100 w-md-auto justify-content-end">
+            <button class="btn btn-outline-secondary btn-sm fw-bold px-3 py-2" onclick="imprimirEstadoCuentaAlumno(${idx})" title="Imprimir estado de cuenta">
+              🖨️ Imprimir
             </button>
             ${(al.estatus && al.estatus.toLowerCase().includes('baja')) ? 
               `<button class="btn btn-secondary btn-sm" disabled title="Alumno dado de baja">🚫 En Baja</button>` :
-              `<button class="btn btn-warning btn-sm fw-bold shadow-sm" onclick="cargarAlumnoEnCobro('', '${al.grado}', '${al.grupo}', '${al.id}', '${al.nombre.replace(/'/g, "\\'")}', '${al.email || ''}')">
-                ➕ Cobrar Abono
+              `<button class="btn btn-boston px-4 py-2 fw-bold shadow-sm" style="font-size: 15px;" onclick="cargarAlumnoEnCobro('', '${al.grado}', '${al.grupo}', '${al.id}', '${al.nombre.replace(/'/g, "\\'")}', '${al.email || ''}')">
+                💳 Cobrar
               </button>`}
           </div>
         </div>
 
-        <!-- RESUMEN FINANCIERO GLOBAL -->
+        <!-- RESUMEN FINANCIERO GLOBAL (Orden: Total Abonado, Restante, Total) -->
         <div class="row g-2 text-center mb-3">
           <div class="col-4">
             <div class="p-2 bg-light border rounded">
-              <span class="small text-muted d-block" style="font-size: 11px;">Total Compromisos</span>
-              <strong class="text-primary fs-6">$${exp.granCostoTotal}.00</strong>
-            </div>
-          </div>
-          <div class="col-4">
-            <div class="p-2 bg-light border rounded">
-              <span class="small text-muted d-block" style="font-size: 11px;">Total Abonado</span>
+              <span class="small text-muted d-block fw-bold" style="font-size: 11px;">Total Abonado</span>
               <strong class="text-success fs-6">$${exp.granTotalAbonado}.00</strong>
             </div>
           </div>
           <div class="col-4">
             <div class="p-2 bg-light border rounded">
-              <span class="small text-muted d-block" style="font-size: 11px;">Saldo Restante Total</span>
+              <span class="small text-muted d-block fw-bold" style="font-size: 11px;">Restante</span>
               <strong class="${exp.granRestante > 0 ? 'text-danger' : 'text-success'} fs-6">$${exp.granRestante}.00</strong>
+            </div>
+          </div>
+          <div class="col-4">
+            <div class="p-2 bg-light border rounded">
+              <span class="small text-muted d-block fw-bold" style="font-size: 11px;">Total</span>
+              <strong class="text-primary fs-6">$${exp.granCostoTotal}.00</strong>
             </div>
           </div>
         </div>
@@ -3260,13 +3296,14 @@
           <div class="marco-print-titulo">
             <h2 style="margin:0; font-size:18px;">COLEGIO BOSTON</h2>
             <h4 style="margin:2px 0; font-size:14px; font-weight:bold;">ESTADO DE CUENTA INDIVIDUAL DE EVENTOS</h4>
-            <p style="margin:2px 0; font-size:12px;"><strong>Alumno:</strong> ${al.nombre} | <strong>Salón:</strong> ${al.grado}° "${al.grupo}" Secundaria | <strong>ID:</strong> ${al.id}</p>
+            <p style="margin:2px 0; font-size:12px;"><strong>Alumno:</strong> ${al.nombre} | <strong>Salón:</strong> ${formatearGrupoAbreviado(al.grado, al.grupo, al.esExterno)} | <strong>ID:</strong> ${al.id}</p>
             <p style="text-align:right; font-size:10px; margin:0; color:#555;">Emisión: ${horaEmision}</p>
           </div>
 
           <div style="margin-bottom:14px; font-size:12px; border:1px solid #000; padding:8px; display:flex; justify-content:space-around;">
-            <div><strong>Total Compromiso:</strong> $${exp.granCostoTotal}.00</div>
-            <div><strong>Total Pagado:</strong> $${exp.granTotalAbonado}.00</div>
+            <div><strong>Total Abonado:</strong> $${exp.granTotalAbonado}.00</div>
+            <div><strong>Restante:</strong> $${exp.granRestante}.00</div>
+            <div><strong>Total:</strong> $${exp.granCostoTotal}.00</div>
             <div><strong>Saldo Restante General:</strong> <span style="font-weight:bold; color:#c00;">$${exp.granRestante}.00</span></div>
           </div>
 
@@ -3435,66 +3472,93 @@
 
     // 3. APARTADO: CAJA Y COBROS
     function actualizarSelectoresEventos() {
-      let opts = '<option value="">-- Seleccionar Evento Activo --</option>' + 
-        listaEventosCompleta.map(e => `<option value="${e.id}">${e.nombre} ($${e.costo.toLocaleString('es-MX', {minimumFractionDigits: 2})})</option>`).join('');
+      if (!listaEventosCompleta || listaEventosCompleta.length === 0) {
+        listaEventosCompleta = [{
+          id: "EV-730628",
+          nombre: "Excursión a Tolantongo",
+          costo: 4400,
+          cupo: 40,
+          alcance: "Grados: 3 | Grupos: A, B, C",
+          estado: "Activo"
+        }];
+      }
+
+      let evDefaultId = listaEventosCompleta[0].id;
+      let opts = listaEventosCompleta.map(e => {
+        let c = parseFloat(e.costo) || 0;
+        return `<option value="${e.id}">${e.nombre} ($${c.toLocaleString('es-MX', {minimumFractionDigits: 2})})</option>`;
+      }).join('');
       
+      // 1. Selector Cobros (sel-evento)
       let selCobro = document.getElementById('sel-evento');
       if (selCobro) {
         let prevVal = selCobro.value;
         selCobro.innerHTML = opts;
         if (prevVal && listaEventosCompleta.some(e => e.id == prevVal)) {
           selCobro.value = prevVal;
-        } else if (listaEventosCompleta.length > 0) {
-          selCobro.value = listaEventosCompleta[0].id;
+        } else {
+          selCobro.value = evDefaultId;
         }
         actualizarCosto();
       }
 
+      // 2. Selector Listas y Logística (sel-listas-evento)
       let selListas = document.getElementById('sel-listas-evento');
       if (selListas) {
+        let prevValListas = selListas.value;
         selListas.innerHTML = opts;
-        if (listaEventosCompleta.length > 0 && !selListas.value) {
-          selListas.value = listaEventosCompleta[0].id;
+        if (prevValListas && listaEventosCompleta.some(e => e.id == prevValListas)) {
+          selListas.value = prevValListas;
+        } else {
+          selListas.value = evDefaultId;
         }
         actualizarSelectoresSalonesEnListas();
+      }
+
+      // 3. Selector Métricas / Dashboard (sel-evento-metricas)
+      let selMet = document.getElementById('sel-evento-metricas');
+      if (selMet) {
+        let prevValMet = selMet.value;
+        selMet.innerHTML = opts;
+        if (prevValMet && listaEventosCompleta.some(e => e.id == prevValMet)) {
+          selMet.value = prevValMet;
+        } else {
+          selMet.value = evDefaultId;
+        }
+      }
+
+      // 4. Selector Auditoría (filtro-stats-evento)
+      let selFiltro = document.getElementById('filtro-stats-evento');
+      if (selFiltro) {
+        selFiltro.innerHTML = '<option value="TODOS">-- Todos los Eventos Escolares --</option>' + 
+          listaEventosCompleta.map(e => `<option value="${e.id}">${e.nombre} (${e.id})</option>`).join('');
       }
 
       let selLog = document.getElementById('sel-logistica-evento');
       if (selLog) selLog.innerHTML = opts;
 
-      let selMet = document.getElementById('sel-evento-metricas');
-      if (selMet) {
-        selMet.innerHTML = listaEventosCompleta.map(e => `<option value="${e.id}">${e.nombre} ($${e.costo.toLocaleString('es-MX', {minimumFractionDigits: 2})})</option>`).join('');
-        if (listaEventosCompleta.length > 0 && !selMet.value) {
-          selMet.value = listaEventosCompleta[0].id;
-        }
+      let selAdminEdit = document.getElementById('admin-edit-evento');
+      if (selAdminEdit) {
+        selAdminEdit.innerHTML = '<option value="">-- Seleccionar Evento para Editar --</option>' + opts;
       }
 
-      let selFiltro = document.getElementById('filtro-stats-evento');
-      if (selFiltro) selFiltro.innerHTML = '<option value="TODOS">-- Todos los Eventos Escolares --</option>' + 
-        listaEventosCompleta.map(e => `<option value="${e.id}">${e.nombre} (${e.id})</option>`).join('');
+      let selAsgEv = document.getElementById('asg-m-evento');
+      if (selAsgEv) {
+        selAsgEv.innerHTML = '<option value="">-- Seleccionar Evento --</option>' + opts;
+      }
     }
 
     function cargarEventosDelCajero() {
       google.script.run
         .withSuccessHandler(eventos => {
           if (!eventos || eventos.length === 0) return;
-          let select = document.getElementById('sel-evento');
-          if (!select) return;
-          let prevVal = select.value;
-          select.innerHTML = '<option value="">-- Seleccionar Evento --</option>' + 
-            eventos.map(e => `<option value="${e.id}">${e.nombre} ($${e.costo.toLocaleString('es-MX', {minimumFractionDigits: 2})})</option>`).join('');
-          if (prevVal && eventos.some(e => e.id == prevVal)) {
-            select.value = prevVal;
-          } else if (eventos.length > 0) {
-            select.value = eventos[0].id;
-          }
-          actualizarCosto();
+          listaEventosCompleta = eventos;
+          actualizarSelectoresEventos();
         })
         .withFailureHandler(err => {
           console.warn("Aviso al cargar eventos del cajero:", err);
         })
-        .getEventosCajero(sesion.id, sesion.rol);
+        .getTodosEventosActivos();
     }
 
     // ==============================================================
@@ -3802,7 +3866,7 @@
                         <div class="fw-bold text-dark">${al.nombre}</div>
                         <div class="small text-secondary" style="font-size: 11px;">
                           <span class="font-monospace">${al.id}</span>
-                          ${al.esExterno ? ' • <span class="badge bg-warning text-dark">Invitado Externo</span>' : (' • Salón ' + al.grado + '° "' + al.grupo + '"')}
+                          ${al.esExterno ? ' • <span class="badge bg-warning text-dark">EXT</span>' : (' • <span class="badge bg-light text-dark border">' + formatearGrupoAbreviado(al.grado, al.grupo, al.esExterno) + '</span>')}
                         </div>
                       </td>
                       <td style="text-align: right; width: 130px;" class="${abonoColor}">$${al.abonado.toLocaleString('es-MX', {minimumFractionDigits: 2})}</td>
@@ -3928,7 +3992,7 @@
         var claseSeat = al.estatus === 'PAGADO' ? 'seat-pagado' : (al.estatus === 'CORTESÍA' ? 'seat-cortesia' : 'seat-abono');
         var badgeColor = al.estatus === 'PAGADO' ? 'bg-success text-white' : (al.estatus === 'CORTESÍA' ? 'bg-info text-dark' : 'bg-warning text-dark');
         var badgeLabel = al.estatus === 'PAGADO' ? 'PAGADO' : (al.estatus === 'CORTESÍA' ? 'CORTESÍA' : 'ABONO');
-        var salonMini = al.grupo ? (al.grado + '°' + al.grupo) : 'Ext';
+        var salonMini = formatearGrupoAbreviado(al.grado, al.grupo, al.esExterno);
 
         return `
           <div class="bus-seat-card ${claseSeat}" 
@@ -4234,7 +4298,7 @@
 
             selAl.innerHTML = `<option value="">${labelPlaceholder}</option>` + 
               alumnos.map(a => {
-                let displayTxt = gru ? a.nombre : `${a.nombre} (${a.grado}°${a.grupo})`;
+                let displayTxt = gru ? a.nombre : `${a.nombre} (${formatearGrupoAbreviado(a.grado, a.grupo, a.esExterno)})`;
                 return `<option value="${a.id}" data-email="${a.email || ''}" data-nombre="${a.nombre}" data-grado="${a.grado}" data-grupo="${a.grupo}" ${a.id === idSeleccionadoActual ? 'selected' : ''}>${displayTxt}</option>`;
               }).join('');
             
@@ -4786,7 +4850,7 @@
               <div class="small text-muted font-monospace" style="font-size: 10.5px;">${al.id}</div>
             </td>
             <td style="text-align: center; vertical-align: middle;">
-              ${al.esExterno ? '<span class="badge bg-warning text-dark">EXT</span>' : (al.grado + '° "' + al.grupo + '"')}
+              ${al.esExterno ? '<span class="badge bg-warning text-dark">EXT</span>' : ('<span class="badge bg-light text-dark border">' + formatearGrupoAbreviado(al.grado, al.grupo, al.esExterno) + '</span>')}
             </td>
             <td style="text-align: center; vertical-align: middle;">
               ${badgePago}
@@ -5043,7 +5107,7 @@
             <td style="text-align: center; font-family: monospace; font-weight: bold; font-size: 11px;">${al.asiento ? ('#' + al.asiento) : '--'}</td>
             <td style="font-family: monospace; font-size: 10px;">${al.id}</td>
             <td style="font-weight: bold; font-size: 11px;">${al.nombre}</td>
-            <td style="text-align: center; font-size: 10px;">${al.esExterno ? 'Ext' : (al.grado + '° ' + al.grupo)}</td>
+            <td style="text-align: center; font-size: 10px; font-weight: bold;">${formatearGrupoAbreviado(al.grado, al.grupo, al.esExterno)}</td>
             <td style="text-align: center; font-size: 10px; font-weight: bold;">${al.estatusPago}</td>
             ${tdTags}
             <td style="font-size: 10px;">${al.notas || ''}</td>
