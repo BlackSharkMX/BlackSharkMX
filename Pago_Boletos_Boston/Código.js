@@ -369,6 +369,213 @@ function asignarEventoACajero(idEvento, idCajero) {
 // ============================================================================
 
 /**
+ * Obtener catálogo ligero de todos los alumnos para autocompletado en búsqueda rápida
+ */
+function obtenerCatalogoAlumnosLigero() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheetClientes = ss.getSheetByName("Clientes");
+  if (!sheetClientes) return [];
+  var data = sheetClientes.getDataRange().getValues();
+  var lista = [];
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0] && data[i][1]) {
+      lista.push({
+        id: data[i][0].toString().trim(),
+        nombre: data[i][1].toString().trim(),
+        grado: data[i][3] ? data[i][3].toString().trim() : "",
+        grupo: data[i][4] ? data[i][4].toString().trim() : ""
+      });
+    }
+  }
+  return lista;
+}
+
+/**
+ * Consulta integral del historial de pagos y abonos de un alumno en todos los eventos
+ */
+function consultarHistorialCompletoAlumno(criterio) {
+  if (!criterio || criterio.toString().trim() === "") {
+    return { success: false, message: "Ingresa un nombre o ID de alumno para buscar." };
+  }
+  
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheetClientes = ss.getSheetByName("Clientes");
+  var sheetEventos = ss.getSheetByName("Eventos");
+  var sheetAbonos = ss.getSheetByName("Historial_Abonos");
+  var sheetInsc = ss.getSheetByName("Inscripciones");
+  var sheetUsuarios = ss.getSheetByName("Usuarios");
+  
+  if (!sheetClientes) {
+    return { success: false, message: "No se encontró la hoja 'Clientes' en la base de datos." };
+  }
+  
+  var clientesData = sheetClientes.getDataRange().getValues();
+  var busqueda = criterio.toString().trim().toLowerCase();
+  
+  // 1. Localizar alumnos coincidentes por ID o Nombre
+  var alumnosCoincidentes = [];
+  for (var i = 1; i < clientesData.length; i++) {
+    var idAl = clientesData[i][0] ? clientesData[i][0].toString().trim() : "";
+    var nomAl = clientesData[i][1] ? clientesData[i][1].toString().trim() : "";
+    var gradoAl = clientesData[i][3] ? clientesData[i][3].toString().trim() : "";
+    var grupoAl = clientesData[i][4] ? clientesData[i][4].toString().trim() : "";
+    var emailAl = clientesData[i][5] ? clientesData[i][5].toString().trim() : "";
+    
+    if (idAl.toLowerCase().includes(busqueda) || nomAl.toLowerCase().includes(busqueda)) {
+      alumnosCoincidentes.push({
+        id: idAl,
+        nombre: nomAl,
+        grado: gradoAl,
+        grupo: grupoAl,
+        email: emailAl
+      });
+      if (alumnosCoincidentes.length >= 10) break;
+    }
+  }
+  
+  if (alumnosCoincidentes.length === 0) {
+    return { success: false, message: "No se encontró ningún alumno con el criterio: '" + criterio + "'." };
+  }
+  
+  // 2. Diccionario de Eventos
+  var dictEventos = {};
+  if (sheetEventos) {
+    var evData = sheetEventos.getDataRange().getValues();
+    for (var k = 1; k < evData.length; k++) {
+      if (evData[k][0]) {
+        dictEventos[evData[k][0]] = {
+          nombre: evData[k][1] ? evData[k][1].toString() : evData[k][0],
+          costo: parseFloat(evData[k][4]) || 0,
+          estatus: evData[k][6] ? evData[k][6].toString() : "Activo"
+        };
+      }
+    }
+  }
+  
+  // 3. Diccionario de Cajeros
+  var dictCajeros = {};
+  if (sheetUsuarios) {
+    var usrData = sheetUsuarios.getDataRange().getValues();
+    for (var u = 1; u < usrData.length; u++) {
+      if (usrData[u][0]) {
+        dictCajeros[usrData[u][0]] = usrData[u][1] ? usrData[u][1].toString() : usrData[u][3];
+      }
+    }
+  }
+  
+  var dataAbonos = sheetAbonos ? sheetAbonos.getDataRange().getValues() : [];
+  var dataInsc = sheetInsc ? sheetInsc.getDataRange().getValues() : [];
+  
+  // 4. Construir expediente detallado por alumno
+  var expedientes = [];
+  
+  for (var a = 0; a < alumnosCoincidentes.length; a++) {
+    var al = alumnosCoincidentes[a];
+    var eventosMap = {};
+    
+    // Revisar inscripciones registradas
+    for (var inx = 1; inx < dataInsc.length; inx++) {
+      if (dataInsc[inx][2] && dataInsc[inx][2].toString().trim() === al.id) {
+        var idEv = dataInsc[inx][1].toString().trim();
+        var evInfo = dictEventos[idEv] || { nombre: idEv, costo: parseFloat(dataInsc[inx][3]) || 0, estatus: "Activo" };
+        var costoTotalEv = parseFloat(dataInsc[inx][3]) || evInfo.costo || 0;
+        var pagadoInsc = parseFloat(dataInsc[inx][4]) || 0;
+        var estatusInsc = dataInsc[inx][5] ? dataInsc[inx][5].toString() : "Parcial";
+        
+        eventosMap[idEv] = {
+          idEvento: idEv,
+          nombreEvento: evInfo.nombre,
+          costoTotal: costoTotalEv,
+          totalAbonado: pagadoInsc,
+          estatus: estatusInsc,
+          abonos: []
+        };
+      }
+    }
+    
+    // Revisar historial de abonos
+    for (var ab = 1; ab < dataAbonos.length; ab++) {
+      if (dataAbonos[ab][2] && dataAbonos[ab][2].toString().trim() === al.id) {
+        var idEventoAbono = dataAbonos[ab][1].toString().trim();
+        var folio = dataAbonos[ab][0] ? dataAbonos[ab][0].toString() : "";
+        var montoTexto = dataAbonos[ab][3] ? dataAbonos[ab][3].toString() : "0";
+        var esCancelado = montoTexto.toUpperCase().includes("CANCELADO");
+        var esCortesia = montoTexto.toUpperCase().includes("CORTES");
+        var montoValor = (esCancelado || esCortesia) ? 0 : (parseFloat(montoTexto) || 0);
+        var fechaAbono = dataAbonos[ab][4] ? new Date(dataAbonos[ab][4]).toLocaleString() : "N/A";
+        var idCaj = dataAbonos[ab][5] ? dataAbonos[ab][5].toString() : "";
+        var cajeroNombre = dictCajeros[idCaj] || idCaj || "Caja General";
+        var estatusCorte = dataAbonos[ab][6] ? dataAbonos[ab][6].toString() : "Pendiente";
+        
+        if (!eventosMap[idEventoAbono]) {
+          var evDef = dictEventos[idEventoAbono] || { nombre: idEventoAbono, costo: 0, estatus: "Activo" };
+          eventosMap[idEventoAbono] = {
+            idEvento: idEventoAbono,
+            nombreEvento: evDef.nombre,
+            costoTotal: evDef.costo,
+            totalAbonado: 0,
+            estatus: esCortesia ? "Cortesía" : "Parcial",
+            abonos: []
+          };
+        }
+        
+        eventosMap[idEventoAbono].abonos.push({
+          folio: folio,
+          montoTexto: montoTexto,
+          montoValor: montoValor,
+          fecha: fechaAbono,
+          cajero: cajeroNombre,
+          cancelado: esCancelado,
+          cortesia: esCortesia,
+          estatusCorte: estatusCorte
+        });
+      }
+    }
+    
+    // Totalizar importes de cada evento y del alumno
+    var listaEventos = [];
+    var granCosto = 0;
+    var granAbonado = 0;
+    
+    Object.keys(eventosMap).forEach(function(key) {
+      var evItem = eventosMap[key];
+      var sumaVigente = 0;
+      var tieneCortesia = false;
+      
+      for (var p = 0; p < evItem.abonos.length; p++) {
+        if (!evItem.abonos[p].cancelado) {
+          sumaVigente += evItem.abonos[p].montoValor;
+          if (evItem.abonos[p].cortesia) tieneCortesia = true;
+        }
+      }
+      
+      var saldoResta = tieneCortesia ? 0 : Math.max(evItem.costoTotal - sumaVigente, 0);
+      var badgeEstatus = tieneCortesia ? "CORTESÍA" : (saldoResta <= 0 && evItem.costoTotal > 0 ? "PAGADO" : (sumaVigente > 0 ? "CON ABONO" : "SIN PAGO"));
+      
+      evItem.totalAbonado = sumaVigente;
+      evItem.restante = saldoResta;
+      evItem.estatus = badgeEstatus;
+      
+      granCosto += evItem.costoTotal;
+      granAbonado += sumaVigente;
+      
+      evItem.abonos.reverse();
+      listaEventos.push(evItem);
+    });
+    
+    expedientes.push({
+      alumno: al,
+      granCostoTotal: granCosto,
+      granTotalAbonado: granAbonado,
+      granRestante: Math.max(granCosto - granAbonado, 0),
+      eventos: listaEventos
+    });
+  }
+  
+  return { success: true, expedientes: expedientes };
+}
+
+/**
  * Obtener alumnos filtrados por Grado y Grupo
  */
 function getAlumnos(grado, grupo) {

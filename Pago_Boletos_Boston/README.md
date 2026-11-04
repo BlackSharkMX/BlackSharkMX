@@ -6,7 +6,7 @@
 
 ## 📌 Datos de la Secuencia de Comandos
 - **Script ID:** `1Bt2OC0ZbrIyP_esxlyehhcqXtt-L1ep0n42nyrScwOrxyEYUdxf9o3LZ`
-- **Última Versión Desplegada:** Versión 18
+- **Última Versión Desplegada:** Versión 19
 - **URL de Despliegue Web:** `https://script.google.com/macros/s/AKfycbwZd0TjHSodk3cqw64LI1VhhzsR0No-Vk7w47f1HEmOLyP7-JIzPzaDmdtsJLdPlReS6g/exec`
 
 ---

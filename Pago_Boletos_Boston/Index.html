@@ -409,6 +409,7 @@
   <div id="print-area-concentrado" class="print-area"></div>
   <div id="print-area-auditoria" class="print-area"></div>
   <div id="print-area-logistica" class="print-area"></div>
+  <div id="print-area-estado-cuenta" class="print-area"></div>
 
   <!-- ==============================================================
        SECCIÓN 1: LOGIN (INTERFAZ ESTILO BOSTON MEDICAL)
@@ -554,6 +555,62 @@
            APARTADO 1: 💳 CAJA Y COBROS (RECEPCIÓN DE PAGOS EN VIVO)
            ============================================================== -->
       <section id="apartado-cobros" class="apartado-content">
+
+        <!-- ==============================================================
+             BARRA DE BÚSQUEDA RÁPIDA: CONSULTA DE ABONOS Y HISTORIAL DE ALUMNO
+             ============================================================== -->
+        <div class="card-boston mb-3 border border-primary border-opacity-25" style="background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);">
+          <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2 mb-2">
+            <div>
+              <h5 class="fw-bold m-0" style="color: var(--color-primario); font-size: 16px;">
+                🔍 Consulta Rápida de Abonos y Pagos por Alumno
+              </h5>
+              <p class="small text-muted m-0" style="font-size: 12px;">
+                Escribe el nombre o matrícula para consultar en segundos todos los abonos, folios y saldos pendientes en cualquier evento.
+              </p>
+            </div>
+            <span class="badge bg-light text-primary border border-primary border-opacity-25 py-1 px-2 small">
+              Atención a Padres y Alumnos
+            </span>
+          </div>
+
+          <div class="row g-2 align-items-center">
+            <div class="col-12 col-md-9">
+              <div class="input-icon-wrapper">
+                <svg class="input-icon" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+                <input type="text" id="input-busqueda-alumno-rapida" class="form-control input-with-icon" 
+                       placeholder="Escribe el nombre o matrícula (ej. Sofía, Santiago, Benítez, ALU-101)..." 
+                       list="datalist-alumnos-sugerencias"
+                       autocomplete="off"
+                       onkeypress="if(event.key === 'Enter') ejecutarBusquedaRapidaAlumno()">
+                <datalist id="datalist-alumnos-sugerencias"></datalist>
+              </div>
+            </div>
+            <div class="col-8 col-md-2">
+              <button class="btn btn-boston w-100 py-2 fw-bold" id="btn-buscar-alumno-rapido" onclick="ejecutarBusquedaRapidaAlumno()">
+                <span id="txtBtnBuscarAlumno">🔍 Buscar</span>
+                <span id="spinnerBuscarAlumno" class="spinner-sm d-none"></span>
+              </button>
+            </div>
+            <div class="col-4 col-md-1">
+              <button class="btn btn-outline-secondary w-100 py-2 fw-bold" onclick="limpiarBusquedaRapidaAlumno()" title="Limpiar búsqueda">
+                ✕ Limpiar
+              </button>
+            </div>
+          </div>
+
+          <!-- Selector de coincidencias si hay varios alumnos con el mismo nombre -->
+          <div id="selector-coincidencias-alumnos" class="mt-2 d-none">
+            <span class="small text-muted fw-bold me-2">Alumnos encontrados:</span>
+            <div id="pills-alumnos-coincidentes" class="d-inline-flex flex-wrap gap-1 mt-1"></div>
+          </div>
+
+          <!-- CONTENEDOR DE RESULTADOS DEL HISTORIAL -->
+          <div id="contenedor-resultado-historial-alumno" class="mt-3 pt-3 border-top d-none">
+            <!-- Se llena dinámicamente con la ficha del alumno, resumen y tablas de abonos -->
+          </div>
+        </div>
+
         <div class="card-boston">
           
           <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-2 mb-3">
@@ -1113,6 +1170,48 @@
                         { id: "ALU-101", nombre: "Álvarez Morales Santiago", grado: "1", grupo: "A", abonado: 850, restante: 0, estatus: "PAGADO" },
                         { id: "ALU-102", nombre: "Benítez Gómez Sofía", grado: "1", grupo: "A", abonado: 300, restante: 550, estatus: "Con Abono" }
                       ];
+                    } else if (prop === 'obtenerCatalogoAlumnosLigero') {
+                      data = [
+                        { id: "ALU-101", nombre: "Álvarez Morales Santiago", grado: "1", grupo: "A" },
+                        { id: "ALU-102", nombre: "Benítez Gómez Sofía", grado: "2", grupo: "B" },
+                        { id: "ALU-103", nombre: "Cervantes Díaz Mateo", grado: "3", grupo: "C" }
+                      ];
+                    } else if (prop === 'consultarHistorialCompletoAlumno') {
+                      data = {
+                        success: true,
+                        expedientes: [
+                          {
+                            alumno: { id: "ALU-102", nombre: "Benítez Gómez Sofía", grado: "2", grupo: "B", email: "sofia@boston.edu.mx" },
+                            granCostoTotal: 885,
+                            granTotalAbonado: 335,
+                            granRestante: 550,
+                            eventos: [
+                              {
+                                idEvento: "EV-01",
+                                nombreEvento: "Excursión Six Flags 2026",
+                                costoTotal: 850,
+                                totalAbonado: 300,
+                                restante: 550,
+                                estatus: "CON ABONO",
+                                abonos: [
+                                  { folio: "FOL-10922", montoTexto: "300", montoValor: 300, fecha: new Date().toLocaleString(), cajero: "Cajero Principal", cancelado: false, cortesia: false, estatusCorte: "Pendiente" }
+                                ]
+                              },
+                              {
+                                idEvento: "EV-02",
+                                nombreEvento: "Taller Cultural Papel Picado",
+                                costoTotal: 35,
+                                totalAbonado: 35,
+                                restante: 0,
+                                estatus: "PAGADO",
+                                abonos: [
+                                  { folio: "FOL-10815", montoTexto: "35", montoValor: 35, fecha: "1/11/2026 10:30:00", cajero: "Cajero Principal", cancelado: false, cortesia: false, estatusCorte: "Entregado" }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      };
                     }
                     if (handlers.success) handlers.success(data);
                   }, 300);
@@ -1133,6 +1232,8 @@
     let datosConcentradoGrupoActual = [];
     let saldoPendienteActual = 0;
     let globalMeta = 0, globalRecaudado = 0, globalCancelado = 0, globalAsisten = 0;
+    let expedientesBusquedaActual = [];
+    let catalogoAlumnosLigero = [];
 
     // INICIALIZACIÓN AL CARGAR LA PÁGINA
     window.addEventListener('DOMContentLoaded', () => {
@@ -1289,6 +1390,7 @@
         actualizarSelectoresEventos();
         cargarEventosDelCajero();
         obtenerEfectivoEnCajaActual();
+        cargarCatalogoAlumnosParaAutocompletar();
 
         if (sesion.rol === 'Admin') {
           actualizarDropdownsAdminEspeciales();
@@ -1320,6 +1422,325 @@
       } else if (apartadoId === 'apartado-listas') {
         cargarConcentradoDesdeModulo();
       }
+    }
+
+    // ==============================================================
+    // 2.1 BÚSQUEDA RÁPIDA DE ALUMNO Y ESTADO DE CUENTA
+    // ==============================================================
+    function cargarCatalogoAlumnosParaAutocompletar() {
+      google.script.run.withSuccessHandler(alumnos => {
+        catalogoAlumnosLigero = alumnos || [];
+        let datalist = document.getElementById('datalist-alumnos-sugerencias');
+        if (datalist && catalogoAlumnosLigero.length > 0) {
+          datalist.innerHTML = catalogoAlumnosLigero.map(a => 
+            `<option value="${a.nombre}">ID: ${a.id} • ${a.grado}°"${a.grupo}"</option>`
+          ).join('');
+        }
+      }).obtenerCatalogoAlumnosLigero();
+    }
+
+    function ejecutarBusquedaRapidaAlumno(criterioDirecto) {
+      let input = document.getElementById('input-busqueda-alumno-rapida');
+      let criterio = (criterioDirecto !== undefined) ? criterioDirecto : (input ? input.value.trim() : '');
+      let btn = document.getElementById('btn-buscar-alumno-rapido');
+      let txtBtn = document.getElementById('txtBtnBuscarAlumno');
+      let spinner = document.getElementById('spinnerBuscarAlumno');
+      let contenedor = document.getElementById('contenedor-resultado-historial-alumno');
+      let selectorCoincidencias = document.getElementById('selector-coincidencias-alumnos');
+      let pills = document.getElementById('pills-alumnos-coincidentes');
+
+      if (!criterio) {
+        return alert("Por favor escribe el nombre o la matrícula del alumno.");
+      }
+
+      btn.disabled = true;
+      txtBtn.innerText = "Buscando...";
+      spinner.classList.remove('d-none');
+
+      google.script.run.withSuccessHandler(res => {
+        btn.disabled = false;
+        txtBtn.innerText = "🔍 Buscar";
+        spinner.classList.add('d-none');
+
+        if (!res.success || !res.expedientes || res.expedientes.length === 0) {
+          selectorCoincidencias.classList.add('d-none');
+          contenedor.innerHTML = `
+            <div class="alert alert-warning d-flex align-items-center gap-2 mb-0" role="alert">
+              <span>⚠️</span>
+              <div>${res.message || "No se encontraron alumnos con ese nombre o matrícula."}</div>
+            </div>`;
+          contenedor.classList.remove('d-none');
+          return;
+        }
+
+        expedientesBusquedaActual = res.expedientes;
+
+        // Si hay varios alumnos coincidentes, mostrar selector de pestañas/pills
+        if (expedientesBusquedaActual.length > 1) {
+          pills.innerHTML = expedientesBusquedaActual.map((item, idx) => `
+            <button class="btn btn-sm btn-outline-primary pill-alumno-match" onclick="mostrarExpedienteAlumnoIndex(${idx})">
+              👤 ${item.alumno.nombre} (${item.alumno.grado}°"${item.alumno.grupo}")
+            </button>
+          `).join('');
+          selectorCoincidencias.classList.remove('d-none');
+        } else {
+          selectorCoincidencias.classList.add('d-none');
+        }
+
+        // Mostrar por defecto el primer alumno encontrado
+        mostrarExpedienteAlumnoIndex(0);
+
+      }).withFailureHandler(err => {
+        btn.disabled = false;
+        txtBtn.innerText = "🔍 Buscar";
+        spinner.classList.add('d-none');
+        alert("Error al consultar el expediente: " + err.message);
+      }).consultarHistorialCompletoAlumno(criterio);
+    }
+
+    function limpiarBusquedaRapidaAlumno() {
+      let input = document.getElementById('input-busqueda-alumno-rapida');
+      if (input) input.value = "";
+      document.getElementById('contenedor-resultado-historial-alumno').classList.add('d-none');
+      document.getElementById('selector-coincidencias-alumnos').classList.add('d-none');
+      expedientesBusquedaActual = [];
+    }
+
+    function mostrarExpedienteAlumnoIndex(idx) {
+      if (!expedientesBusquedaActual || !expedientesBusquedaActual[idx]) return;
+      let exp = expedientesBusquedaActual[idx];
+      let al = exp.alumno;
+      let contenedor = document.getElementById('contenedor-resultado-historial-alumno');
+      
+      // Actualizar botón activo en pills si existen
+      let pills = document.querySelectorAll('.pill-alumno-match');
+      pills.forEach((p, i) => {
+        if (i === idx) {
+          p.className = 'btn btn-sm btn-primary pill-alumno-match';
+        } else {
+          p.className = 'btn btn-sm btn-outline-primary pill-alumno-match';
+        }
+      });
+
+      // Generar tarjetas de eventos y abonos
+      let eventosHtml = "";
+      if (exp.eventos && exp.eventos.length > 0) {
+        exp.eventos.forEach(ev => {
+          let badgeEstatus = "";
+          if (ev.estatus === "PAGADO") badgeEstatus = '<span class="badge bg-success">PAGADO</span>';
+          else if (ev.estatus === "CORTESÍA") badgeEstatus = '<span class="badge bg-info text-dark">CORTESÍA</span>';
+          else if (ev.estatus === "CON ABONO") badgeEstatus = '<span class="badge bg-warning text-dark">CON ABONO</span>';
+          else badgeEstatus = '<span class="badge bg-danger">SIN PAGO</span>';
+
+          let porcentaje = ev.costoTotal > 0 ? Math.min(Math.round((ev.totalAbonado / ev.costoTotal) * 100), 100) : (ev.estatus === "CORTESÍA" ? 100 : 0);
+          let barraColor = (ev.estatus === "PAGADO" || ev.estatus === "CORTESÍA") ? "bg-success" : (ev.totalAbonado > 0 ? "bg-warning" : "bg-danger");
+
+          // Tabla de folios de abono
+          let filasAbonos = "";
+          if (ev.abonos && ev.abonos.length > 0) {
+            filasAbonos = ev.abonos.map(ab => {
+              let estiloFila = ab.cancelado ? 'style="text-decoration: line-through; color: #991b1b; background-color: #fee2e2;"' : '';
+              let tagMonto = ab.cancelado ? `<span class="text-danger small">${ab.montoTexto} (Anulado)</span>` :
+                (ab.cortesia ? `<span class="badge bg-info text-dark">CORTESÍA</span>` : `<span class="text-success fw-bold">+$${ab.montoValor}.00</span>`);
+
+              return `
+                <tr ${estiloFila}>
+                  <td class="font-monospace fw-bold text-danger">${ab.folio}</td>
+                  <td>${ab.fecha}</td>
+                  <td style="text-align: right;">${tagMonto}</td>
+                  <td><span class="badge bg-light text-dark border">${ab.cajero}</span></td>
+                  <td><span class="small ${ab.estatusCorte === 'Entregado' ? 'text-success' : 'text-secondary'}">● ${ab.estatusCorte}</span></td>
+                </tr>`;
+            }).join('');
+          } else {
+            filasAbonos = `<tr><td colspan="5" class="text-center py-2 text-muted small">No registra abonos aún para este evento.</td></tr>`;
+          }
+
+          eventosHtml += `
+            <div class="card p-3 mb-3 border rounded-3 bg-white shadow-sm">
+              <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2 mb-2">
+                <div>
+                  <h6 class="fw-bold m-0 text-dark" style="font-size: 15px;">${ev.nombreEvento}</h6>
+                  <span class="small text-muted">Costo total oficial: <strong>$${ev.costoTotal}.00 MXN</strong></span>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                  ${badgeEstatus}
+                  <button class="btn btn-sm btn-outline-success fw-bold py-1 px-2" 
+                          onclick="cargarAlumnoEnCobro('${ev.idEvento}', '${al.grado}', '${al.grupo}', '${al.id}')">
+                    ➕ Cobrar a este evento
+                  </button>
+                </div>
+              </div>
+
+              <!-- Barra de Progreso -->
+              <div class="progress mb-2" style="height: 12px; border-radius: 6px; background-color: #e2e8f0;">
+                <div class="progress-bar ${barraColor}" role="progressbar" style="width: ${porcentaje}%; font-size: 9px; font-weight: bold;">
+                  ${porcentaje}%
+                </div>
+              </div>
+
+              <div class="d-flex justify-content-between small text-secondary mb-2">
+                <span>Total abonado hoy: <strong class="text-success fw-bold">$${ev.totalAbonado}.00</strong></span>
+                <span>Saldo pendiente: <strong class="${ev.restante > 0 ? 'text-danger fw-bold' : 'text-success fw-bold'}">$${ev.restante}.00 MXN</strong></span>
+              </div>
+
+              <!-- Tabla de Folios de Abono -->
+              <div class="table-responsive-movil m-0">
+                <table class="table table-sm table-striped align-middle m-0" style="font-size: 12px;">
+                  <thead class="table-light">
+                    <tr><th>Folio</th><th>Fecha y Hora</th><th style="text-align: right;">Monto</th><th>Cajero</th><th>Corte</th></tr>
+                  </thead>
+                  <tbody>${filasAbonos}</tbody>
+                </table>
+              </div>
+            </div>`;
+        });
+      } else {
+        eventosHtml = `<div class="p-3 text-center text-muted bg-light rounded">El alumno no tiene eventos activos o inscritos actualmente.</div>`;
+      }
+
+      let htmlExpediente = `
+        <!-- FICHA PRINCIPAL DEL ALUMNO -->
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2 mb-3 bg-light p-3 rounded-3 border">
+          <div>
+            <h5 class="fw-bold m-0" style="color: var(--color-primario); font-size: 18px;">${al.nombre}</h5>
+            <div class="d-flex flex-wrap gap-2 mt-1">
+              <span class="badge bg-secondary font-monospace">Matrícula: ${al.id}</span>
+              <span class="badge bg-primary">${al.grado}° Secundaria - Grupo "${al.grupo}"</span>
+              ${al.email ? `<span class="badge bg-light text-dark border">✉️ ${al.email}</span>` : ''}
+            </div>
+          </div>
+          <div class="d-flex gap-2 w-100 w-md-auto justify-content-end">
+            <button class="btn btn-outline-dark btn-sm fw-bold" onclick="imprimirEstadoCuentaAlumno(${idx})">
+              🖨️ Imprimir Estado de Cuenta
+            </button>
+            <button class="btn btn-warning btn-sm fw-bold shadow-sm" onclick="cargarAlumnoEnCobro('', '${al.grado}', '${al.grupo}', '${al.id}')">
+              ➕ Cobrar Abono
+            </button>
+          </div>
+        </div>
+
+        <!-- RESUMEN FINANCIERO GLOBAL -->
+        <div class="row g-2 text-center mb-3">
+          <div class="col-4">
+            <div class="p-2 bg-light border rounded">
+              <span class="small text-muted d-block" style="font-size: 11px;">Total Compromisos</span>
+              <strong class="text-primary fs-6">$${exp.granCostoTotal}.00</strong>
+            </div>
+          </div>
+          <div class="col-4">
+            <div class="p-2 bg-light border rounded">
+              <span class="small text-muted d-block" style="font-size: 11px;">Total Abonado</span>
+              <strong class="text-success fs-6">$${exp.granTotalAbonado}.00</strong>
+            </div>
+          </div>
+          <div class="col-4">
+            <div class="p-2 bg-light border rounded">
+              <span class="small text-muted d-block" style="font-size: 11px;">Saldo Restante Total</span>
+              <strong class="${exp.granRestante > 0 ? 'text-danger' : 'text-success'} fs-6">$${exp.granRestante}.00</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- DETALLE DE EVENTOS -->
+        <h6 class="fw-bold text-secondary mb-2" style="font-size: 13px;">DETALLE DE ABONOS POR EVENTO:</h6>
+        ${eventosHtml}
+      `;
+
+      contenedor.innerHTML = htmlExpediente;
+      contenedor.classList.remove('d-none');
+    }
+
+    function cargarAlumnoEnCobro(idEvento, grado, grupo, idCliente) {
+      if (grado) document.getElementById('sel-grado').value = grado;
+      if (grupo) document.getElementById('sel-grupo').value = grupo;
+
+      if (idEvento) {
+        let selEv = document.getElementById('sel-evento');
+        selEv.value = idEvento;
+      }
+
+      verificarCambioFiltroGrupo();
+
+      setTimeout(() => {
+        let selAl = document.getElementById('sel-alumno');
+        if (selAl) {
+          selAl.value = idCliente;
+          consultarBalance();
+        }
+      }, 500);
+
+      // Desplazamiento suave al módulo de cobro
+      let seccionCobro = document.querySelector('#apartado-cobros .card-boston:nth-of-type(2)');
+      if (seccionCobro) {
+        seccionCobro.scrollIntoView({ behavior: 'smooth' });
+      }
+      setTimeout(() => {
+        document.getElementById('num-monto').focus();
+      }, 600);
+    }
+
+    function imprimirEstadoCuentaAlumno(idx) {
+      if (!expedientesBusquedaActual || !expedientesBusquedaActual[idx]) return;
+      let exp = expedientesBusquedaActual[idx];
+      let al = exp.alumno;
+      let horaEmision = new Date().toLocaleString();
+
+      let bloquesEventos = "";
+      exp.eventos.forEach(ev => {
+        let filas = "";
+        if (ev.abonos && ev.abonos.length > 0) {
+          filas = ev.abonos.map(ab => `
+            <tr ${ab.cancelado ? 'style="text-decoration: line-through; color: #777;"' : ''}>
+              <td style="font-family:monospace;">${ab.folio}</td>
+              <td>${ab.fecha}</td>
+              <td style="text-align:right;">${ab.cancelado ? ab.montoTexto : (ab.cortesia ? 'CORTESÍA' : '$' + ab.montoValor + '.00')}</td>
+              <td>${ab.cajero}</td>
+              <td>${ab.estatusCorte}</td>
+            </tr>`).join('');
+        } else {
+          filas = `<tr><td colspan="5" style="text-align:center; color:#777;">Sin abonos registrados aún.</td></tr>`;
+        }
+
+        bloquesEventos += `
+          <div style="margin-bottom: 16px; border: 1px solid #000; padding: 10px;">
+            <div style="display:flex; justify-content:space-between; border-bottom: 1px solid #000; padding-bottom: 4px; margin-bottom: 6px; font-size:12px;">
+              <div><strong>Evento: ${ev.nombreEvento}</strong> (${ev.estatus})</div>
+              <div>Costo: $${ev.costoTotal}.00 | Abonado: $${ev.totalAbonado}.00 | <strong>Resta: $${ev.restante}.00</strong></div>
+            </div>
+            <table class="table-print" style="margin-top: 4px; font-size: 11px;">
+              <thead><tr><th>Folio</th><th>Fecha y Hora</th><th style="text-align:right;">Monto</th><th>Cajero</th><th>Corte</th></tr></thead>
+              <tbody>${filas}</tbody>
+            </table>
+          </div>`;
+      });
+
+      let htmlPrint = `
+        <div style="padding: 15px;">
+          <div class="marco-print-titulo">
+            <h2 style="margin:0; font-size:18px;">COLEGIO BOSTON</h2>
+            <h4 style="margin:2px 0; font-size:14px; font-weight:bold;">ESTADO DE CUENTA INDIVIDUAL DE EVENTOS</h4>
+            <p style="margin:2px 0; font-size:12px;"><strong>Alumno:</strong> ${al.nombre} | <strong>Salón:</strong> ${al.grado}° "${al.grupo}" Secundaria | <strong>ID:</strong> ${al.id}</p>
+            <p style="text-align:right; font-size:10px; margin:0; color:#555;">Emisión: ${horaEmision}</p>
+          </div>
+
+          <div style="margin-bottom:14px; font-size:12px; border:1px solid #000; padding:8px; display:flex; justify-content:space-around;">
+            <div><strong>Total Compromiso:</strong> $${exp.granCostoTotal}.00</div>
+            <div><strong>Total Pagado:</strong> $${exp.granTotalAbonado}.00</div>
+            <div><strong>Saldo Restante General:</strong> <span style="font-weight:bold; color:#c00;">$${exp.granRestante}.00</span></div>
+          </div>
+
+          ${bloquesEventos}
+
+          <div style="margin-top: 40px; text-align: center;">
+            <div style="display: inline-block; width: 250px; border-top: 1px solid #000; padding-top: 5px; font-size: 11px;">
+              Firma y Sello de Caja Escolar<br>Colegio Boston
+            </div>
+          </div>
+        </div>`;
+
+      document.getElementById('print-area-estado-cuenta').innerHTML = htmlPrint;
+      forzarImpresionAislada('print-area-estado-cuenta');
     }
 
     // 3. APARTADO: CAJA Y COBROS
