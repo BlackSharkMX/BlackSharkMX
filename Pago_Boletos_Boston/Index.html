@@ -400,6 +400,201 @@
       .hoja-grupo-print:last-child { page-break-after: avoid; }
     }
 
+    /* ==========================================================
+       OPTIMIZACIÓN MÓVIL RESPONSIVE AVANZADA (SMARTPHONES Y TABLETS)
+       ========================================================== */
+    @media (max-width: 768px) {
+      /* Navbar compacto para celulares */
+      .navbar-boston {
+        padding: 8px 12px !important;
+      }
+      .navbar-brand-content {
+        gap: 8px !important;
+      }
+      .navbar-logo {
+        height: 32px !important;
+      }
+      .navbar-title {
+        font-size: 14px !important;
+      }
+      .navbar-subtitle {
+        font-size: 9px !important;
+      }
+      
+      /* Espaciado del contenedor principal */
+      .container-fluid {
+        padding-left: 10px !important;
+        padding-right: 10px !important;
+        padding-top: 10px !important;
+        padding-bottom: 20px !important;
+      }
+      
+      /* Tarjetas compactas */
+      .card-boston {
+        padding: 14px 12px !important;
+        border-radius: 12px !important;
+        margin-bottom: 12px !important;
+      }
+      
+      /* Pestañas horizontales con scroll táctil suave */
+      .nav-tabs-apartados {
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        gap: 6px !important;
+        padding: 4px 2px 8px 2px !important;
+        margin-bottom: 12px !important;
+        border-bottom: 1.5px solid #e2e8f0 !important;
+      }
+      .tab-apartado {
+        padding: 8px 12px !important;
+        font-size: 12.5px !important;
+        border-radius: 8px !important;
+        white-space: nowrap !important;
+        flex-shrink: 0 !important;
+      }
+      
+      /* Controles y formularios táctiles */
+      .form-control, .form-select {
+        font-size: 15px !important;
+        padding: 9px 11px !important;
+        border-radius: 8px !important;
+        min-height: 42px !important;
+      }
+      .btn-boston, .btn-boston-gold {
+        padding: 10px 14px !important;
+        font-size: 13.5px !important;
+        border-radius: 8px !important;
+      }
+      
+      /* KPI metric cards en celulares: 2 columnas limpias */
+      #contenedor-kpis-metricas > div {
+        flex: 0 0 50% !important;
+        max-width: 50% !important;
+      }
+      .kpi-metric-card {
+        padding: 10px 8px !important;
+        border-radius: 10px !important;
+      }
+      .kpi-val {
+        font-size: 1.25rem !important;
+        margin-top: 2px !important;
+        margin-bottom: 2px !important;
+      }
+      
+      /* Croquis del Camión (40 Asientos) en Celulares */
+      .bus-container {
+        padding: 10px 5px !important;
+        border-width: 2px !important;
+        border-radius: 18px !important;
+        max-width: 100% !important;
+      }
+      .bus-front-header {
+        padding: 8px 10px !important;
+        margin-bottom: 10px !important;
+        border-radius: 12px 12px 6px 6px !important;
+      }
+      .bus-row {
+        gap: 3px !important;
+        margin-bottom: 5px !important;
+      }
+      .bus-seat-pair {
+        gap: 3px !important;
+      }
+      .bus-aisle {
+        width: 18px !important;
+        font-size: 8.5px !important;
+      }
+      .bus-seat-card {
+        padding: 4px 4px !important;
+        border-radius: 6px !important;
+        border-width: 1px !important;
+      }
+      .bus-seat-num {
+        font-size: 10px !important;
+      }
+      .bus-seat-name {
+        font-size: 9px !important;
+        margin-top: 1px !important;
+        margin-bottom: 1px !important;
+      }
+      .bus-seat-meta {
+        font-size: 8px !important;
+      }
+      .bus-badge-status {
+        font-size: 7px !important;
+        padding: 1px 2px !important;
+      }
+      
+      /* Tablas responsivas con scroll horizontal y encabezados compactos */
+      .table-responsive-movil {
+        border-radius: 8px !important;
+        margin-bottom: 12px !important;
+      }
+      .table-responsive-movil table {
+        font-size: 11.5px !important;
+      }
+      .table-responsive-movil table th,
+      .table-responsive-movil table td {
+        padding: 6px 6px !important;
+      }
+      
+      /* Acordeones de salones */
+      .block-salon-header {
+        padding: 10px 12px !important;
+      }
+      .block-salon-container {
+        border-radius: 10px !important;
+        margin-bottom: 14px !important;
+      }
+      
+      /* Arqueo de Caja y Monedas */
+      .tabla-denominaciones th, .tabla-denominaciones td {
+        padding: 5px 6px !important;
+        font-size: 12px !important;
+      }
+      .tabla-denominaciones input {
+        font-size: 13px !important;
+        padding: 4px 6px !important;
+        height: 34px !important;
+      }
+    }
+    
+    @media (max-width: 576px) {
+      .navbar-boston {
+        padding: 6px 8px !important;
+      }
+      .navbar-logo {
+        height: 28px !important;
+      }
+      .navbar-title {
+        font-size: 13px !important;
+      }
+      .navbar-subtitle {
+        display: none !important;
+      }
+      .bus-aisle {
+        width: 14px !important;
+        font-size: 7.5px !important;
+      }
+      .bus-seat-card {
+        padding: 3px 2px !important;
+      }
+      .bus-seat-num {
+        font-size: 9px !important;
+      }
+      .bus-seat-name {
+        font-size: 8.5px !important;
+      }
+      .bus-seat-meta {
+        font-size: 7px !important;
+      }
+      .bus-badge-status {
+        font-size: 6.5px !important;
+      }
+    }
+
     /* AUTOCOMPLETADO / INFERENCIA EN VIVO */
     .dropdown-sugerencias-alumnos {
       position: absolute;
@@ -2572,6 +2767,19 @@
       }).obtenerCatalogoAlumnosLigero();
     }
 
+    /**
+     * Normaliza texto eliminando acentos, caracteres diacríticos, mayúsculas y espacios extra
+     */
+    function normalizarTextoBusqueda(str) {
+      if (!str) return '';
+      return str.toString()
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/ñ/g, 'n')
+        .trim();
+    }
+
     function inferirSugerenciasAlumnosEnVivo(texto) {
       let drop = document.getElementById('dropdown-inferencia-alumnos');
       if (!drop) return;
@@ -2584,12 +2792,34 @@
         return;
       }
       
-      let q = texto.trim().toLowerCase();
-      sugerenciasActuales = catalogoAlumnosLigero.filter(a => {
-        let nom = (a.nombre || "").toLowerCase();
-        let id = (a.id || "").toLowerCase();
-        return nom.includes(q) || id.includes(q);
-      }).slice(0, 8);
+      let normQ = normalizarTextoBusqueda(texto);
+      let queryWords = normQ.split(/\s+/).filter(Boolean);
+      
+      let candidatos = [];
+      for (let i = 0; i < (catalogoAlumnosLigero || []).length; i++) {
+        let a = catalogoAlumnosLigero[i];
+        let normNom = normalizarTextoBusqueda(a.nombre);
+        let normId = normalizarTextoBusqueda(a.id);
+        let fullTarget = normNom + ' ' + normId;
+        
+        let coincide = queryWords.length > 0 && queryWords.every(w => fullTarget.includes(w));
+        if (coincide) {
+          let score = 0;
+          if (normNom === normQ || normId === normQ) {
+            score = 100;
+          } else if (normNom.startsWith(normQ) || normId.startsWith(normQ)) {
+            score = 80;
+          } else if (normNom.includes(normQ)) {
+            score = 60;
+          } else {
+            score = 40;
+          }
+          candidatos.push({ item: a, score: score });
+        }
+      }
+      
+      candidatos.sort((a, b) => b.score - a.score);
+      sugerenciasActuales = candidatos.slice(0, 8).map(c => c.item);
       
       if (sugerenciasActuales.length === 0) {
         drop.innerHTML = `
@@ -2612,9 +2842,9 @@
             <div class="d-flex align-items-center gap-2">
               <span class="fs-5">${esExt ? '👥' : '🎓'}</span>
               <div>
-                <div class="fw-bold text-dark sugerencia-nombre">${resaltarCoincidencia(a.nombre, q)}</div>
+                <div class="fw-bold text-dark sugerencia-nombre">${resaltarCoincidencia(a.nombre, texto)}</div>
                 <div class="small text-muted" style="font-size:11px;">
-                  <span class="badge bg-secondary-subtle text-secondary font-monospace border me-1">${a.id}</span>
+                  <span class="badge bg-secondary-subtle text-secondary font-monospace border me-1">${resaltarCoincidencia(a.id, texto)}</span>
                   ${badgeSalon}
                 </div>
               </div>
@@ -2628,8 +2858,26 @@
     }
 
     function resaltarCoincidencia(texto, busqueda) {
-      if (!busqueda) return texto;
-      let re = new RegExp('(' + busqueda.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
+      if (!texto || !busqueda) return texto || '';
+      let words = busqueda.trim().split(/\s+/).filter(Boolean);
+      if (words.length === 0) return texto;
+      
+      let patterns = words.map(w => {
+        let esc = '';
+        for (let i = 0; i < w.length; i++) {
+          let ch = w[i].toLowerCase();
+          if (ch === 'a' || ch === 'á' || ch === 'à' || ch === 'ä') esc += '[aáàäâAÁÀÄÂ]';
+          else if (ch === 'e' || ch === 'é' || ch === 'è' || ch === 'ë') esc += '[eéèëêEÉÈËÊ]';
+          else if (ch === 'i' || ch === 'í' || ch === 'ì' || ch === 'ï') esc += '[iíìïîIÍÌÏÎ]';
+          else if (ch === 'o' || ch === 'ó' || ch === 'ò' || ch === 'ö') esc += '[oóòöôOÓÒÖÔ]';
+          else if (ch === 'u' || ch === 'ú' || ch === 'ù' || ch === 'ü') esc += '[uúùüûUÚÙÜÛ]';
+          else if (ch === 'n' || ch === 'ñ') esc += '[nñNÑ]';
+          else esc += ch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        }
+        return esc;
+      });
+      
+      let re = new RegExp('(' + patterns.join('|') + ')', 'gi');
       return texto.replace(re, '<mark class="p-0 bg-warning-subtle fw-bold">$1</mark>');
     }
 
@@ -4421,15 +4669,18 @@
     function filtrarTablaAlumnosEnPantalla() {
       if (!datosLogisticaActual || !datosLogisticaActual.alumnos) return;
 
-      var texto = (document.getElementById('busqueda-tabla-alumnos') ? document.getElementById('busqueda-tabla-alumnos').value : '').toLowerCase().trim();
+      var textoRaw = document.getElementById('busqueda-tabla-alumnos') ? document.getElementById('busqueda-tabla-alumnos').value : '';
+      var queryWords = normalizarTextoBusqueda(textoRaw).split(/\s+/).filter(Boolean);
       var filtroEstado = document.getElementById('sel-listas-filtro-estado') ? document.getElementById('sel-listas-filtro-estado').value : 'TODOS';
 
       var filtrados = datosLogisticaActual.alumnos.filter(function(al) {
-        // Filtro texto
-        if (texto) {
-          var matchTexto = al.nombre.toLowerCase().includes(texto) || 
-                             al.id.toLowerCase().includes(texto) || 
-                             (al.asiento && al.asiento.toString().includes(texto));
+        // Filtro texto sin acentos y multitermino
+        if (queryWords.length > 0) {
+          var normNom = normalizarTextoBusqueda(al.nombre);
+          var normId = normalizarTextoBusqueda(al.id);
+          var normAsiento = al.asiento ? al.asiento.toString() : '';
+          var fullTarget = normNom + ' ' + normId + ' ' + normAsiento;
+          var matchTexto = queryWords.every(function(w) { return fullTarget.indexOf(w) !== -1; });
           if (!matchTexto) return false;
         }
 
@@ -4469,14 +4720,13 @@
 
         thead.innerHTML = `
           <tr>
-            <th style="width: 85px; text-align: center;">Asiento</th>
-            <th style="width: 95px;">Matrícula</th>
-            <th style="min-width: 190px;">Nombre del Alumno</th>
-            <th style="width: 90px; text-align: center;">Salón</th>
-            <th style="width: 110px; text-align: center;">Pago</th>
+            <th style="width: 75px; text-align: center;">Asiento</th>
+            <th style="min-width: 170px;">Alumno / Matrícula</th>
+            <th style="width: 80px; text-align: center;">Salón</th>
+            <th style="width: 105px; text-align: center;">Pago</th>
             ${colsEtiquetas}
-            <th style="min-width: 130px;">Observaciones / Ficha</th>
-            <th style="width: 90px; text-align: center;">Acción</th>
+            <th style="min-width: 120px;">Observaciones</th>
+            <th style="width: 85px; text-align: center;">Acción</th>
           </tr>`;
       }
 
@@ -4519,24 +4769,34 @@
           ? ('<span class="badge bg-warning-subtle text-dark border p-1 d-inline-block text-truncate" style="max-width: 140px; cursor: pointer;" onclick="abrirModalEditarNota(\'' + al.id + '\', \'' + al.nombre.replace(/'/g, "\\'") + '\', \'' + (al.notas || '').replace(/'/g, "\\'") + '\')" title="' + al.notas + '">📝 ' + al.notas + '</span>')
           : ('<button class="btn btn-link btn-sm p-0 text-decoration-none text-muted" style="font-size: 11px;" onclick="abrirModalEditarNota(\'' + al.id + '\', \'' + al.nombre.replace(/'/g, "\\'") + '\', \'\')">✏️ Agregar nota</button>');
 
+        var botonCobroDirecto = `
+          <button class="btn btn-sm btn-outline-primary py-1 px-2 fw-bold" 
+                  onclick="cargarAlumnoEnCobro('${idEvento}', '${al.grado}', '${al.grupo}', '${al.id}', '${al.nombre.replace(/'/g, "\\'")}', '${al.asiento || ''}')"
+                  title="Cobrar abono a ${al.nombre}">
+            💳 Cobrar
+          </button>`;
+
         return `
           <tr>
-            <td style="text-align: center;">${badgeAsiento}</td>
-            <td class="font-monospace text-secondary small">${al.id}</td>
+            <td style="text-align: center; vertical-align: middle;">
+              ${badgeAsiento}
+            </td>
             <td>
               <div class="fw-bold text-dark">${al.nombre}</div>
-              ${al.esExterno ? '<span class="badge bg-warning text-dark" style="font-size: 9px;">Invitado Externo</span>' : ''}
+              <div class="small text-muted font-monospace" style="font-size: 10.5px;">${al.id}</div>
             </td>
-            <td style="text-align: center;" class="small fw-bold text-secondary">${al.esExterno ? 'Ext' : (al.grado + '° ' + al.grupo)}</td>
-            <td style="text-align: center;">${badgePago}</td>
+            <td style="text-align: center; vertical-align: middle;">
+              ${al.esExterno ? '<span class="badge bg-warning text-dark">EXT</span>' : (al.grado + '° "' + al.grupo + '"')}
+            </td>
+            <td style="text-align: center; vertical-align: middle;">
+              ${badgePago}
+            </td>
             ${celdasChecks}
-            <td>${notaBtn}</td>
-            <td style="text-align: center;">
-              <button class="btn btn-sm btn-outline-primary py-1 px-2 fw-bold" style="font-size: 11px;"
-                      onclick="cargarAlumnoEnCobro('${idEvento}', '${al.grado}', '${al.grupo}', '${al.id}', '${al.nombre.replace(/'/g, "\\'")}', '')" 
-                      title="Cobrar a ${al.nombre}">
-                💳 Cobrar
-              </button>
+            <td style="vertical-align: middle;">
+              ${notaBtn}
+            </td>
+            <td style="text-align: center; vertical-align: middle;">
+              ${botonCobroDirecto}
             </td>
           </tr>`;
       }).join('');

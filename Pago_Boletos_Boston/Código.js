@@ -135,9 +135,18 @@ function doGet(e) {
         if (usS && usS.getLastRow() > 0) out.usuariosData = usS.getDataRange().getValues();
         var clSheet = ss.getSheetByName("Clientes");
         if (clSheet && clSheet.getLastRow() > 0) {
-          var clRows = Math.min(clSheet.getLastRow(), 10);
-          var clCols = Math.min(clSheet.getLastColumn(), 10);
-          out.clientesSample = clSheet.getRange(1, 1, clRows, clCols).getValues();
+          var allClientes = clSheet.getDataRange().getValues();
+          var bajas = [];
+          var activos = 0;
+          for (var c = 1; c < allClientes.length; c++) {
+            var st = allClientes[c][6] ? allClientes[c][6].toString().trim() : "";
+            if (st.toLowerCase().includes("baja") || st.toLowerCase().includes("inactiv")) {
+              bajas.push({ row: c + 1, id: allClientes[c][0], nombre: allClientes[c][1], estatus: st });
+            } else {
+              activos++;
+            }
+          }
+          out.clientesStat = { total: allClientes.length - 1, activos: activos, totalBajas: bajas.length, bajas: bajas };
         }
       }
 
@@ -171,6 +180,13 @@ function doGet(e) {
       }
 
       return ContentService.createTextOutput(JSON.stringify(out, null, 2))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // Endpoint para purgar definitivamente alumnos dados de baja
+    if (e && e.parameter && e.parameter.action === 'purgar_bajas') {
+      var resPurga = purgarAlumnosBaja();
+      return ContentService.createTextOutput(JSON.stringify(resPurga, null, 2))
         .setMimeType(ContentService.MimeType.JSON);
     }
 
@@ -974,9 +990,77 @@ function obtenerInvitadosExternos() {
 }
 
 /**
+ * Purgar definitivamente alumnos con estatus 'Baja' o 'Inactivo' de la hoja Clientes
+ */
+function purgarAlumnosBaja() {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheetClientes = ss.getSheetByName("Clientes");
+    if (!sheetClientes) {
+      return { success: false, message: "No se encontró la hoja 'Clientes'." };
+    }
+    
+    var data = sheetClientes.getDataRange().getValues();
+    if (data.length <= 1) {
+      return { success: true, message: "No hay registros en Clientes.", eliminados: 0 };
+    }
+    
+    var headers = data[0];
+    var filasConservadas = [];
+    var eliminados = [];
+    
+    for (var i = 1; i < data.length; i++) {
+      var fila = data[i];
+      var estatus = fila[6] ? fila[6].toString().trim().toLowerCase() : "activo";
+      if (estatus.includes("baja") || estatus.includes("inactiv")) {
+        eliminados.push({ id: fila[0], nombre: fila[1], estatus: fila[6] });
+      } else {
+        filasConservadas.push(fila);
+      }
+    }
+    
+    sheetClientes.clearContents();
+    sheetClientes.getRange(1, 1, 1, headers.length).setValues([headers]);
+    sheetClientes.getRange(1, 1, 1, headers.length)
+      .setFontWeight("bold")
+      .setBackground("#1e293b")
+      .setFontColor("#f8fafc");
+      
+    if (filasConservadas.length > 0) {
+      sheetClientes.getRange(2, 1, filasConservadas.length, headers.length).setValues(filasConservadas);
+    }
+    
+    return {
+      success: true,
+      message: "Se purgaron exitosamente " + eliminados.length + " alumnos dados de baja.",
+      totalOriginal: data.length - 1,
+      totalConservados: filasConservadas.length,
+      totalEliminados: eliminados.length,
+      eliminados: eliminados
+    };
+  } catch (err) {
+    return { success: false, error: err.toString() };
+  }
+}
+
+/**
+ * Normaliza texto eliminando acentos, caracteres diacríticos, mayúsculas y espacios extra
+ */
+function normalizarTextoBusqueda(str) {
+  if (!str) return "";
+  return str.toString()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/ñ/g, "n")
+    .trim();
+}
+
+/**
  * Consulta integral del historial de pagos y abonos de un alumno en todos los eventos.
  * Muestra el estado de abonos de eventos con movimientos y asocia automáticamente
  * todos los eventos activos escolares vigentes (incluso si tiene $0 abonos) para cobro inmediato.
+ * Búsqueda inteligente sin acentos, por palabras y coincidencia exacta prioritaria.
  */
 function consultarHistorialCompletoAlumno(criterio) {
   if (!criterio || criterio.toString().trim() === "") {
@@ -995,11 +1079,11 @@ function consultarHistorialCompletoAlumno(criterio) {
   }
   
   var clientesData = sheetClientes.getDataRange().getValues();
-  var busqueda = criterio.toString().trim().toLowerCase();
+  var normCriterio = normalizarTextoBusqueda(criterio);
+  var palabrasBusqueda = normCriterio.split(/\s+/).filter(Boolean);
   
-  // 1. Localizar alumnos o invitados coincidentes por ID o Nombre (priorizando activos)
+  // 1. Localizar alumnos o invitados coincidentes por ID o Nombre (excluyendo bajas estrictamente)
   var coincidentesActivos = [];
-  var coincidentesBajas = [];
   for (var i = 1; i < clientesData.length; i++) {
     var idAl = clientesData[i][0] ? clientesData[i][0].toString().trim() : "";
     var nomAl = clientesData[i][1] ? clientesData[i][1].toString().trim() : "";
@@ -1009,7 +1093,21 @@ function consultarHistorialCompletoAlumno(criterio) {
     var emailAl = clientesData[i][5] ? clientesData[i][5].toString().trim() : "";
     var estatusAl = clientesData[i][6] ? clientesData[i][6].toString().trim() : "Activo";
     
-    if (idAl.toLowerCase().includes(busqueda) || nomAl.toLowerCase().includes(busqueda)) {
+    // NUNCA incluir alumnos dados de baja o inactivos
+    if (estatusAl.toLowerCase().includes("baja") || estatusAl.toLowerCase().includes("inactiv")) {
+      continue;
+    }
+    
+    var normNom = normalizarTextoBusqueda(nomAl);
+    var normId = normalizarTextoBusqueda(idAl);
+    var targetCompleto = normNom + " " + normId;
+    
+    // Búsqueda sin acentos: todas las palabras ingresadas deben coincidir
+    var coincide = palabrasBusqueda.length > 0 && palabrasBusqueda.every(function(p) {
+      return targetCompleto.indexOf(p) !== -1;
+    });
+    
+    if (coincide) {
       var itemAl = {
         id: idAl,
         nombre: nomAl,
@@ -1020,14 +1118,26 @@ function consultarHistorialCompletoAlumno(criterio) {
         estatus: estatusAl,
         esExterno: idAl.startsWith("EXT-") || nivelAl.toLowerCase() === "externo" || grupoAl === "EXT"
       };
-      if (estatusAl.toLowerCase().includes("baja") || estatusAl.toLowerCase().includes("inactiv")) {
-        coincidentesBajas.push(itemAl);
+      
+      // Ranking de relevancia (exacta > prefijo > palabra)
+      var score = 0;
+      if (normNom === normCriterio || normId === normCriterio) {
+        score = 100;
+      } else if (normNom.indexOf(normCriterio) === 0 || normId.indexOf(normCriterio) === 0) {
+        score = 80;
+      } else if (normNom.indexOf(palabrasBusqueda[0]) !== -1) {
+        score = 60;
       } else {
-        coincidentesActivos.push(itemAl);
+        score = 40;
       }
+      
+      coincidentesActivos.push({ item: itemAl, score: score });
     }
   }
-  var alumnosCoincidentes = coincidentesActivos.concat(coincidentesBajas).slice(0, 15);
+  
+  // Ordenar por ranking descendente
+  coincidentesActivos.sort(function(a, b) { return b.score - a.score; });
+  var alumnosCoincidentes = coincidentesActivos.map(function(c) { return c.item; }).slice(0, 15);
   
   if (alumnosCoincidentes.length === 0) {
     return { success: false, message: "No se encontró ningún alumno o invitado con el criterio: '" + criterio + "'." };
@@ -2882,20 +2992,7 @@ function sincronizarAlumnosDesdeSheetExterna(urlOrId, gidForzado) {
 
     if (!estaEnNuevos && idOld) {
       totalBajas++;
-      // Si el alumno tiene pagos registrados, lo conservamos como "Baja" para no corromper la contabilidad histórica
-      if (idsConPagos[idOld]) {
-        nuevasFilasClientes.push([
-          idOld,
-          nomOld,
-          clientesActuales[i][2] || "Secundaria",
-          clientesActuales[i][3] || "",
-          clientesActuales[i][4] || "",
-          mailOld,
-          "Baja",
-          fechaHoy
-        ]);
-      }
-      // Si no tenía pagos, queda dado de baja y removido del padrón
+      // Si el alumno no está en las listas oficiales actualizadas, queda dado de baja y removido del padrón
     }
   }
 
