@@ -262,11 +262,14 @@ function getTodosEventosActivos() {
   var eventos = [];
   for (var i = 1; i < data.length; i++) {
     if (data[i][6] === "Activo") {
+      var cupoVal = (data[i][5] === "" || data[i][5] === null || isNaN(parseInt(data[i][5]))) ? 0 : parseInt(data[i][5]);
       eventos.push({ 
         id: data[i][0], 
         nombre: data[i][1], 
+        fecha: data[i][2],
+        alcance: data[i][3] ? data[i][3].toString() : "Todos",
         costo: parseFloat(data[i][4]) || 0, 
-        cupo: parseInt(data[i][5]) || 0 
+        cupo: Math.max(cupoVal, 0)
       });
     }
   }
@@ -288,12 +291,21 @@ function getEventosCajero(idCajero, rol) {
   var listaEventos = [];
   for (var i = 1; i < eventos.length; i++) {
     if (eventos[i][6] === "Activo") {
+      var cupoVal = (eventos[i][5] === "" || eventos[i][5] === null || isNaN(parseInt(eventos[i][5]))) ? 0 : parseInt(eventos[i][5]);
+      var evObj = { 
+        id: eventos[i][0], 
+        nombre: eventos[i][1], 
+        alcance: eventos[i][3] ? eventos[i][3].toString() : "Todos",
+        costo: parseFloat(eventos[i][4]) || 0,
+        cupo: Math.max(cupoVal, 0)
+      };
+
       if (rol === "Admin") {
-        listaEventos.push({ id: eventos[i][0], nombre: eventos[i][1], costo: parseFloat(eventos[i][4]) || 0 });
+        listaEventos.push(evObj);
       } else {
         for (var j = 1; j < asignaciones.length; j++) {
           if (asignaciones[j][1] == eventos[i][0] && asignaciones[j][2] == idCajero) {
-            listaEventos.push({ id: eventos[i][0], nombre: eventos[i][1], costo: parseFloat(eventos[i][4]) || 0 });
+            listaEventos.push(evObj);
             break;
           }
         }
@@ -304,22 +316,34 @@ function getEventosCajero(idCajero, rol) {
 }
 
 /**
- * Crear nuevo evento desde panel Admin
+ * Crear nuevo evento desde panel Admin (con soporte para alcance de grados/grupos y cupo ilimitado)
  */
-function crearNuevoEvento(nombre, costo, cupo, idCajeroAsignado) {
+function crearNuevoEvento(nombre, costo, cupo, idCajeroAsignado, alcance) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheetEventos = ss.getSheetByName("Eventos");
   var idEvento = "EV-" + new Date().getTime().toString().slice(-6);
   var fechaActual = new Date().toISOString().split('T')[0];
+  
+  // 0 o en blanco significa sin límite de cupo
+  var cupoFinal = 0;
+  if (cupo !== "" && cupo !== null && cupo !== undefined) {
+    var cupoNum = parseInt(cupo);
+    cupoFinal = isNaN(cupoNum) ? 0 : Math.max(cupoNum, 0);
+  }
+  
+  var alcanceFinal = (alcance && alcance.toString().trim() !== "") ? alcance.toString().trim() : "Todos";
+
   try {
-    sheetEventos.appendRow([idEvento, nombre, fechaActual, "Todos", parseFloat(costo), parseInt(cupo), "Activo"]);
+    sheetEventos.appendRow([idEvento, nombre.trim(), fechaActual, alcanceFinal, parseFloat(costo) || 0, cupoFinal, "Activo"]);
     
     if (idCajeroAsignado) {
       var sheetAsignaciones = ss.getSheetByName("Asignaciones");
-      var idAsignacion = "ASG-" + new Date().getTime().toString().slice(-6);
-      sheetAsignaciones.appendRow([idAsignacion, idEvento, idCajeroAsignado]);
+      if (sheetAsignaciones) {
+        var idAsignacion = "ASG-" + new Date().getTime().toString().slice(-6);
+        sheetAsignaciones.appendRow([idAsignacion, idEvento, idCajeroAsignado]);
+      }
     }
-    return { success: true, message: "Evento '" + nombre + "' creado con éxito." };
+    return { success: true, message: "Evento '" + nombre + "' creado con éxito.", idEvento: idEvento };
   } catch(e) {
     return { success: false, message: "Error al crear evento: " + e.message };
   }
@@ -328,15 +352,25 @@ function crearNuevoEvento(nombre, costo, cupo, idCajeroAsignado) {
 /**
  * Modificar evento existente
  */
-function modificarEvento(idEvento, nuevoNombre, nuevoCosto, nuevoCupo) {
+function modificarEvento(idEvento, nuevoNombre, nuevoCosto, nuevoCupo, nuevoAlcance) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheetEventos = ss.getSheetByName("Eventos");
   var data = sheetEventos.getDataRange().getValues();
+  
+  var cupoFinal = 0;
+  if (nuevoCupo !== "" && nuevoCupo !== null && nuevoCupo !== undefined) {
+    var cupoNum = parseInt(nuevoCupo);
+    cupoFinal = isNaN(cupoNum) ? 0 : Math.max(cupoNum, 0);
+  }
+
   for (var i = 1; i < data.length; i++) {
     if (data[i][0] == idEvento) {
-      sheetEventos.getRange(i + 1, 2).setValue(nuevoNombre);
-      sheetEventos.getRange(i + 1, 5).setValue(parseFloat(nuevoCosto));
-      sheetEventos.getRange(i + 1, 6).setValue(parseInt(nuevoCupo));
+      sheetEventos.getRange(i + 1, 2).setValue(nuevoNombre.trim());
+      if (nuevoAlcance !== undefined && nuevoAlcance !== null) {
+        sheetEventos.getRange(i + 1, 4).setValue(nuevoAlcance.toString().trim());
+      }
+      sheetEventos.getRange(i + 1, 5).setValue(parseFloat(nuevoCosto) || 0);
+      sheetEventos.getRange(i + 1, 6).setValue(cupoFinal);
       return { success: true, message: "Evento actualizado con éxito." };
     }
   }

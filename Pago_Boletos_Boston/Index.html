@@ -626,6 +626,7 @@
             <div class="col-12 col-md-4">
               <label class="form-label small fw-bold text-secondary">1. Evento Escolar</label>
               <select id="sel-evento" class="form-select" onchange="actualizarCosto()"></select>
+              <div id="badge-evento-alcance-info" class="mt-1" style="min-height: 20px;"></div>
             </div>
             <div class="col-6 col-md-4">
               <label class="form-label small fw-bold text-secondary">2. Grado</label>
@@ -735,7 +736,8 @@
           <div class="row g-2 mb-3">
             <div class="col-12 col-md-5">
               <label class="form-label small fw-bold text-secondary">Evento:</label>
-              <select id="sel-listas-evento" class="form-select" onchange="cargarConcentradoDesdeModulo()"></select>
+              <select id="sel-listas-evento" class="form-select" onchange="actualizarSelectoresSalonesEnListas()"></select>
+              <div id="badge-listas-alcance-info" class="mt-1" style="min-height: 20px;"></div>
             </div>
             <div class="col-6 col-md-3">
               <label class="form-label small fw-bold text-secondary">Grado:</label>
@@ -861,7 +863,7 @@
         <div class="card-boston">
           <h5 class="section-title">🎪 Crear Nuevo Evento Escolar</h5>
           <div class="row g-2">
-            <div class="col-12 col-md-3">
+            <div class="col-12 col-md-4">
               <label class="form-label small">Nombre del Evento</label>
               <input type="text" id="new-ev-nombre" class="form-control" placeholder="Ej. Excursión Six Flags 2026">
             </div>
@@ -869,17 +871,79 @@
               <label class="form-label small">Costo Alumno ($)</label>
               <input type="number" id="new-ev-costo" class="form-control" placeholder="850">
             </div>
-            <div class="col-6 col-md-2">
-              <label class="form-label small">Cupo Meta (Alumnos)</label>
-              <input type="number" id="new-ev-cupo" class="form-control" placeholder="120">
+            <div class="col-6 col-md-3">
+              <div class="d-flex justify-content-between align-items-center">
+                <label class="form-label small m-0">Cupo Meta</label>
+                <span class="text-muted" style="font-size:10px;">0 o blanco = Ilimitado</span>
+              </div>
+              <input type="number" id="new-ev-cupo" class="form-control" placeholder="0 = Sin límite" min="0">
             </div>
             <div class="col-12 col-md-3">
               <label class="form-label small">Cajero Responsable</label>
               <select id="new-ev-cajero" class="form-select select-cajeros-lista"><option value="">Cargando...</option></select>
             </div>
-            <div class="col-12 col-md-2 d-flex align-items-end mt-2 mt-md-0">
-              <button class="btn-boston w-100 py-2" onclick="crearEvento()">Crear Evento</button>
+          </div>
+
+          <!-- SELECTOR DE ALCANCE: TODOS O GRADOS/GRUPOS ESPECÍFICOS -->
+          <div class="p-3 mt-3 bg-light border rounded-3">
+            <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-2 mb-2">
+              <span class="small fw-bold text-dark">🎯 Alcance de Participación (Grados y Grupos):</span>
+              <div class="form-check form-switch m-0">
+                <input class="form-check-input" type="checkbox" id="chk-new-ev-todos" checked onchange="toggleAlcanceNuevoEvento()">
+                <label class="form-check-label small fw-bold text-primary" for="chk-new-ev-todos">
+                  🌐 Aplica para TODOS los Grados y Grupos (Evento General)
+                </label>
+              </div>
             </div>
+
+            <!-- Panel Específico -->
+            <div id="panel-alcance-especifico-new" class="row g-3 d-none pt-2 border-top">
+              <div class="col-12 col-md-6">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                  <span class="small fw-bold text-secondary">Grados Escolares:</span>
+                  <div class="btn-group btn-group-sm">
+                    <button type="button" class="btn btn-sm btn-link p-0 text-decoration-none small me-2" onclick="marcarTodosGradosNuevo(true)">Todos</button>
+                    <button type="button" class="btn btn-sm btn-link p-0 text-decoration-none small text-muted" onclick="marcarTodosGradosNuevo(false)">Ninguno</button>
+                  </div>
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+                  <label class="btn btn-outline-primary btn-sm d-flex align-items-center gap-1">
+                    <input type="checkbox" class="chk-new-grado" value="1" checked> 1° Secundaria
+                  </label>
+                  <label class="btn btn-outline-primary btn-sm d-flex align-items-center gap-1">
+                    <input type="checkbox" class="chk-new-grado" value="2" checked> 2° Secundaria
+                  </label>
+                  <label class="btn btn-outline-primary btn-sm d-flex align-items-center gap-1">
+                    <input type="checkbox" class="chk-new-grado" value="3" checked> 3° Secundaria
+                  </label>
+                </div>
+              </div>
+
+              <div class="col-12 col-md-6">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                  <span class="small fw-bold text-secondary">Grupos / Secciones:</span>
+                  <div class="btn-group btn-group-sm">
+                    <button type="button" class="btn btn-sm btn-link p-0 text-decoration-none small me-2" onclick="marcarTodosGruposNuevo(true)">Todos</button>
+                    <button type="button" class="btn btn-sm btn-link p-0 text-decoration-none small text-muted" onclick="marcarTodosGruposNuevo(false)">Ninguno</button>
+                  </div>
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+                  <label class="btn btn-outline-primary btn-sm d-flex align-items-center gap-1">
+                    <input type="checkbox" class="chk-new-grupo" value="A" checked> Grupo A
+                  </label>
+                  <label class="btn btn-outline-primary btn-sm d-flex align-items-center gap-1">
+                    <input type="checkbox" class="chk-new-grupo" value="B" checked> Grupo B
+                  </label>
+                  <label class="btn btn-outline-primary btn-sm d-flex align-items-center gap-1">
+                    <input type="checkbox" class="chk-new-grupo" value="C" checked> Grupo C
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-3 text-end">
+            <button class="btn-boston px-4 py-2" onclick="crearEvento()">Crear Evento Escolar</button>
           </div>
         </div>
 
@@ -901,13 +965,75 @@
               <label class="form-label small">Nuevo Costo ($)</label>
               <input type="number" id="edit-ev-costo" class="form-control" placeholder="Costo">
             </div>
-            <div class="col-6 col-md-1">
-              <label class="form-label small">Cupo</label>
-              <input type="number" id="edit-ev-cupo" class="form-control" placeholder="Meta">
+            <div class="col-6 col-md-3">
+              <div class="d-flex justify-content-between align-items-center">
+                <label class="form-label small m-0">Cupo</label>
+                <span class="text-muted" style="font-size:10px;">0 o blanco = Ilimitado</span>
+              </div>
+              <input type="number" id="edit-ev-cupo" class="form-control" placeholder="0 = Sin límite" min="0">
             </div>
-            <div class="col-12 col-md-2 d-flex align-items-end mt-2 mt-md-0">
-              <button class="btn-boston-gold w-100 py-2" onclick="guardarEdicionEvento()">Actualizar</button>
+          </div>
+
+          <!-- Modificar Alcance -->
+          <div class="p-3 mt-3 bg-light border rounded-3">
+            <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-2 mb-2">
+              <span class="small fw-bold text-dark">🎯 Alcance de Participación:</span>
+              <div class="form-check form-switch m-0">
+                <input class="form-check-input" type="checkbox" id="chk-edit-ev-todos" checked onchange="toggleAlcanceEditarEvento()">
+                <label class="form-check-label small fw-bold text-primary" for="chk-edit-ev-todos">
+                  🌐 Aplica para TODOS los Grados y Grupos
+                </label>
+              </div>
             </div>
+
+            <!-- Panel Específico de Edición -->
+            <div id="panel-alcance-especifico-edit" class="row g-3 d-none pt-2 border-top">
+              <div class="col-12 col-md-6">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                  <span class="small fw-bold text-secondary">Grados:</span>
+                  <div class="btn-group btn-group-sm">
+                    <button type="button" class="btn btn-sm btn-link p-0 text-decoration-none small me-2" onclick="marcarTodosGradosEditar(true)">Todos</button>
+                    <button type="button" class="btn btn-sm btn-link p-0 text-decoration-none small text-muted" onclick="marcarTodosGradosEditar(false)">Ninguno</button>
+                  </div>
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+                  <label class="btn btn-outline-primary btn-sm d-flex align-items-center gap-1">
+                    <input type="checkbox" class="chk-edit-grado" value="1"> 1° Secundaria
+                  </label>
+                  <label class="btn btn-outline-primary btn-sm d-flex align-items-center gap-1">
+                    <input type="checkbox" class="chk-edit-grado" value="2"> 2° Secundaria
+                  </label>
+                  <label class="btn btn-outline-primary btn-sm d-flex align-items-center gap-1">
+                    <input type="checkbox" class="chk-edit-grado" value="3"> 3° Secundaria
+                  </label>
+                </div>
+              </div>
+
+              <div class="col-12 col-md-6">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                  <span class="small fw-bold text-secondary">Grupos:</span>
+                  <div class="btn-group btn-group-sm">
+                    <button type="button" class="btn btn-sm btn-link p-0 text-decoration-none small me-2" onclick="marcarTodosGruposEditar(true)">Todos</button>
+                    <button type="button" class="btn btn-sm btn-link p-0 text-decoration-none small text-muted" onclick="marcarTodosGruposEditar(false)">Ninguno</button>
+                  </div>
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+                  <label class="btn btn-outline-primary btn-sm d-flex align-items-center gap-1">
+                    <input type="checkbox" class="chk-edit-grupo" value="A"> Grupo A
+                  </label>
+                  <label class="btn btn-outline-primary btn-sm d-flex align-items-center gap-1">
+                    <input type="checkbox" class="chk-edit-grupo" value="B"> Grupo B
+                  </label>
+                  <label class="btn btn-outline-primary btn-sm d-flex align-items-center gap-1">
+                    <input type="checkbox" class="chk-edit-grupo" value="C"> Grupo C
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-3 text-end">
+            <button class="btn-boston-gold px-4 py-2" onclick="guardarEdicionEvento()">Actualizar Evento</button>
           </div>
         </div>
 
@@ -1124,9 +1250,9 @@
                       }
                     } else if (prop === 'getTodosEventosActivos' || prop === 'getEventosCajero') {
                       data = [
-                        { id: "EV-01", nombre: "Excursión Six Flags 2026", costo: 850, cupo: 120 },
-                        { id: "EV-02", nombre: "Taller Cultural Papel Picado", costo: 35, cupo: 80 },
-                        { id: "EV-03", nombre: "Paquete Graduación 3° Secundaria", costo: 1200, cupo: 60 }
+                        { id: "EV-01", nombre: "Excursión Six Flags 2026", costo: 850, cupo: 120, alcance: "Todos" },
+                        { id: "EV-02", nombre: "Taller Cultural Papel Picado", costo: 35, cupo: 0, alcance: "Todos" },
+                        { id: "EV-03", nombre: "Paquete Graduación 3° Secundaria", costo: 1200, cupo: 60, alcance: "Grados: 3 | Grupos: A, B" }
                       ];
                     } else if (prop === 'getCajeros') {
                       data = [{ id: "CJ-101", nombre: "Cajero Principal" }];
@@ -1743,6 +1869,155 @@
       forzarImpresionAislada('print-area-estado-cuenta');
     }
 
+    // ========================================================================
+    // PARSEO Y CONTROL DE ALCANCE DE EVENTOS (GRADOS Y GRUPOS)
+    // ========================================================================
+    function parsearAlcance(alcanceStr) {
+      if (!alcanceStr || typeof alcanceStr !== 'string' || alcanceStr.trim() === "" || alcanceStr.trim().toLowerCase() === "todos") {
+        return { esTodos: true, grados: ["1", "2", "3"], grupos: ["A", "B", "C"], texto: "Todos los Grados y Grupos" };
+      }
+      var segs = alcanceStr.split("|");
+      var grados = [];
+      var grupos = [];
+      segs.forEach(function(s) {
+        var str = s.trim();
+        if (/^grados?/i.test(str)) {
+          var val = str.split(":")[1] || "";
+          if (val.toLowerCase().includes("todo")) {
+            grados = ["1", "2", "3"];
+          } else {
+            val.split(",").forEach(function(g) {
+              var m = g.match(/\d+/);
+              if (m && !grados.includes(m[0])) grados.push(m[0]);
+            });
+          }
+        } else if (/^grupos?/i.test(str)) {
+          var valG = str.split(":")[1] || "";
+          if (valG.toLowerCase().includes("todo")) {
+            grupos = ["A", "B", "C"];
+          } else {
+            valG.split(",").forEach(function(gr) {
+              var m = gr.trim().toUpperCase().match(/[A-Z]/);
+              if (m && !grupos.includes(m[0])) grupos.push(m[0]);
+            });
+          }
+        }
+      });
+
+      if (grados.length === 0) grados = ["1", "2", "3"];
+      if (grupos.length === 0) grupos = ["A", "B", "C"];
+      var esTodos = (grados.length >= 3 && grupos.length >= 3);
+      var textoDesc = esTodos ? "Todos los Grados y Grupos" : (
+        "Grados: " + grados.map(function(g) { return g + "°"; }).join(", ") + " | Grupos: " + grupos.join(", ")
+      );
+      return { esTodos: esTodos, grados: grados, grupos: grupos, texto: textoDesc };
+    }
+
+    function toggleAlcanceNuevoEvento() {
+      var chk = document.getElementById('chk-new-ev-todos');
+      var panel = document.getElementById('panel-alcance-especifico-new');
+      if (chk && panel) {
+        if (chk.checked) {
+          panel.classList.add('d-none');
+        } else {
+          panel.classList.remove('d-none');
+        }
+      }
+    }
+
+    function marcarTodosGradosNuevo(marcar) {
+      document.querySelectorAll('.chk-new-grado').forEach(function(cb) { cb.checked = !!marcar; });
+    }
+
+    function marcarTodosGruposNuevo(marcar) {
+      document.querySelectorAll('.chk-new-grupo').forEach(function(cb) { cb.checked = !!marcar; });
+    }
+
+    function toggleAlcanceEditarEvento() {
+      var chk = document.getElementById('chk-edit-ev-todos');
+      var panel = document.getElementById('panel-alcance-especifico-edit');
+      if (chk && panel) {
+        if (chk.checked) {
+          panel.classList.add('d-none');
+        } else {
+          panel.classList.remove('d-none');
+        }
+      }
+    }
+
+    function marcarTodosGradosEditar(marcar) {
+      document.querySelectorAll('.chk-edit-grado').forEach(function(cb) { cb.checked = !!marcar; });
+    }
+
+    function marcarTodosGruposEditar(marcar) {
+      document.querySelectorAll('.chk-edit-grupo').forEach(function(cb) { cb.checked = !!marcar; });
+    }
+
+    function adaptarSelectoresGradoYGrupo(parseInfo, idSelGrado, idSelGrupo, tieneOpcionVacia) {
+      var selGrado = document.getElementById(idSelGrado);
+      var selGrupo = document.getElementById(idSelGrupo);
+      if (!selGrado || !selGrupo) return;
+
+      var prevGrado = selGrado.value;
+      var prevGrupo = selGrupo.value;
+
+      var nombresGrados = { "1": "1° Secundaria", "2": "2° Secundaria", "3": "3° Secundaria" };
+      var htmlGrados = tieneOpcionVacia ? '<option value="">-- Grado --</option>' : '';
+      parseInfo.grados.forEach(function(g) {
+        var nom = nombresGrados[g] || (g + "° Secundaria");
+        htmlGrados += '<option value="' + g + '">' + nom + '</option>';
+      });
+      selGrado.innerHTML = htmlGrados;
+
+      if (parseInfo.grados.includes(prevGrado)) {
+        selGrado.value = prevGrado;
+      } else if (!tieneOpcionVacia && parseInfo.grados.length > 0) {
+        selGrado.value = parseInfo.grados[0];
+      } else if (tieneOpcionVacia && parseInfo.grados.length === 1) {
+        selGrado.value = parseInfo.grados[0];
+      } else {
+        selGrado.value = tieneOpcionVacia ? "" : (parseInfo.grados[0] || "");
+      }
+
+      var htmlGrupos = tieneOpcionVacia ? '<option value="">-- Grupo --</option>' : '';
+      parseInfo.grupos.forEach(function(gr) {
+        htmlGrupos += '<option value="' + gr + '">Grupo ' + gr + '</option>';
+      });
+      selGrupo.innerHTML = htmlGrupos;
+
+      if (parseInfo.grupos.includes(prevGrupo)) {
+        selGrupo.value = prevGrupo;
+      } else if (!tieneOpcionVacia && parseInfo.grupos.length > 0) {
+        selGrupo.value = parseInfo.grupos[0];
+      } else if (tieneOpcionVacia && parseInfo.grupos.length === 1) {
+        selGrupo.value = parseInfo.grupos[0];
+      } else {
+        selGrupo.value = tieneOpcionVacia ? "" : (parseInfo.grupos[0] || "");
+      }
+    }
+
+    function actualizarSelectoresSalonesEnListas() {
+      let idEv = document.getElementById('sel-listas-evento').value;
+      let ev = listaEventosCompleta.find(e => e.id == idEv);
+      let badgeInfo = document.getElementById('badge-listas-alcance-info');
+
+      if (ev) {
+        let parse = parsearAlcance(ev.alcance);
+        if (badgeInfo) {
+          let badgeAlcance = parse.esTodos 
+            ? `<span class="badge bg-light text-secondary border">🌐 Todos los salones</span>`
+            : `<span class="badge bg-warning text-dark border border-warning" title="${parse.texto}">🎯 Salones: ${parse.texto}</span>`;
+          badgeInfo.innerHTML = badgeAlcance;
+        }
+        adaptarSelectoresGradoYGrupo(parse, 'sel-listas-grado', 'sel-listas-grupo', false);
+      } else {
+        if (badgeInfo) badgeInfo.innerHTML = '';
+        adaptarSelectoresGradoYGrupo({ esTodos: true, grados: ["1", "2", "3"], grupos: ["A", "B", "C"] }, 'sel-listas-grado', 'sel-listas-grupo', false);
+      }
+
+      cargarConcentradoDesdeModulo();
+    }
+
     // 3. APARTADO: CAJA Y COBROS
     function actualizarSelectoresEventos() {
       let opts = '<option value="">-- Seleccionar Evento Activo --</option>' + 
@@ -1752,7 +2027,13 @@
       if (selCobro) selCobro.innerHTML = opts;
 
       let selListas = document.getElementById('sel-listas-evento');
-      if (selListas) selListas.innerHTML = opts;
+      if (selListas) {
+        selListas.innerHTML = opts;
+        if (listaEventosCompleta.length > 0 && !selListas.value) {
+          selListas.value = listaEventosCompleta[0].id;
+        }
+        actualizarSelectoresSalonesEnListas();
+      }
 
       let selLog = document.getElementById('sel-logistica-evento');
       if (selLog) selLog.innerHTML = opts;
@@ -1832,6 +2113,28 @@
     }
 
     function actualizarCosto() {
+      let idEv = document.getElementById('sel-evento').value;
+      let ev = listaEventosCompleta.find(e => e.id == idEv);
+      let badgeInfo = document.getElementById('badge-evento-alcance-info');
+
+      if (ev) {
+        let parse = parsearAlcance(ev.alcance);
+        if (badgeInfo) {
+          let badgeAlcance = parse.esTodos 
+            ? `<span class="badge bg-light text-secondary border">🌐 Todos los salones</span>`
+            : `<span class="badge bg-warning text-dark border border-warning" title="${parse.texto}">🎯 Salones: ${parse.texto}</span>`;
+          let badgeCupo = (ev.cupo === 0 || !ev.cupo)
+            ? `<span class="badge bg-info text-dark ms-1">Cupo: Ilimitado</span>`
+            : `<span class="badge bg-secondary ms-1">Cupo: ${ev.cupo}</span>`;
+          badgeInfo.innerHTML = badgeAlcance + badgeCupo;
+        }
+        adaptarSelectoresGradoYGrupo(parse, 'sel-grado', 'sel-grupo', true);
+      } else {
+        if (badgeInfo) badgeInfo.innerHTML = '';
+        adaptarSelectoresGradoYGrupo({ esTodos: true, grados: ["1", "2", "3"], grupos: ["A", "B", "C"] }, 'sel-grado', 'sel-grupo', true);
+      }
+
+      verificarCambioFiltroGrupo();
       consultarBalance();
     }
 
@@ -1927,11 +2230,15 @@
       let gra = document.getElementById('sel-grado').value;
       let gru = document.getElementById('sel-grupo').value;
 
-      if (idEv) document.getElementById('sel-listas-evento').value = idEv;
+      if (idEv) {
+        document.getElementById('sel-listas-evento').value = idEv;
+        actualizarSelectoresSalonesEnListas();
+      }
       if (gra) document.getElementById('sel-listas-grado').value = gra;
       if (gru) document.getElementById('sel-listas-grupo').value = gru;
 
       cambiarApartado('apartado-listas');
+      cargarConcentradoDesdeModulo();
     }
 
     // 4. APARTADO: LISTAS Y CONCENTRADOS
@@ -2129,33 +2436,87 @@
       let cup = document.getElementById('new-ev-cupo').value.trim();
       let caj = document.getElementById('new-ev-cajero').value;
 
-      if (!nom || !cos || !cup || !caj) return alert("Completa todos los campos para registrar el evento.");
+      if (!nom || !cos || !caj) return alert("Completa el nombre, costo y cajero responsable para registrar el evento.");
+
+      // Cupo 0 o en blanco = sin límite
+      let cupFinal = 0;
+      if (cup !== "") {
+        let num = parseInt(cup);
+        cupFinal = isNaN(num) ? 0 : Math.max(num, 0);
+      }
+
+      // Alcance
+      let alcance = "Todos";
+      let chkTodos = document.getElementById('chk-new-ev-todos');
+      if (chkTodos && !chkTodos.checked) {
+        let grados = Array.from(document.querySelectorAll('.chk-new-grado:checked')).map(cb => cb.value);
+        let grupos = Array.from(document.querySelectorAll('.chk-new-grupo:checked')).map(cb => cb.value);
+        if (grados.length === 0 || grupos.length === 0) {
+          return alert("Debes seleccionar al menos un grado y un grupo para el alcance específico, o marcar 'Aplica para TODOS los Grados y Grupos'.");
+        }
+        if (grados.length === 3 && grupos.length === 3) {
+          alcance = "Todos";
+        } else {
+          alcance = "Grados: " + grados.join(", ") + " | Grupos: " + grupos.join(", ");
+        }
+      }
 
       google.script.run.withSuccessHandler(res => {
         alert(res.message);
         document.getElementById('new-ev-nombre').value = "";
         document.getElementById('new-ev-costo').value = "";
         document.getElementById('new-ev-cupo').value = "";
+        if (chkTodos) {
+          chkTodos.checked = true;
+          toggleAlcanceNuevoEvento();
+          marcarTodosGradosNuevo(true);
+          marcarTodosGruposNuevo(true);
+        }
         
         google.script.run.withSuccessHandler(evs => {
           listaEventosCompleta = evs;
           actualizarSelectoresEventos();
           actualizarDropdownsAdminEspeciales();
+          if (sesion.rol === 'Admin') cargarDashboard();
         }).getTodosEventosActivos();
-      }).crearNuevoEvento(nom, cos, cup, caj);
+      }).crearNuevoEvento(nom, cos, cupFinal, caj, alcance);
     }
 
     function cargarDatosEventoEditar() {
       let id = document.getElementById('admin-edit-evento').value;
       let ev = listaEventosCompleta.find(e => e.id === id);
+      let chkTodos = document.getElementById('chk-edit-ev-todos');
+      let panel = document.getElementById('panel-alcance-especifico-edit');
+
       if (ev) {
         document.getElementById('edit-ev-nombre').value = ev.nombre;
         document.getElementById('edit-ev-costo').value = ev.costo;
-        document.getElementById('edit-ev-cupo').value = ev.cupo;
+        document.getElementById('edit-ev-cupo').value = (ev.cupo === 0 || !ev.cupo) ? "0" : ev.cupo;
+
+        let parsed = parsearAlcance(ev.alcance);
+        if (parsed.esTodos) {
+          if (chkTodos) chkTodos.checked = true;
+          if (panel) panel.classList.add('d-none');
+          marcarTodosGradosEditar(true);
+          marcarTodosGruposEditar(true);
+        } else {
+          if (chkTodos) chkTodos.checked = false;
+          if (panel) panel.classList.remove('d-none');
+          document.querySelectorAll('.chk-edit-grado').forEach(cb => {
+            cb.checked = parsed.grados.includes(cb.value);
+          });
+          document.querySelectorAll('.chk-edit-grupo').forEach(cb => {
+            cb.checked = parsed.grupos.includes(cb.value);
+          });
+        }
       } else {
         document.getElementById('edit-ev-nombre').value = "";
         document.getElementById('edit-ev-costo').value = "";
         document.getElementById('edit-ev-cupo').value = "";
+        if (chkTodos) chkTodos.checked = true;
+        if (panel) panel.classList.add('d-none');
+        marcarTodosGradosEditar(true);
+        marcarTodosGruposEditar(true);
       }
     }
 
@@ -2165,7 +2526,28 @@
       let cos = document.getElementById('edit-ev-costo').value.trim();
       let cup = document.getElementById('edit-ev-cupo').value.trim();
 
-      if (!id || !nom || !cos || !cup) return alert("Por favor selecciona un evento y llena todos los campos.");
+      if (!id || !nom || !cos) return alert("Por favor selecciona un evento y completa el nombre y costo.");
+
+      let cupFinal = 0;
+      if (cup !== "") {
+        let n = parseInt(cup);
+        cupFinal = isNaN(n) ? 0 : Math.max(n, 0);
+      }
+
+      let alcance = "Todos";
+      let chkTodos = document.getElementById('chk-edit-ev-todos');
+      if (chkTodos && !chkTodos.checked) {
+        let grados = Array.from(document.querySelectorAll('.chk-edit-grado:checked')).map(cb => cb.value);
+        let grupos = Array.from(document.querySelectorAll('.chk-edit-grupo:checked')).map(cb => cb.value);
+        if (grados.length === 0 || grupos.length === 0) {
+          return alert("Debes seleccionar al menos un grado y un grupo para el alcance específico, o marcar 'Aplica para TODOS los Grados y Grupos'.");
+        }
+        if (grados.length === 3 && grupos.length === 3) {
+          alcance = "Todos";
+        } else {
+          alcance = "Grados: " + grados.join(", ") + " | Grupos: " + grupos.join(", ");
+        }
+      }
 
       google.script.run.withSuccessHandler(res => {
         alert(res.message);
@@ -2175,7 +2557,7 @@
           actualizarDropdownsAdminEspeciales();
           if (sesion.rol === 'Admin') cargarDashboard();
         }).getTodosEventosActivos();
-      }).modificarEvento(id, nom, cos, cup);
+      }).modificarEvento(id, nom, cos, cupFinal, alcance);
     }
 
     function vincularEventoExtra() {
@@ -2288,13 +2670,27 @@
     function procesarFiltroDashboard() {
       let filtro = document.getElementById('filtro-stats-evento').value || "TODOS";
       globalRecaudado = 0; globalCancelado = 0; globalAsisten = 0; globalMeta = 0;
+      let esMetaIlimitada = false;
 
       if (filtro === "TODOS") {
-        listaEventosCompleta.forEach(e => { globalMeta += (parseFloat(e.costo) * parseInt(e.cupo)); });
+        let hayIlimitados = false;
+        listaEventosCompleta.forEach(e => {
+          let c = (e.cupo !== undefined && e.cupo !== null) ? parseInt(e.cupo) : 0;
+          if (c === 0) hayIlimitados = true;
+          globalMeta += (parseFloat(e.costo) * c);
+        });
         Object.keys(mapeoAlumnosPorEvento).forEach(k => { globalAsisten += mapeoAlumnosPorEvento[k]; });
       } else {
         let ev = listaEventosCompleta.find(e => e.id === filtro);
-        if (ev) globalMeta = parseFloat(ev.costo) * parseInt(ev.cupo);
+        let cupoEv = (ev && ev.cupo !== undefined && ev.cupo !== null) ? parseInt(ev.cupo) : 0;
+        if (ev) {
+          if (cupoEv === 0) {
+            esMetaIlimitada = true;
+            globalMeta = 0;
+          } else {
+            globalMeta = parseFloat(ev.costo) * cupoEv;
+          }
+        }
         globalAsisten = mapeoAlumnosPorEvento[filtro] || 0;
       }
 
@@ -2326,7 +2722,7 @@
 
       document.getElementById('dash-dinero').innerText = `$${globalRecaudado}.00`;
       document.getElementById('dash-abono').innerText = globalAsisten;
-      document.getElementById('dash-meta').innerText = `$${globalMeta}.00`;
+      document.getElementById('dash-meta').innerText = esMetaIlimitada ? "Sin límite" : `$${globalMeta}.00`;
       document.getElementById('dash-cancelado').innerText = `$${globalCancelado}.00`;
       tbody.innerHTML = filasHtml || `<tr><td colspan="7" class="text-center py-3 text-muted">Sin transacciones registradas.</td></tr>`;
     }
@@ -2388,10 +2784,22 @@
       let idEvento = selectLog.value;
       if (!idEvento) return alert("Selecciona un evento para generar las listas de logística.");
       let nombreEvento = selectLog.options[selectLog.selectedIndex].text;
+      let ev = listaEventosCompleta.find(e => e.id === idEvento);
+      let parse = parsearAlcance(ev ? ev.alcance : null);
 
       google.script.run.withSuccessHandler(alumnosInscritos => {
         if (!alumnosInscritos || alumnosInscritos.length === 0) {
           return alert("No hay alumnos inscritos con abonos para este evento.");
+        }
+
+        // Si el evento tiene un alcance de salones específico, filtrar solo los salones correspondientes
+        if (!parse.esTodos) {
+          alumnosInscritos = alumnosInscritos.filter(al => {
+            return parse.grados.includes(String(al.grado)) && parse.grupos.includes(String(al.grupo).toUpperCase());
+          });
+          if (alumnosInscritos.length === 0) {
+            return alert("No hay alumnos inscritos dentro de los grados/grupos asignados a este evento (" + parse.texto + ").");
+          }
         }
 
         // Agrupar por salón
@@ -2412,7 +2820,7 @@
               <div class="marco-print-titulo">
                 <h2 style="margin:0; font-size:18px;">COLEGIO BOSTON</h2>
                 <h4 style="margin:2px 0; font-size:14px; font-weight:bold;">LISTA DE ASISTENCIA Y LOGÍSTICA ESCOLAR</h4>
-                <p style="margin:2px 0; font-size:12px;"><strong>Evento:</strong> ${nombreEvento} | <strong>Salón:</strong> ${salon}</p>
+                <p style="margin:2px 0; font-size:12px;"><strong>Evento:</strong> ${nombreEvento} | <strong>Salón:</strong> ${salon} | <strong>Alcance:</strong> ${parse.texto}</p>
               </div>
               <table class="table-print">
                 <thead>

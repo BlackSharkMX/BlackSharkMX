@@ -6,7 +6,7 @@
 
 ## 📌 Datos de la Secuencia de Comandos
 - **Script ID:** `1Bt2OC0ZbrIyP_esxlyehhcqXtt-L1ep0n42nyrScwOrxyEYUdxf9o3LZ`
-- **Última Versión Desplegada:** Versión 19
+- **Última Versión Desplegada:** Versión 20
 - **URL de Despliegue Web:** `https://script.google.com/macros/s/AKfycbwZd0TjHSodk3cqw64LI1VhhzsR0No-Vk7w47f1HEmOLyP7-JIzPzaDmdtsJLdPlReS6g/exec`
 
 ---
@@ -23,10 +23,32 @@ La aplicación gestiona sus credenciales en la pestaña **`Usuarios`** de la hoj
 
 ---
 
+## 🚀 Novedades de la Versión 20: Alcance por Salón y Cupo Ilimitado
+
+1. **🎯 Alcance de Participación Dinámico por Grados y Grupos:**
+   - Al crear o modificar eventos desde el panel de Administración, se puede establecer si el evento aplica para **TODOS los grados y grupos** o únicamente para **grados y/o grupos específicos** (ej. solo 3° de Secundaria para Paquete Graduación, o solo 1° A y 1° B).
+   - Incluye switch interactivo y accesos rápidos "Todos" / "Ninguno" para grados (1°, 2°, 3°) y grupos (A, B, C).
+   - Se almacena de manera estructurada en la columna `Alcance` (Columna D) de la hoja `Eventos`.
+
+2. **♾️ Cupo Meta Ilimitado:**
+   - Indicar `0` o dejar el campo de cupo en blanco ahora define oficialmente un evento **"Sin límite"** (cupo ilimitado).
+   - En el Dashboard de Auditoría y tarjetas informativas, se muestra como "Sin límite" evitando multiplicaciones erróneas por cero.
+
+3. **⚡ Carga Inteligente y Filtrado Automático por Evento:**
+   - **En Caja y Cobros:** Al seleccionar un evento, los selectores de Grado y Grupo se adaptan automáticamente para mostrar **únicamente** los salones participantes. Si el evento es para un solo grado o grupo, se preselecciona de forma automática.
+   - **En Listas de Salón:** El concentrado de salón restringe los selectores de Grado y Grupo a los que aplican para el evento seleccionado.
+   - **En Módulo de Logística (Impresión):** Al generar las listas de asistencia para camiones o transportes, se filtran e imprimen exclusivamente las hojas de los salones correspondientes al alcance del evento.
+
+4. **🔍 Buscador Rápido de Expediente de Alumno:**
+   - Barra de búsqueda superior en caja que permite localizar al alumno por nombre o matrícula y consultar al instante su desglose histórico consolidado de abonos en todos los eventos escolares, con opción de imprimir su Estado de Cuenta Individual.
+
+---
+
 ## 📑 Módulos y Apartados del Sistema
 
 1. **💳 Caja y Cobros:**
-   - Selección de Evento escolar, Grado (1°, 2°, 3° de Secundaria) y Grupo (A, B, C).
+   - Selección de Evento escolar con badge informativo del alcance y cupo.
+   - Selectores adaptativos de Grado y Grupo según el alcance del evento.
    - Balance en tiempo real del alumno (Costo total, Abonos previos, Resta pendiente).
    - Prevención estricta de sobrepagos.
    - Switch de **Cortesía Institucional** ($0 de saldo restante).
@@ -34,7 +56,8 @@ La aplicación gestiona sus credenciales en la pestaña **`Usuarios`** de la hoj
    - Generación de folio oficial (`FOLIO-XXXXXX` o `CORT-XXXXXX`) y envío de comprobante digital formateado por correo institucional vía Gmail.
 
 2. **📋 Listas de Salón:**
-   - Concentrado de alumnos por salón con badges de estado (`PAGADO`, `CON ABONO`, `SIN PAGO`, `CORTESÍA`).
+   - Concentrado de alumnos por salón restringido al alcance del evento.
+   - Badges de estado (`PAGADO`, `CON ABONO`, `SIN PAGO`, `CORTESÍA`).
    - Buscador rápido interactivo por nombre.
    - Impresión con membrete oficial del Colegio Boston o exportación a PDF.
 
@@ -44,8 +67,8 @@ La aplicación gestiona sus credenciales en la pestaña **`Usuarios`** de la hoj
    - Generación de Comprobante Oficial de Arqueo de Caja con líneas de firma y reinicio de caja a $0.00.
 
 4. **🎪 Eventos y Costos (Admin):**
-   - Alta de eventos escolares (Nombre, Costo alumno, Cupo meta, Cajero inicial).
-   - Edición en vivo de eventos activos.
+   - Alta de eventos escolares con configuración de Costo, Cupo (0 = Sin límite), Cajero y Alcance de participación (Todos o Grados/Grupos específicos).
+   - Edición en vivo de eventos existentes (alcance, cupo, costo y nombre).
    - Asignación múltiple de eventos a cajeros adicionales.
 
 5. **👥 Usuarios y Accesos (Admin):**
@@ -53,6 +76,6 @@ La aplicación gestiona sus credenciales en la pestaña **`Usuarios`** de la hoj
    - Alta de nuevos cajeros/administradores con generador automático de contraseñas seguras.
 
 6. **📊 Auditoría Global y Logística (Admin):**
-   - KPIs: Recaudación neta, Alumnos con abono, Meta financiera y Total cancelado.
+   - KPIs: Recaudación neta, Alumnos con abono, Meta financiera (soporta cupo ilimitado) y Total cancelado.
    - Anulación de cobros con motivo oficial y reversa automática de balances.
-   - Módulo de Logística: Listas de asistencia agrupadas por salón listas para autobuses/excursiones.
+   - Módulo de Logística: Listas de asistencia agrupadas por salón listas para autobuses/excursiones, respetando el alcance del evento.
