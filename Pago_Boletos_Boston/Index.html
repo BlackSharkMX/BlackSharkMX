@@ -837,9 +837,17 @@
             
             <div class="input-icon-wrapper">
               <svg class="input-icon" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
-              <!-- Selector precargado desde backend -->
+              <!-- Selector precargado desde backend con opciones directas -->
               <select id="user" class="form-select input-with-icon" onchange="manejarSeleccionUsuario(this.value)">
-                <option value="">Cargando usuarios autorizados...</option>
+                <option value="">-- Selecciona tu usuario --</option>
+                <option value="Hugo">Hugo Galera M. (Cajero)</option>
+                <option value="admin">Administrador Principal (Admin)</option>
+                <option value="Jessi">Jessica Salgado (Cajero)</option>
+                <option value="cajero2">Cajero-2 (Cajero)</option>
+                <option value="Liliana">Liliana Cafetería (Cajero)</option>
+                <option value="Raquel">Raquel Zozaya Arellano (Cajero)</option>
+                <option value="Ruth">Ruth Estela García Azcárraga (Cajero)</option>
+                <option value="__manual__">✏️ Escribir otro usuario...</option>
               </select>
               <!-- Campo alternativo manual -->
               <input type="text" id="userInputManual" class="form-control input-with-icon d-none" placeholder="Escribe tu usuario (ej. admin o cajero)" autocomplete="username">
@@ -2580,18 +2588,47 @@
     });
 
     // 1. GESTIÓN DEL LOGIN Y CREDENCIALES
-    function cargarUsuariosParaLogin() {
+    let usuariosBootstrap = (function() {
+      try {
+        var boot = <?= JSON.stringify(obtenerUsuariosLogin().usuarios) ?>;
+        if (boot && boot.length > 0) return boot;
+      } catch(e) {}
+      return [
+        { usuario: "Hugo", nombre: "Hugo Galera M.", rol: "Cajero" },
+        { usuario: "admin", nombre: "Administrador Principal", rol: "Admin" },
+        { usuario: "Jessi", nombre: "Jessica Salgado", rol: "Cajero" },
+        { usuario: "cajero2", nombre: "Cajero-2", rol: "Cajero" },
+        { usuario: "Liliana", nombre: "Liliana Cafetería", rol: "Cajero" },
+        { usuario: "Raquel", nombre: "Raquel Zozaya Arellano", rol: "Cajero" },
+        { usuario: "Ruth", nombre: "Ruth Estela García Azcárraga", rol: "Cajero" }
+      ];
+    })();
+
+    function renderizarSelectUsuarios(usuarios) {
       let selUser = document.getElementById('user');
-      google.script.run.withSuccessHandler(res => {
-        if (res && res.usuarios) {
-          let html = '<option value="">-- Selecciona tu usuario --</option>';
-          res.usuarios.forEach(u => {
-            html += `<option value="${u.usuario}">${u.nombre} (${u.rol})</option>`;
-          });
-          html += '<option value="__manual__">✏️ Escribir otro usuario...</option>';
-          selUser.innerHTML = html;
-        }
-      }).obtenerUsuariosLogin();
+      if (!selUser || !usuarios || usuarios.length === 0) return;
+      let prevVal = selUser.value;
+      let html = '<option value="">-- Selecciona tu usuario --</option>';
+      usuarios.forEach(u => {
+        html += `<option value="${u.usuario}">${u.nombre} (${u.rol})</option>`;
+      });
+      html += '<option value="__manual__">✏️ Escribir otro usuario...</option>';
+      selUser.innerHTML = html;
+      if (prevVal) selUser.value = prevVal;
+    }
+
+    function cargarUsuariosParaLogin() {
+      renderizarSelectUsuarios(usuariosBootstrap);
+      google.script.run
+        .withSuccessHandler(res => {
+          if (res && res.usuarios) {
+            renderizarSelectUsuarios(res.usuarios);
+          }
+        })
+        .withFailureHandler(err => {
+          console.warn("Aviso al refrescar usuarios autorizados:", err);
+        })
+        .obtenerUsuariosLogin();
     }
 
     function manejarSeleccionUsuario(val) {
