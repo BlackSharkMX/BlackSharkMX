@@ -74,6 +74,38 @@ function doGet(e) {
         .setMimeType(ContentService.MimeType.JSON);
     }
 
+    // Endpoint de consulta de logística y checklist de alumnos
+    if (e && e.parameter && e.parameter.action === 'logistica') {
+      var idEvLog = e.parameter.idEvento || "EV-730628";
+      var graLog = e.parameter.grado || "TODOS";
+      var gruLog = e.parameter.grupo || "TODOS";
+      var resLog = obtenerLogisticaGrupo(idEvLog, graLog, gruLog);
+      return ContentService.createTextOutput(JSON.stringify(resLog, null, 2))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // Endpoint para actualizar un check de logística
+    if (e && e.parameter && e.parameter.action === 'checkLogistica') {
+      var idEvChk = e.parameter.idEvento || "EV-730628";
+      var idAlChk = e.parameter.idAlumno || "";
+      var tagChk = e.parameter.etiquetaId || "";
+      var valChk = e.parameter.valor === 'true' || e.parameter.valor === '1';
+      var resChk = actualizarChecklistAlumno(idEvChk, idAlChk, tagChk, valChk);
+      return ContentService.createTextOutput(JSON.stringify(resChk, null, 2))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // Endpoint para guardar etiquetas de logística del evento
+    if (e && e.parameter && e.parameter.action === 'guardarEtiquetas') {
+      var idEvEt = e.parameter.idEvento || "EV-730628";
+      var tagsRaw = e.parameter.etiquetas || "[]";
+      var tagsParsed = [];
+      try { tagsParsed = JSON.parse(tagsRaw); } catch(eT) { tagsParsed = []; }
+      var resEt = guardarEtiquetasEvento(idEvEt, tagsParsed);
+      return ContentService.createTextOutput(JSON.stringify(resEt, null, 2))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
     // Endpoint de inspección para diagnóstico de la base de datos
     if (e && e.parameter && e.parameter.action === 'inspect') {
       var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -1379,87 +1411,445 @@ function registrarPago(idEvento, nombreEvento, idCliente, nombreCliente, emailCl
 }
 
 // ============================================================================
-// 4. CONCENTRADOS Y REPORTES DE GRUPO
+// 4. CONTROL DE ALUMNOS, LOGÍSTICA DE VIAJE Y CHECKLIST POR SALÓN
 // ============================================================================
 
+var ETIQUETAS_DEFAULT_LOGISTICA = [
+  { id: "permiso_firmado", nombre: "Permiso Firmado / Responsiva", icono: "📝", color: "#2563eb" },
+  { id: "asistencia", nombre: "Asistencia / Abordaje", icono: "🚌", color: "#16a34a" },
+  { id: "equipaje", nombre: "Equipaje Listo", icono: "🎒", color: "#d97706" },
+  { id: "tienda_camp", nombre: "Tienda de Campaña", icono: "⛺", color: "#0891b2" },
+  { id: "pago_tirolesa", nombre: "Pago Tirolesa", icono: "🧗", color: "#9333ea" },
+  { id: "botiquin_aux", nombre: "Botiquín / Medicamentos", icono: "💊", color: "#dc2626" }
+];
+
 /**
- * Obtener concentrado de estatus del grupo (quién pagó, con abono, cortesía, o debe)
+ * Obtener concentrado de logística, expediente de viaje y checklist para profesores y cajero
+ */
+function obtenerLogisticaGrupo(idEvento, grado, grupo) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheetEventos = ss.getSheetByName("Eventos");
+  var sheetClientes = ss.getSheetByName("Clientes");
+  var sheetInsc = ss.getSheetByName("Inscripciones");
+  var sheetAbonos = ss.getSheetByName("Historial_Abonos");
+  
+  if (!sheetEventos || !sheetClientes) {
+    return { success: false, message: "No se encontraron las hojas 'Eventos' o 'Clientes'." };
+  }
+  
+  // 1. Obtener Evento y sus Etiquetas de logística configuradas
+  var eventosData = sheetEventos.getDataRange().getValues();
+  var eventoInfo = null;
+  var etiquetasEvento = null;
+  var filaEventoIdx = -1;
+  
+  for (var e = 1; e < eventosData.length; e++) {
+    if (eventosData[e][0] == idEvento) {
+      filaEventoIdx = e + 1;
+      var rawTags = eventosData[e][7];
+      if (rawTags) {
+        try {
+          etiquetasEvento = (typeof rawTags === 'object') ? rawTags : JSON.parse(rawTags);
+        } catch(errT) {
+          etiquetasEvento = null;
+        }
+      }
+      eventoInfo = {
+        id: eventosData[e][0],
+        nombre: eventosData[e][1],
+        fecha: eventosData[e][2],
+        alcance: eventosData[e][3] ? eventosData[e][3].toString() : "Todos",
+        costo: parseFloat(eventosData[e][4]) || 0,
+        cupo: parseInt(eventosData[e][5]) || 0,
+        estado: eventosData[e][6] ? eventosData[e][6].toString() : "Activo"
+      };
+      break;
+    }
+  }
+  
+  if (!eventoInfo) {
+    return { success: false, message: "Evento escolar no encontrado." };
+  }
+  
+  if (!etiquetasEvento || !Array.isArray(etiquetasEvento) || etiquetasEvento.length === 0) {
+    etiquetasEvento = ETIQUETAS_DEFAULT_LOGISTICA;
+    try {
+      if (sheetEventos.getLastColumn() < 8) {
+        sheetEventos.getRange(1, 8).setValue("Etiquetas_Logistica_JSON").setFontWeight("bold");
+      }
+      if (filaEventoIdx > 0) {
+        sheetEventos.getRange(filaEventoIdx, 8).setValue(JSON.stringify(ETIQUETAS_DEFAULT_LOGISTICA));
+      }
+    } catch(errSet) {
+      Logger.log("Aviso al guardar etiquetas por defecto: " + errSet.message);
+    }
+  }
+  
+  // 2. Mapear abonos por alumno
+  var abonosData = sheetAbonos ? sheetAbonos.getDataRange().getValues() : [];
+  var abonosPorAlumno = {};
+  var cortesiasPorAlumno = {};
+  for (var j = 1; j < abonosData.length; j++) {
+    if (abonosData[j][1] == idEvento) {
+      var montoStr = abonosData[j][3] ? abonosData[j][3].toString().toUpperCase() : "0";
+      if (montoStr.includes("CANCELADO")) continue;
+      var idAl = abonosData[j][2] ? abonosData[j][2].toString().trim() : "";
+      if (montoStr.includes("CORTES")) {
+        cortesiasPorAlumno[idAl] = true;
+      } else {
+        var montoNum = parseFloat(montoStr) || 0;
+        abonosPorAlumno[idAl] = (abonosPorAlumno[idAl] || 0) + montoNum;
+      }
+    }
+  }
+  
+  // 3. Mapear inscripciones: asiento, checklist, notas y precios personalizados
+  var inscData = sheetInsc ? sheetInsc.getDataRange().getValues() : [];
+  var costosPersonalizados = {};
+  var asientosPorAlumno = {};
+  var checklistPorAlumno = {};
+  var notasPorAlumno = {};
+  
+  // Checkmarks de permisos y responsivas detectados en los registros del viaje
+  var checksDefectoIniciales = {
+    'S3A-01': { permiso_firmado: true },
+    'S3A-20': { permiso_firmado: true },
+    'S3B-08': { permiso_firmado: true },
+    'S3B-09': { permiso_firmado: true },
+    'S3B-17': { permiso_firmado: true },
+    'S3B-18': { permiso_firmado: true }
+  };
+  
+  for (var k = 1; k < inscData.length; k++) {
+    if (inscData[k][1] == idEvento && inscData[k][2]) {
+      var idAlInsc = inscData[k][2].toString().trim();
+      var cInsc = parseFloat(inscData[k][3]);
+      if (cInsc > 0) costosPersonalizados[idAlInsc] = cInsc;
+      
+      var asInsc = (inscData[k][6] !== undefined && inscData[k][6] !== null) ? inscData[k][6].toString().trim() : "";
+      if (asInsc) asientosPorAlumno[idAlInsc] = asInsc;
+      
+      var rawChecklist = inscData[k][7];
+      if (rawChecklist) {
+        try {
+          checklistPorAlumno[idAlInsc] = typeof rawChecklist === 'object' ? rawChecklist : JSON.parse(rawChecklist);
+        } catch(eChk) {
+          checklistPorAlumno[idAlInsc] = {};
+        }
+      } else if (checksDefectoIniciales[idAlInsc]) {
+        checklistPorAlumno[idAlInsc] = checksDefectoIniciales[idAlInsc];
+      } else {
+        checklistPorAlumno[idAlInsc] = {};
+      }
+      
+      var rawNota = (inscData[k][8] !== undefined && inscData[k][8] !== null) ? inscData[k][8].toString().trim() : "";
+      if (rawNota) notasPorAlumno[idAlInsc] = rawNota;
+    }
+  }
+  
+  // 4. Filtrar alumnos del grado y grupo solicitados (o Todos)
+  var clientesData = sheetClientes ? sheetClientes.getDataRange().getValues() : [];
+  var parseAlcance = parsearAlcanceBackend(eventoInfo.alcance);
+  
+  var listaAlumnos = [];
+  var conteoPorEtiqueta = {};
+  etiquetasEvento.forEach(function(et) { conteoPorEtiqueta[et.id] = 0; });
+  
+  var countPagados = 0;
+  var countConAbono = 0;
+  var countSinPago = 0;
+  
+  for (var c = 1; c < clientesData.length; c++) {
+    var idCli = clientesData[c][0] ? clientesData[c][0].toString().trim() : "";
+    if (!idCli) continue;
+    
+    var nomCli = clientesData[c][1] ? clientesData[c][1].toString().trim() : "";
+    var nivCli = clientesData[c][2] ? clientesData[c][2].toString().trim() : "";
+    var graCli = clientesData[c][3] ? clientesData[c][3].toString().trim() : "";
+    var gruCli = clientesData[c][4] ? clientesData[c][4].toString().trim().toUpperCase() : "";
+    var estCli = clientesData[c][6] ? clientesData[c][6].toString().trim().toLowerCase() : "activo";
+    
+    if (estCli.includes("inactiv") || estCli.includes("baja")) continue;
+    
+    var esExterno = idCli.startsWith("EXT-") || nivCli.toLowerCase() === "externo" || gruCli === "EXT";
+    
+    // Filtro por Grado y Grupo
+    if (grado && grado !== "TODOS") {
+      if (esExterno && grado !== "EXTERNO") continue;
+      if (!esExterno && graCli.toString() !== grado.toString()) continue;
+    }
+    if (grupo && grupo !== "TODOS") {
+      if (esExterno && grupo !== "EXT") continue;
+      if (!esExterno && gruCli.toString().toUpperCase() !== grupo.toString().toUpperCase()) continue;
+    }
+    
+    // Verificar si aplica al evento
+    var aplica = false;
+    if (esExterno) {
+      if (abonosPorAlumno[idCli] > 0 || cortesiasPorAlumno[idCli] || costosPersonalizados[idCli] || checklistPorAlumno[idCli]) {
+        aplica = true;
+      }
+    } else {
+      if (parseAlcance.esTodos) {
+        aplica = true;
+      } else {
+        var mGra = parseAlcance.grados.indexOf(graCli) !== -1;
+        var mGru = parseAlcance.grupos.indexOf(gruCli) !== -1;
+        aplica = mGra && mGru;
+      }
+    }
+    
+    if (!aplica) continue;
+    
+    var costoAlumno = costosPersonalizados[idCli] || eventoInfo.costo;
+    var abonadoAlumno = abonosPorAlumno[idCli] || 0;
+    var esCortesia = cortesiasPorAlumno[idCli] || false;
+    var restanteAlumno = esCortesia ? 0 : Math.max(costoAlumno - abonadoAlumno, 0);
+    
+    var estatusPago = "SIN PAGO";
+    if (esCortesia) {
+      estatusPago = "CORTESÍA";
+      countPagados++;
+    } else if (abonadoAlumno >= costoAlumno && costoAlumno > 0) {
+      estatusPago = "PAGADO";
+      countPagados++;
+    } else if (abonadoAlumno > 0) {
+      estatusPago = "CON ABONO";
+      countConAbono++;
+    } else {
+      countSinPago++;
+    }
+    
+    var checkAlumno = checklistPorAlumno[idCli] || (checksDefectoIniciales[idCli] || {});
+    etiquetasEvento.forEach(function(et) {
+      if (checkAlumno[et.id] === true) {
+        conteoPorEtiqueta[et.id]++;
+      }
+    });
+    
+    listaAlumnos.push({
+      id: idCli,
+      nombre: nomCli,
+      grado: graCli,
+      grupo: gruCli,
+      esExterno: esExterno,
+      asiento: asientosPorAlumno[idCli] || "",
+      costo: costoAlumno,
+      abonado: abonadoAlumno,
+      restante: restanteAlumno,
+      estatusPago: estatusPago,
+      checklist: checkAlumno,
+      notas: notasPorAlumno[idCli] || ""
+    });
+  }
+  
+  // Ordenar alumnos: primero por asiento si lo tiene asignado, luego por grado, grupo y nombre
+  listaAlumnos.sort(function(a, b) {
+    var numA = a.asiento ? parseInt(a.asiento) : 999;
+    var numB = b.asiento ? parseInt(b.asiento) : 999;
+    if (numA !== numB) return numA - numB;
+    if (a.grado !== b.grado) return a.grado - b.grado;
+    if (a.grupo !== b.grupo) return a.grupo.localeCompare(b.grupo);
+    return a.nombre.localeCompare(b.nombre);
+  });
+  
+  return {
+    success: true,
+    evento: eventoInfo,
+    etiquetas: etiquetasEvento,
+    alumnos: listaAlumnos,
+    resumen: {
+      totalAlumnos: listaAlumnos.length,
+      pagados: countPagados,
+      conAbono: countConAbono,
+      sinPago: countSinPago,
+      conteoPorEtiqueta: conteoPorEtiqueta
+    }
+  };
+}
+
+/**
+ * Función compatible para concentrado de estatus del grupo
  */
 function obtenerConcentradoEstatusGrupo(idEvento, grado, grupo, costoTotal) {
+  var res = obtenerLogisticaGrupo(idEvento, grado, grupo);
+  if (res && res.success && res.alumnos) {
+    // Si la llamada espera el array simple
+    var mapped = res.alumnos.map(function(al) {
+      return {
+        id: al.id,
+        nombre: al.nombre,
+        costo: al.costo,
+        abonado: al.abonado,
+        restante: al.restante,
+        estatus: al.estatusPago,
+        asiento: al.asiento,
+        checklist: al.checklist,
+        notas: al.notas
+      };
+    });
+    // Inyectamos metadatos en el array para que el frontend pueda aprovechar ambos formatos
+    mapped.evento = res.evento;
+    mapped.etiquetas = res.etiquetas;
+    mapped.resumen = res.resumen;
+    return mapped;
+  }
+  return [];
+}
+
+/**
+ * Actualizar una casilla de verificación del checklist para un alumno específico
+ */
+function actualizarChecklistAlumno(idEvento, idAlumno, etiquetaId, nuevoValor) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var clientesSheet = ss.getSheetByName("Clientes").getDataRange().getValues();
-  var abonosSheet = ss.getSheetByName("Historial_Abonos").getDataRange().getValues();
-  var inscSheet = ss.getSheetByName("Inscripciones");
-  costoTotal = parseFloat(costoTotal) || 0;
+  var sheetInsc = ss.getSheetByName("Inscripciones");
+  if (!sheetInsc) return { success: false, message: "No se encontró la hoja Inscripciones" };
   
-  var montosAbonadosPorAlumno = {};
-  var cortesias = {};
-  var costosPersonalizados = {};
+  // Asegurar columnas 8 y 9
+  if (sheetInsc.getLastColumn() < 8) {
+    sheetInsc.getRange(1, 8).setValue("Checklist_JSON").setFontWeight("bold");
+  }
+  if (sheetInsc.getLastColumn() < 9) {
+    sheetInsc.getRange(1, 9).setValue("Notas_Logistica").setFontWeight("bold");
+  }
+  
+  var dataInsc = sheetInsc.getDataRange().getValues();
+  var rowFound = -1;
+  var currentChecklist = {};
+  
+  for (var i = 1; i < dataInsc.length; i++) {
+    if (dataInsc[i][1] == idEvento && dataInsc[i][2] && dataInsc[i][2].toString().trim() === idAlumno.toString().trim()) {
+      rowFound = i + 1;
+      var raw = dataInsc[i][7];
+      if (raw) {
+        try {
+          currentChecklist = (typeof raw === 'object') ? raw : JSON.parse(raw);
+        } catch(e) {
+          currentChecklist = {};
+        }
+      }
+      break;
+    }
+  }
+  
+  var valBool = (nuevoValor === true || nuevoValor === "true" || nuevoValor === 1);
+  currentChecklist[etiquetaId] = valBool;
+  var jsonStr = JSON.stringify(currentChecklist);
+  
+  if (rowFound > 0) {
+    sheetInsc.getRange(rowFound, 8).setValue(jsonStr);
+  } else {
+    var sheetEventos = ss.getSheetByName("Eventos");
+    var costoEv = 0;
+    if (sheetEventos) {
+      var evData = sheetEventos.getDataRange().getValues();
+      for (var e = 1; e < evData.length; e++) {
+        if (evData[e][0] == idEvento) {
+          costoEv = parseFloat(evData[e][4]) || 0;
+          break;
+        }
+      }
+    }
+    sheetInsc.appendRow(["INS-" + Utilities.getUuid().slice(0, 8), idEvento, idAlumno, costoEv, 0, "Pendiente", "", jsonStr, ""]);
+  }
+  
+  return { success: true, idAlumno: idAlumno, etiquetaId: etiquetaId, valor: valBool };
+}
 
-  if (inscSheet && inscSheet.getLastRow() > 1) {
-    var dataInsc = inscSheet.getDataRange().getValues();
-    for (var k = 1; k < dataInsc.length; k++) {
-      if (dataInsc[k][1] == idEvento && dataInsc[k][2]) {
-        var idAlInsc = dataInsc[k][2].toString().trim();
-        var cInsc = parseFloat(dataInsc[k][3]);
-        if (cInsc > 0) costosPersonalizados[idAlInsc] = cInsc;
+/**
+ * Guardar o actualizar la lista de etiquetas/requerimientos del evento escolar
+ */
+function guardarEtiquetasEvento(idEvento, nuevasEtiquetas) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheetEventos = ss.getSheetByName("Eventos");
+  if (!sheetEventos) return { success: false, message: "No se encontró la hoja Eventos" };
+  
+  if (sheetEventos.getLastColumn() < 8) {
+    sheetEventos.getRange(1, 8).setValue("Etiquetas_Logistica_JSON").setFontWeight("bold");
+  }
+  
+  var evData = sheetEventos.getDataRange().getValues();
+  var rowFound = -1;
+  for (var i = 1; i < evData.length; i++) {
+    if (evData[i][0] == idEvento) {
+      rowFound = i + 1;
+      break;
+    }
+  }
+  
+  if (rowFound > 0) {
+    var jsonStr = typeof nuevasEtiquetas === 'string' ? nuevasEtiquetas : JSON.stringify(nuevasEtiquetas);
+    sheetEventos.getRange(rowFound, 8).setValue(jsonStr);
+    return { success: true, message: "Etiquetas de logística guardadas con éxito.", etiquetas: nuevasEtiquetas };
+  } else {
+    return { success: false, message: "Evento no encontrado." };
+  }
+}
+
+/**
+ * Guardar o actualizar notas/observaciones logísticas de un alumno
+ */
+function guardarNotaLogisticaAlumno(idEvento, idAlumno, notaTexto) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheetInsc = ss.getSheetByName("Inscripciones");
+  if (!sheetInsc) return { success: false, message: "No se encontró la hoja Inscripciones" };
+  
+  if (sheetInsc.getLastColumn() < 9) {
+    sheetInsc.getRange(1, 9).setValue("Notas_Logistica").setFontWeight("bold");
+  }
+  
+  var dataInsc = sheetInsc.getDataRange().getValues();
+  var rowFound = -1;
+  for (var i = 1; i < dataInsc.length; i++) {
+    if (dataInsc[i][1] == idEvento && dataInsc[i][2] && dataInsc[i][2].toString().trim() === idAlumno.toString().trim()) {
+      rowFound = i + 1;
+      break;
+    }
+  }
+  
+  var notaLimpia = (notaTexto !== null && notaTexto !== undefined) ? notaTexto.toString().trim() : "";
+  if (rowFound > 0) {
+    sheetInsc.getRange(rowFound, 9).setValue(notaLimpia);
+  } else {
+    sheetInsc.appendRow(["INS-" + Utilities.getUuid().slice(0, 8), idEvento, idAlumno, 0, 0, "Pendiente", "", "{}", notaLimpia]);
+  }
+  
+  return { success: true, idAlumno: idAlumno, nota: notaLimpia };
+}
+
+/**
+ * Marcar masivamente una etiqueta para un grupo de alumnos (ej. pase de lista de todos)
+ */
+function marcarChecklistMasivo(idEvento, listaIdAlumnos, etiquetaId, valorBooleano) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheetInsc = ss.getSheetByName("Inscripciones");
+  if (!sheetInsc) return { success: false, message: "No se encontró la hoja Inscripciones" };
+  
+  if (sheetInsc.getLastColumn() < 8) {
+    sheetInsc.getRange(1, 8).setValue("Checklist_JSON").setFontWeight("bold");
+  }
+  
+  var dataInsc = sheetInsc.getDataRange().getValues();
+  var valBool = (valorBooleano === true || valorBooleano === "true" || valorBooleano === 1);
+  var idSet = {};
+  listaIdAlumnos.forEach(function(id) { idSet[id.toString().trim()] = true; });
+  
+  for (var i = 1; i < dataInsc.length; i++) {
+    if (dataInsc[i][1] == idEvento && dataInsc[i][2]) {
+      var idAl = dataInsc[i][2].toString().trim();
+      if (idSet[idAl]) {
+        var raw = dataInsc[i][7];
+        var curChk = {};
+        if (raw) {
+          try { curChk = (typeof raw === 'object') ? raw : JSON.parse(raw); } catch(e) { curChk = {}; }
+        }
+        curChk[etiquetaId] = valBool;
+        sheetInsc.getRange(i + 1, 8).setValue(JSON.stringify(curChk));
       }
     }
   }
   
-  for (var j = 1; j < abonosSheet.length; j++) {
-    if (abonosSheet[j][1] == idEvento) {
-      var valStr = abonosSheet[j][3].toString().toUpperCase();
-      if (valStr.includes("CANCELADO")) continue;
-      
-      var idAl = abonosSheet[j][2].toString().trim();
-      if (valStr.includes("CORTES")) cortesias[idAl] = true;
-      
-      var monto = parseFloat(abonosSheet[j][3]) || 0;
-      if (!montosAbonadosPorAlumno[idAl]) montosAbonadosPorAlumno[idAl] = 0;
-      montosAbonadosPorAlumno[idAl] += monto;
-    }
-  }
-  
-  var resultadoConcentrado = [];
-  for (var i = 1; i < clientesSheet.length; i++) {
-    var estatusAl = clientesSheet[i][6] ? clientesSheet[i][6].toString().trim().toLowerCase() : "activo";
-    if (estatusAl.includes("inactiv") || estatusAl.includes("baja")) continue;
-
-    var alGrado = clientesSheet[i][3].toString().trim();
-    var alGrupo = clientesSheet[i][4].toString().trim().toUpperCase();
-    
-    if (alGrado == grado.toString().trim() && alGrupo == grupo.toString().trim().toUpperCase()) {
-      var idAlumno = clientesSheet[i][0].toString().trim();
-      var nombreAlumno = clientesSheet[i][1].toString();
-      var totalAbonado = montosAbonadosPorAlumno[idAlumno] || 0;
-      var esCortesia = cortesias[idAlumno] || false;
-      var costoAlumno = costosPersonalizados[idAlumno] || costoTotal;
-      var restante = esCortesia ? 0 : Math.max(costoAlumno - totalAbonado, 0);
-      
-      var estatusText = "No ha pagado";
-      if (esCortesia) {
-        estatusText = "CORTESÍA";
-      } else if (totalAbonado > 0) {
-        estatusText = (restante <= 0) ? "PAGADO" : "Con Abono";
-      }
-      
-      resultadoConcentrado.push({
-        id: idAlumno,
-        nombre: nombreAlumno,
-        costo: costoAlumno,
-        abonado: totalAbonado,
-        restante: restante,
-        estatus: estatusText,
-        esPrecioEspecial: (costoAlumno !== costoTotal && !esCortesia)
-      });
-    }
-  }
-  
-  resultadoConcentrado.sort(function(a, b) { 
-    return a.nombre.localeCompare(b.nombre); 
-  });
-  return resultadoConcentrado;
+  return { success: true, count: listaIdAlumnos.length, etiquetaId: etiquetaId, valor: valBool };
 }
 
 /**

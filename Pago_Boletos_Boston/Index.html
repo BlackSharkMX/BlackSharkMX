@@ -727,7 +727,7 @@
           📊 Métricas y Recaudación
         </button>
         <button class="tab-apartado" onclick="cambiarApartado('apartado-listas')">
-          📋 Listas de Salón
+          📋 Logística y Control de Alumnos
         </button>
         <button class="tab-apartado" onclick="cambiarApartado('apartado-caja')">
           💰 Mi Caja y Arqueo
@@ -1136,91 +1136,209 @@
       <!-- ==============================================================
            APARTADO 2: 📋 LISTAS Y CONCENTRADOS DE SALÓN
            ============================================================== -->
+            <!-- ==============================================================
+           APARTADO 2: 📋 CONTROL DE ALUMNOS, LOGÍSTICA DE VIAJE Y ASISTENCIA
+           ============================================================== -->
       <section id="apartado-listas" class="apartado-content d-none">
-        <div class="card-boston">
-          
-          <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-2 mb-3">
-            <h5 class="section-title m-0 border-0">📋 Listas y Concentrados por Salón</h5>
-            <button class="btn btn-dark text-warning btn-sm fw-bold" onclick="imprimirConcentradoGrupoActual()">
-              🖨️ Imprimir / Descargar PDF
-            </button>
-          </div>
-
-          <div class="row g-2 mb-3">
-            <div class="col-12 col-md-5">
-              <label class="form-label small fw-bold text-secondary">Evento:</label>
-              <select id="sel-listas-evento" class="form-select" onchange="actualizarSelectoresSalonesEnListas()"></select>
-              <div id="badge-listas-alcance-info" class="mt-1" style="min-height: 20px;"></div>
+        <!-- Cabecera del Módulo de Logística -->
+        <div class="card-boston mb-3" style="background: linear-gradient(135deg, #0b1f3f 0%, #1e3a8a 100%); color: #ffffff;">
+          <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
+            <div>
+              <div class="d-flex align-items-center gap-2">
+                <span class="fs-4">📋</span>
+                <h4 class="fw-bold m-0 text-white">Control de Alumnos, Logística y Asistencia</h4>
+              </div>
+              <p class="small text-white-50 m-0 mt-1">
+                Herramienta oficial para profesores y caja: pase de lista, recepción de responsivas firmadas, equipaje y requerimientos del evento con casillas de verificación en tiempo real.
+              </p>
             </div>
-            <div class="col-6 col-md-3">
-              <label class="form-label small fw-bold text-secondary">Grado:</label>
-              <select id="sel-listas-grado" class="form-select" onchange="cargarConcentradoDesdeModulo()">
-                <option value="1">1° Secundaria</option>
+            <div class="d-flex flex-wrap gap-2">
+              <button class="btn btn-warning btn-sm fw-bold px-3 py-2" onclick="abrirModalAdministrarEtiquetas()" title="Agregar o personalizar etiquetas y requerimientos de este evento">
+                🏷️ Gestionar Requerimientos / Etiquetas
+              </button>
+              <button class="btn btn-light text-dark btn-sm fw-bold px-3 py-2 shadow-sm" onclick="imprimirConcentradoGrupoActual()" title="Imprimir hoja oficial de control y asistencia para los profesores">
+                🖨️ Imprimir Formato de Profesores
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Filtros y Selectores de Consulta -->
+        <div class="card-boston mb-3">
+          <div class="row g-2 align-items-end">
+            <div class="col-12 col-md-4">
+              <label class="form-label small fw-bold text-secondary mb-1">Evento Escolar:</label>
+              <select id="sel-listas-evento" class="form-select form-select-sm fw-bold" onchange="cargarConcentradoDesdeModulo()"></select>
+              <div id="badge-listas-alcance-info" class="mt-1" style="min-height: 18px;"></div>
+            </div>
+            <div class="col-6 col-md-2">
+              <label class="form-label small fw-bold text-secondary mb-1">Grado:</label>
+              <select id="sel-listas-grado" class="form-select form-select-sm" onchange="cargarConcentradoDesdeModulo()">
+                <option value="TODOS">Todos los Grados</option>
+                <option value="3" selected>3° Secundaria</option>
                 <option value="2">2° Secundaria</option>
-                <option value="3">3° Secundaria</option>
+                <option value="1">1° Secundaria</option>
+                <option value="EXTERNO">Invitados Externos</option>
               </select>
             </div>
-            <div class="col-6 col-md-4">
-              <label class="form-label small fw-bold text-secondary">Grupo:</label>
-              <select id="sel-listas-grupo" class="form-select" onchange="cargarConcentradoDesdeModulo()">
+            <div class="col-6 col-md-2">
+              <label class="form-label small fw-bold text-secondary mb-1">Grupo:</label>
+              <select id="sel-listas-grupo" class="form-select form-select-sm" onchange="cargarConcentradoDesdeModulo()">
+                <option value="TODOS">Todos los Grupos</option>
                 <option value="A">Grupo A</option>
                 <option value="B">Grupo B</option>
                 <option value="C">Grupo C</option>
+                <option value="EXT">Externos</option>
+              </select>
+            </div>
+            <div class="col-12 col-md-4">
+              <label class="form-label small fw-bold text-secondary mb-1">Filtro de Estado:</label>
+              <select id="sel-listas-filtro-estado" class="form-select form-select-sm" onchange="filtrarTablaAlumnosEnPantalla()">
+                <option value="TODOS">-- Todos los Alumnos del Padrón --</option>
+                <option value="CON_LUGAR">Solo con Boleto / Lugar Asignado</option>
+                <option value="SIN_RESPONSIVA">⚠️ Falta Permiso Firmado / Responsiva</option>
+                <option value="CON_RESPONSIVA">✅ Permiso Firmado Entregado</option>
+                <option value="SIN_ASISTENCIA">⚠️ Falta Pase de Lista / Abordaje</option>
+                <option value="CON_ASISTENCIA">🚌 Asistencia Confirmada (Abordó)</option>
               </select>
             </div>
           </div>
 
-          <!-- Resumen de Alumnos del Grupo -->
-          <div class="row g-2 text-center mb-3">
-            <div class="col-6 col-md-3">
-              <div class="p-2 bg-light border rounded">
-                <span class="small text-muted d-block" style="font-size: 11px;">Total Alumnos</span>
-                <strong id="resumen-total-alumnos" class="text-primary fs-6">0</strong>
-              </div>
+          <!-- Buscador Rápido -->
+          <div class="mt-3">
+            <div class="input-group input-group-sm">
+              <span class="input-group-text bg-white">🔍</span>
+              <input type="text" id="busqueda-tabla-alumnos" class="form-control" placeholder="Buscar por nombre de alumno, matrícula o # de asiento..." onkeyup="filtrarTablaAlumnosEnPantalla()">
+              <button class="btn btn-outline-secondary" type="button" onclick="document.getElementById('busqueda-tabla-alumnos').value=''; filtrarTablaAlumnosEnPantalla();">Limpiar</button>
             </div>
-            <div class="col-6 col-md-3">
-              <div class="p-2 bg-light border rounded">
-                <span class="small text-muted d-block" style="font-size: 11px;">Pagados</span>
-                <strong id="resumen-pagados" class="text-success fs-6">0</strong>
-              </div>
+          </div>
+        </div>
+
+        <!-- Tarjetas de Progreso de Etiquetas y Acciones Masivas -->
+        <div class="card-boston mb-3 p-3 bg-light border">
+          <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2 mb-2 border-bottom pb-2">
+            <div>
+              <strong class="text-dark small text-uppercase" style="letter-spacing: 0.5px;">Monitoreo de Requerimientos del Viaje</strong>
+              <span class="small text-muted d-block">Haz clic en los cuadros de verificación de cada alumno para registrar lo que ya entregó. Se guarda al instante.</span>
             </div>
-            <div class="col-6 col-md-3">
-              <div class="p-2 bg-light border rounded">
-                <span class="small text-muted d-block" style="font-size: 11px;">Con Abono</span>
-                <strong id="resumen-con-abono" class="text-warning fs-6">0</strong>
-              </div>
-            </div>
-            <div class="col-6 col-md-3">
-              <div class="p-2 bg-light border rounded">
-                <span class="small text-muted d-block" style="font-size: 11px;">Sin Pago</span>
-                <strong id="resumen-sin-pago" class="text-danger fs-6">0</strong>
-              </div>
+            <div class="d-flex flex-wrap gap-2">
+              <button class="btn btn-outline-success btn-sm fw-bold px-2 py-1" onclick="marcarAsistenciaTodosEnPantalla(true)" title="Marcar abordaje / asistencia a todos los alumnos mostrados">
+                ✅ Pase de Lista (Marcar Visibles)
+              </button>
+              <button class="btn btn-outline-secondary btn-sm fw-bold px-2 py-1" onclick="cargarConcentradoDesdeModulo()" title="Recargar datos">
+                🔄 Recargar
+              </button>
             </div>
           </div>
 
-          <!-- Filtro de Búsqueda Rápida en Tabla -->
-          <div class="mb-2">
-            <input type="text" id="busqueda-tabla-alumnos" class="form-control" placeholder="🔍 Buscar alumno en la lista..." onkeyup="filtrarTablaAlumnosEnPantalla()">
+          <!-- Contenedor dinámico de pills con conteos por etiqueta -->
+          <div id="contenedor-etiquetas-progreso" class="d-flex flex-wrap gap-2 pt-1">
+            <!-- Se llena dinámicamente -->
+          </div>
+        </div>
+
+        <!-- Tabla Interactiva de Logística y Requerimientos -->
+        <div class="card-boston">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <span class="small text-muted fw-bold" id="indicador-conteo-alumnos-tabla">Mostrando 0 alumnos</span>
+            <span class="badge bg-success-subtle text-success border small" id="indicador-guardado-live" style="display:none; transition: all 0.2s;">✓ Guardado en tiempo real</span>
           </div>
 
-          <!-- Tabla de Concentrado -->
           <div class="table-responsive-movil">
-            <table class="table table-bordered table-striped table-hover table-sm align-middle m-0" id="tabla-concentrado-alumnos">
-              <thead class="table-dark" style="font-size: 13px;">
-                <tr>
-                  <th style="width: 100px;">ID</th>
-                  <th>Nombre Completo del Estudiante</th>
-                  <th style="text-align: right; width: 120px;">Abonado</th>
-                  <th style="text-align: right; width: 120px;">Restante</th>
-                  <th style="text-align: center; width: 120px;">Estatus</th>
-                </tr>
+            <table class="table table-bordered table-striped table-hover align-middle m-0" id="tabla-concentrado-alumnos" style="font-size: 12.5px;">
+              <thead class="table-dark" style="background-color: #0b1f3f;" id="thead-tabla-logistica">
+                <!-- Se genera dinámicamente según las etiquetas activas -->
               </thead>
-              <tbody id="body-tabla-concentrado" style="font-size: 13px;">
-                <tr><td colspan="5" class="text-center py-3 text-muted">Selecciona los filtros para consultar la lista del salón.</td></tr>
+              <tbody id="body-tabla-concentrado">
+                <tr><td colspan="10" class="text-center py-4 text-muted">Cargando lista y requerimientos de viaje...</td></tr>
               </tbody>
             </table>
           </div>
+        </div>
 
+        <!-- Modal para Administrar / Crear Etiquetas del Evento -->
+        <div class="modal fade" id="modalAdministrarEtiquetas" tabindex="-1" aria-hidden="true">
+          <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 16px; overflow: hidden;">
+              <div class="modal-header bg-boston text-white">
+                <h6 class="modal-title fw-bold">🏷️ Administrar Requerimientos y Etiquetas del Evento</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+              <div class="modal-body p-4">
+                <p class="small text-muted mb-3">
+                  Define qué cosas deben revisarse o entregarse para este viaje (ej. responsiva firmada, equipaje, tienda de campaña, pago de tirolesa, botiquín aux, etc.). Cada requerimiento creará una columna con casilla de verificación para cada alumno.
+                </p>
+
+                <div class="mb-4 p-3 bg-light rounded-3 border">
+                  <label class="form-label small fw-bold text-dark mb-1">Agregar Nuevo Requerimiento / Etiqueta:</label>
+                  <div class="row g-2">
+                    <div class="col-8 col-sm-6">
+                      <input type="text" id="nuevaEtiquetaNombre" class="form-control form-control-sm" placeholder="Ej. Tienda de Campaña, Pago Tirolesa...">
+                    </div>
+                    <div class="col-4 col-sm-3">
+                      <select id="nuevaEtiquetaIcono" class="form-select form-select-sm">
+                        <option value="📝">📝 Responsiva/Permiso</option>
+                        <option value="🚌">🚌 Asistencia/Viaje</option>
+                        <option value="🎒">🎒 Equipaje</option>
+                        <option value="⛺">⛺ Tienda Campaña</option>
+                        <option value="🧗">🧗 Tirolesa / Actividad</option>
+                        <option value="💊">💊 Botiquín / Médico</option>
+                        <option value="🏊">🏊 Alberca / Balneario</option>
+                        <option value="🥪">🥪 Refrigerio / Comida</option>
+                        <option value="🪪">🪪 Identificación</option>
+                        <option value="⭐">⭐ Requerimiento Especial</option>
+                      </select>
+                    </div>
+                    <div class="col-12 col-sm-3">
+                      <button type="button" class="btn btn-primary btn-sm w-100 fw-bold" onclick="agregarNuevaEtiquetaModal()">
+                        + Agregar Etiqueta
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <label class="form-label small fw-bold text-dark mb-2">Requerimientos Activos para este Evento:</label>
+                <div id="lista-etiquetas-admin" class="d-flex flex-column gap-2 mb-3">
+                  <!-- Se llena dinámicamente -->
+                </div>
+              </div>
+              <div class="modal-footer bg-light d-flex justify-content-between">
+                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="restablecerEtiquetasDefault()">Restablecer Predeterminadas</button>
+                <div class="d-flex gap-2">
+                  <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button>
+                  <button type="button" class="btn btn-success btn-sm fw-bold px-3" onclick="guardarEtiquetasEventoModal()">💾 Guardar y Aplicar</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Modal para Editar Observaciones / Ficha Médica del Alumno -->
+        <div class="modal fade" id="modalEditarNotaLogistica" tabindex="-1" aria-hidden="true">
+          <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 16px; overflow: hidden;">
+              <div class="modal-header bg-boston text-white">
+                <h6 class="modal-title fw-bold">📝 Observaciones del Alumno / Ficha Médica</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+              <div class="modal-body p-4">
+                <input type="hidden" id="modalNotaIdAlumno" value="">
+                <input type="hidden" id="modalNotaIdEvento" value="">
+                <div class="mb-2">
+                  <div id="modalNotaNombreAlumno" class="text-dark fw-bold fs-6">—</div>
+                  <div id="modalNotaDetalleAlumno" class="small text-muted">—</div>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label small fw-bold text-secondary">Notas logísticas, requerimientos médicos o teléfono de emergencia:</label>
+                  <textarea id="modalNotaTexto" class="form-control" rows="3" placeholder="Ej. Alergia a medicamentos, lleva botiquín propio, contacto de emergencia: Mamá 777-123-4567"></textarea>
+                </div>
+              </div>
+              <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary btn-sm fw-bold px-3" onclick="confirmarGuardadoNotaAlumno()">Guardar Observación</button>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -4226,107 +4344,495 @@
       cargarConcentradoDesdeModulo();
     }
 
-    // 4. APARTADO: LISTAS Y CONCENTRADOS
+    // ==============================================================
+    // 4. CONTROL DE ALUMNOS, LOGÍSTICA DE VIAJE Y CHECKLIST POR SALÓN
+    // ==============================================================
+    var datosLogisticaActual = null;
+    var etiquetasLogisticaLocales = [];
+    var timerGuardadoToast = null;
+
     function cargarConcentradoDesdeModulo() {
-      let idEv = document.getElementById('sel-listas-evento').value;
-      let gra = document.getElementById('sel-listas-grado').value;
-      let gru = document.getElementById('sel-listas-grupo').value;
-      let ev = listaEventosCompleta.find(e => e.id == idEv);
+      var selEv = document.getElementById('sel-listas-evento');
+      var selGra = document.getElementById('sel-listas-grado');
+      var selGru = document.getElementById('sel-listas-grupo');
+      
+      var idEv = selEv ? selEv.value : 'EV-730628';
+      var gra = selGra ? selGra.value : 'TODOS';
+      var gru = selGru ? selGru.value : 'TODOS';
 
-      if (!idEv || !gra || !gru || !ev) return;
+      var tbody = document.getElementById('body-tabla-concentrado');
+      if (tbody) {
+        tbody.innerHTML = '<tr><td colspan="10" class="text-center py-4 text-muted"><div class="spinner-border spinner-border-sm text-primary me-2"></div>Cargando expediente de viaje, asistencia y requerimientos...</td></tr>';
+      }
 
-      let tbody = document.getElementById('body-tabla-concentrado');
-      tbody.innerHTML = `<tr><td colspan="5" class="text-center py-3">Consultando lista de ${gra}° "${gru}"...</td></tr>`;
+      google.script.run
+        .withSuccessHandler(function(res) {
+          if (!res || !res.success) {
+            if (tbody) tbody.innerHTML = '<tr><td colspan="10" class="text-center py-3 text-danger">' + (res ? res.message : 'Error al consultar logística.') + '</td></tr>';
+            return;
+          }
 
-      google.script.run.withSuccessHandler(alumnos => {
-        datosConcentradoGrupoActual = alumnos || [];
-        renderizarTablaConcentrado(datosConcentradoGrupoActual);
-      }).obtenerConcentradoEstatusGrupo(idEv, gra, gru, ev.costo);
+          datosLogisticaActual = res;
+          etiquetasLogisticaLocales = res.etiquetas || [];
+
+          // Renderizar tarjetas de avance de etiquetas
+          renderizarPillsProgresoEtiquetas(res.etiquetas, res.resumen, res.alumnos.length);
+
+          // Renderizar tabla
+          filtrarTablaAlumnosEnPantalla();
+        })
+        .withFailureHandler(function(err) {
+          if (tbody) tbody.innerHTML = '<tr><td colspan="10" class="text-center py-3 text-danger">Error: ' + err.message + '</td></tr>';
+        })
+        .obtenerLogisticaGrupo(idEv, gra, gru);
     }
 
-    function renderizarTablaConcentrado(alumnos) {
-      let tbody = document.getElementById('body-tabla-concentrado');
-      let html = "";
-      let countPagados = 0, countAbonos = 0, countSinPago = 0;
+    function renderizarPillsProgresoEtiquetas(etiquetas, resumen, totalAlumnos) {
+      var contenedor = document.getElementById('contenedor-etiquetas-progreso');
+      if (!contenedor) return;
 
-      alumnos.forEach(al => {
-        let badge = "";
-        if (al.estatus === "PAGADO") {
-          badge = `<span class="badge bg-success p-1 d-block">PAGADO</span>`;
-          countPagados++;
-        } else if (al.estatus === "CORTESÍA") {
-          badge = `<span class="badge bg-info text-dark p-1 d-block">CORTESÍA</span>`;
-          countPagados++;
-        } else if (al.estatus === "Con Abono") {
-          badge = `<span class="badge bg-warning text-dark p-1 d-block">CON ABONO</span>`;
-          countAbonos++;
-        } else {
-          badge = `<span class="badge bg-danger p-1 d-block">SIN PAGO</span>`;
-          countSinPago++;
-        }
+      if (!etiquetas || etiquetas.length === 0) {
+        contenedor.innerHTML = '<span class="text-muted small">No hay requerimientos configurados para este evento.</span>';
+        return;
+      }
 
-        html += `
-          <tr>
-            <td class="font-monospace small fw-bold">${al.id}</td>
-            <td class="fw-bold">${al.nombre}</td>
-            <td style="text-align: right;" class="text-success fw-bold">$${al.abonado}.00</td>
-            <td style="text-align: right;" class="text-danger fw-bold">$${al.restante}.00</td>
-            <td>${badge}</td>
-          </tr>`;
-      });
+      var conteos = (resumen && resumen.conteoPorEtiqueta) ? resumen.conteoPorEtiqueta : {};
 
-      tbody.innerHTML = html || `<tr><td colspan="5" class="text-center py-3 text-muted">No se encontraron alumnos en este salón.</td></tr>`;
+      var html = etiquetas.map(function(et) {
+        var cant = conteos[et.id] || 0;
+        var pct = totalAlumnos > 0 ? Math.round((cant / totalAlumnos) * 100) : 0;
+        var colorBadge = pct === 100 ? 'bg-success text-white' : (pct > 0 ? 'bg-primary text-white' : 'bg-secondary text-white');
 
-      // Actualizar contadores
-      document.getElementById('resumen-total-alumnos').innerText = alumnos.length;
-      document.getElementById('resumen-pagados').innerText = countPagados;
-      document.getElementById('resumen-con-abono').innerText = countAbonos;
-      document.getElementById('resumen-sin-pago').innerText = countSinPago;
+        return `
+          <div class="p-2 border rounded bg-white shadow-sm d-flex align-items-center gap-2" style="min-width: 170px;">
+            <span class="fs-5">${et.icono || '📋'}</span>
+            <div style="flex:1;">
+              <div class="fw-bold text-dark" style="font-size: 11px;">${et.nombre}</div>
+              <div class="d-flex justify-content-between align-items-center mt-1">
+                <span class="badge ${colorBadge}" style="font-size: 10px;">${cant} / ${totalAlumnos} (${pct}%)</span>
+              </div>
+            </div>
+          </div>`;
+      }).join('');
+
+      contenedor.innerHTML = html;
     }
 
     function filtrarTablaAlumnosEnPantalla() {
-      let texto = document.getElementById('busqueda-tabla-alumnos').value.toLowerCase();
-      let filtrados = datosConcentradoGrupoActual.filter(a => a.nombre.toLowerCase().includes(texto) || a.id.toLowerCase().includes(texto));
-      renderizarTablaConcentrado(filtrados);
-    }
+      if (!datosLogisticaActual || !datosLogisticaActual.alumnos) return;
 
-    function imprimirConcentradoGrupoActual() {
-      if (!datosConcentradoGrupoActual || datosConcentradoGrupoActual.length === 0) {
-        return alert("No hay datos en la lista para imprimir.");
-      }
-      let idEv = document.getElementById('sel-listas-evento').value;
-      let ev = listaEventosCompleta.find(e => e.id == idEv);
-      let gra = document.getElementById('sel-listas-grado').value;
-      let gru = document.getElementById('sel-listas-grupo').value;
-      let horaEmision = new Date().toLocaleString();
+      var texto = (document.getElementById('busqueda-tabla-alumnos') ? document.getElementById('busqueda-tabla-alumnos').value : '').toLowerCase().trim();
+      var filtroEstado = document.getElementById('sel-listas-filtro-estado') ? document.getElementById('sel-listas-filtro-estado').value : 'TODOS';
 
-      let filasPrint = "";
-      datosConcentradoGrupoActual.forEach((al, index) => {
-        filasPrint += `
-          <tr>
-            <td>${index + 1}</td>
-            <td style="font-family:monospace;">${al.id}</td>
-            <td>${al.nombre}</td>
-            <td style="text-align:right;">$${al.abonado}.00</td>
-            <td style="text-align:right;">$${al.restante}.00</td>
-            <td style="text-align:center;">${al.estatus}</td>
-          </tr>`;
+      var filtrados = datosLogisticaActual.alumnos.filter(function(al) {
+        // Filtro texto
+        if (texto) {
+          var matchTexto = al.nombre.toLowerCase().includes(texto) || 
+                             al.id.toLowerCase().includes(texto) || 
+                             (al.asiento && al.asiento.toString().includes(texto));
+          if (!matchTexto) return false;
+        }
+
+        // Filtro estado
+        if (filtroEstado === 'CON_LUGAR') {
+          return al.abonado > 0 || al.estatusPago === 'PAGADO' || al.asiento !== '';
+        } else if (filtroEstado === 'SIN_RESPONSIVA') {
+          return !(al.checklist && al.checklist['permiso_firmado'] === true);
+        } else if (filtroEstado === 'CON_RESPONSIVA') {
+          return (al.checklist && al.checklist['permiso_firmado'] === true);
+        } else if (filtroEstado === 'SIN_ASISTENCIA') {
+          return !(al.checklist && al.checklist['asistencia'] === true);
+        } else if (filtroEstado === 'CON_ASISTENCIA') {
+          return (al.checklist && al.checklist['asistencia'] === true);
+        }
+
+        return true;
       });
 
+      renderizarTablaLogistica(filtrados, etiquetasLogisticaLocales);
+    }
+
+    function renderizarTablaLogistica(alumnos, etiquetas) {
+      var thead = document.getElementById('thead-tabla-logistica');
+      var tbody = document.getElementById('body-tabla-concentrado');
+      var indicador = document.getElementById('indicador-conteo-alumnos-tabla');
+
+      if (indicador) {
+        indicador.innerText = 'Mostrando ' + alumnos.length + ' alumnos en lista';
+      }
+
+      // Renderizar Thead dinámico con las columnas de las etiquetas
+      if (thead) {
+        var colsEtiquetas = (etiquetas || []).map(function(et) {
+          return '<th style="text-align: center; min-width: 90px;" title="' + et.nombre + '">' + (et.icono || '') + ' ' + et.nombre + '</th>';
+        }).join('');
+
+        thead.innerHTML = `
+          <tr>
+            <th style="width: 85px; text-align: center;">Asiento</th>
+            <th style="width: 95px;">Matrícula</th>
+            <th style="min-width: 190px;">Nombre del Alumno</th>
+            <th style="width: 90px; text-align: center;">Salón</th>
+            <th style="width: 110px; text-align: center;">Pago</th>
+            ${colsEtiquetas}
+            <th style="min-width: 130px;">Observaciones / Ficha</th>
+            <th style="width: 90px; text-align: center;">Acción</th>
+          </tr>`;
+      }
+
+      if (!tbody) return;
+
+      if (!alumnos || alumnos.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="12" class="text-center py-4 text-muted">No se encontraron alumnos con los filtros seleccionados.</td></tr>';
+        return;
+      }
+
+      var idEvento = datosLogisticaActual && datosLogisticaActual.evento ? datosLogisticaActual.evento.id : 'EV-730628';
+
+      var rowsHtml = alumnos.map(function(al) {
+        var badgeAsiento = al.asiento 
+          ? ('<span class="badge bg-primary text-white fw-bold px-2 py-1" style="font-family: monospace;">#' + al.asiento + '</span>')
+          : '<span class="badge bg-light text-muted border px-1">--</span>';
+
+        var badgePago = '';
+        if (al.estatusPago === 'PAGADO') badgePago = '<span class="badge bg-success" style="font-size:10px;">PAGADO</span>';
+        else if (al.estatusPago === 'CON ABONO') badgePago = '<span class="badge bg-warning text-dark" style="font-size:10px;">ABONÓ $' + al.abonado + '</span>';
+        else if (al.estatusPago === 'CORTESÍA') badgePago = '<span class="badge bg-info text-dark" style="font-size:10px;">CORTESÍA</span>';
+        else badgePago = '<span class="badge bg-danger" style="font-size:10px;">SIN PAGO</span>';
+
+        // Celdas de checkboxes para cada etiqueta
+        var celdasChecks = (etiquetas || []).map(function(et) {
+          var isChecked = (al.checklist && al.checklist[et.id] === true);
+          return `
+            <td style="text-align: center; vertical-align: middle;">
+              <div class="form-check form-switch d-inline-block m-0">
+                <input class="form-check-input" type="checkbox" role="switch"
+                       id="chk-${al.id}-${et.id}"
+                       ${isChecked ? 'checked' : ''}
+                       onchange="alternarCheckAlumno('${al.id}', '${et.id}', this.checked)"
+                       title="${et.nombre}: ${al.nombre}">
+              </div>
+            </td>`;
+        }).join('');
+
+        var notaBtn = al.notas 
+          ? ('<span class="badge bg-warning-subtle text-dark border p-1 d-inline-block text-truncate" style="max-width: 140px; cursor: pointer;" onclick="abrirModalEditarNota(\'' + al.id + '\', \'' + al.nombre.replace(/'/g, "\\'") + '\', \'' + (al.notas || '').replace(/'/g, "\\'") + '\')" title="' + al.notas + '">📝 ' + al.notas + '</span>')
+          : ('<button class="btn btn-link btn-sm p-0 text-decoration-none text-muted" style="font-size: 11px;" onclick="abrirModalEditarNota(\'' + al.id + '\', \'' + al.nombre.replace(/'/g, "\\'") + '\', \'\')">✏️ Agregar nota</button>');
+
+        return `
+          <tr>
+            <td style="text-align: center;">${badgeAsiento}</td>
+            <td class="font-monospace text-secondary small">${al.id}</td>
+            <td>
+              <div class="fw-bold text-dark">${al.nombre}</div>
+              ${al.esExterno ? '<span class="badge bg-warning text-dark" style="font-size: 9px;">Invitado Externo</span>' : ''}
+            </td>
+            <td style="text-align: center;" class="small fw-bold text-secondary">${al.esExterno ? 'Ext' : (al.grado + '° ' + al.grupo)}</td>
+            <td style="text-align: center;">${badgePago}</td>
+            ${celdasChecks}
+            <td>${notaBtn}</td>
+            <td style="text-align: center;">
+              <button class="btn btn-sm btn-outline-primary py-1 px-2 fw-bold" style="font-size: 11px;"
+                      onclick="cargarAlumnoEnCobro('${idEvento}', '${al.grado}', '${al.grupo}', '${al.id}', '${al.nombre.replace(/'/g, "\\'")}', '')" 
+                      title="Cobrar a ${al.nombre}">
+                💳 Cobrar
+              </button>
+            </td>
+          </tr>`;
+      }).join('');
+
+      tbody.innerHTML = rowsHtml;
+    }
+
+    function alternarCheckAlumno(idAlumno, etiquetaId, nuevoValor) {
+      if (!datosLogisticaActual) return;
+      var idEv = datosLogisticaActual.evento ? datosLogisticaActual.evento.id : 'EV-730628';
+
+      // 1. Actualizar estado local inmediato
+      var al = datosLogisticaActual.alumnos.find(function(a) { return a.id === idAlumno; });
+      if (al) {
+        if (!al.checklist) al.checklist = {};
+        al.checklist[etiquetaId] = nuevoValor;
+
+        // Recalcular conteos
+        var totalConteo = 0;
+        datosLogisticaActual.alumnos.forEach(function(a) {
+          if (a.checklist && a.checklist[etiquetaId] === true) totalConteo++;
+        });
+        if (!datosLogisticaActual.resumen) datosLogisticaActual.resumen = {};
+        if (!datosLogisticaActual.resumen.conteoPorEtiqueta) datosLogisticaActual.resumen.conteoPorEtiqueta = {};
+        datosLogisticaActual.resumen.conteoPorEtiqueta[etiquetaId] = totalConteo;
+
+        renderizarPillsProgresoEtiquetas(etiquetasLogisticaLocales, datosLogisticaActual.resumen, datosLogisticaActual.alumnos.length);
+      }
+
+      // 2. Feedback visual de guardado
+      var toast = document.getElementById('indicador-guardado-live');
+      if (toast) {
+        toast.innerText = 'Guardando cambio...';
+        toast.className = 'badge bg-warning-subtle text-dark border small';
+        toast.style.display = 'inline-block';
+      }
+
+      // 3. Persistir en Google Sheets
+      google.script.run
+        .withSuccessHandler(function(res) {
+          if (toast) {
+            toast.innerText = '✓ Guardado en tiempo real';
+            toast.className = 'badge bg-success-subtle text-success border small';
+            if (timerGuardadoToast) clearTimeout(timerGuardadoToast);
+            timerGuardadoToast = setTimeout(function() { toast.style.display = 'none'; }, 2500);
+          }
+        })
+        .withFailureHandler(function(err) {
+          if (toast) {
+            toast.innerText = '⚠️ Error al guardar: ' + err.message;
+            toast.className = 'badge bg-danger-subtle text-danger border small';
+          }
+        })
+        .actualizarChecklistAlumno(idEv, idAlumno, etiquetaId, nuevoValor);
+    }
+
+    function marcarAsistenciaTodosEnPantalla(valorBool) {
+      if (!datosLogisticaActual || !datosLogisticaActual.alumnos) return;
+      var idEv = datosLogisticaActual.evento ? datosLogisticaActual.evento.id : 'EV-730628';
+
+      var confirmacion = confirm("¿Deseas marcar 'Asistencia / Abordaje' para todos los alumnos visibles en este momento?");
+      if (!confirmacion) return;
+
+      var idList = [];
+      datosLogisticaActual.alumnos.forEach(function(al) {
+        if (!al.checklist) al.checklist = {};
+        al.checklist['asistencia'] = valorBool;
+        idList.push(al.id);
+      });
+
+      filtrarTablaAlumnosEnPantalla();
+
+      google.script.run
+        .withSuccessHandler(function(res) {
+          cargarConcentradoDesdeModulo();
+        })
+        .marcarChecklistMasivo(idEv, idList, 'asistencia', valorBool);
+    }
+
+    // Modal de Notas Logísticas
+    function abrirModalEditarNota(idAlumno, nombreAlumno, notaActual) {
+      var modalEl = document.getElementById('modalEditarNotaLogistica');
+      if (!modalEl) return;
+
+      document.getElementById('modalNotaIdAlumno').value = idAlumno;
+      document.getElementById('modalNotaIdEvento').value = datosLogisticaActual && datosLogisticaActual.evento ? datosLogisticaActual.evento.id : 'EV-730628';
+      document.getElementById('modalNotaNombreAlumno').innerText = nombreAlumno;
+      document.getElementById('modalNotaDetalleAlumno').innerText = 'Matrícula: ' + idAlumno;
+      document.getElementById('modalNotaTexto').value = notaActual || '';
+
+      var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+      modal.show();
+    }
+
+    function confirmarGuardadoNotaAlumno() {
+      var idAlumno = document.getElementById('modalNotaIdAlumno').value;
+      var idEvento = document.getElementById('modalNotaIdEvento').value;
+      var texto = document.getElementById('modalNotaTexto').value;
+
+      var al = datosLogisticaActual.alumnos.find(function(a) { return a.id === idAlumno; });
+      if (al) al.notas = texto;
+
+      var modalEl = document.getElementById('modalEditarNotaLogistica');
+      var modal = bootstrap.Modal.getInstance(modalEl);
+      if (modal) modal.hide();
+
+      filtrarTablaAlumnosEnPantalla();
+
+      google.script.run.guardarNotaLogisticaAlumno(idEvento, idAlumno, texto);
+    }
+
+    // Modal de Gestión de Etiquetas
+    var etiquetasEdicionTemporal = [];
+
+    function abrirModalAdministrarEtiquetas() {
+      var modalEl = document.getElementById('modalAdministrarEtiquetas');
+      if (!modalEl) return;
+
+      etiquetasEdicionTemporal = JSON.parse(JSON.stringify(etiquetasLogisticaLocales));
+      renderizarListaEtiquetasAdmin();
+
+      var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+      modal.show();
+    }
+
+    function renderizarListaEtiquetasAdmin() {
+      var cont = document.getElementById('lista-etiquetas-admin');
+      if (!cont) return;
+
+      if (!etiquetasEdicionTemporal || etiquetasEdicionTemporal.length === 0) {
+        cont.innerHTML = '<div class="text-muted small">No hay etiquetas creadas. Agrega una arriba.</div>';
+        return;
+      }
+
+      var html = etiquetasEdicionTemporal.map(function(et, idx) {
+        return `
+          <div class="d-flex justify-content-between align-items-center p-2 border rounded bg-white">
+            <div class="d-flex align-items-center gap-2">
+              <span class="fs-5">${et.icono || '📋'}</span>
+              <strong class="text-dark small">${et.nombre}</strong>
+              <span class="badge bg-light text-muted border font-monospace" style="font-size:10px;">ID: ${et.id}</span>
+            </div>
+            <button class="btn btn-outline-danger btn-sm py-0 px-2 fw-bold" onclick="eliminarEtiquetaModal(${idx})">
+              ✕ Eliminar
+            </button>
+          </div>`;
+      }).join('');
+
+      cont.innerHTML = html;
+    }
+
+    function agregarNuevaEtiquetaModal() {
+      var inputNom = document.getElementById('nuevaEtiquetaNombre');
+      var inputIco = document.getElementById('nuevaEtiquetaIcono');
+
+      var nom = inputNom ? inputNom.value.trim() : '';
+      var ico = inputIco ? inputIco.value : '📋';
+
+      if (!nom) {
+        alert("Por favor escribe el nombre de la etiqueta (ej. Tienda de Campaña, Pago Tirolesa).");
+        return;
+      }
+
+      var slugId = nom.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "_").slice(0, 20);
+
+      etiquetasEdicionTemporal.push({
+        id: slugId + '_' + Math.floor(Math.random() * 1000),
+        nombre: nom,
+        icono: ico,
+        color: '#1e3a8a'
+      });
+
+      inputNom.value = '';
+      renderizarListaEtiquetasAdmin();
+    }
+
+    function eliminarEtiquetaModal(idx) {
+      if (confirm("¿Seguro que deseas eliminar esta etiqueta?")) {
+        etiquetasEdicionTemporal.splice(idx, 1);
+        renderizarListaEtiquetasAdmin();
+      }
+    }
+
+    function restablecerEtiquetasDefault() {
+      if (confirm("¿Deseas restaurar las etiquetas predeterminadas de viaje (Responsiva, Asistencia, Equipaje, Tienda, Tirolesa, Botiquín)?")) {
+        etiquetasEdicionTemporal = [
+          { id: "permiso_firmado", nombre: "Permiso Firmado / Responsiva", icono: "📝", color: "#2563eb" },
+          { id: "asistencia", nombre: "Asistencia / Abordaje", icono: "🚌", color: "#16a34a" },
+          { id: "equipaje", nombre: "Equipaje Listo", icono: "🎒", color: "#d97706" },
+          { id: "tienda_camp", nombre: "Tienda de Campaña", icono: "⛺", color: "#0891b2" },
+          { id: "pago_tirolesa", nombre: "Pago Tirolesa", icono: "🧗", color: "#9333ea" },
+          { id: "botiquin_aux", nombre: "Botiquín / Medicamentos", icono: "💊", color: "#dc2626" }
+        ];
+        renderizarListaEtiquetasAdmin();
+      }
+    }
+
+    function guardarEtiquetasEventoModal() {
+      var idEv = datosLogisticaActual && datosLogisticaActual.evento ? datosLogisticaActual.evento.id : 'EV-730628';
+
+      etiquetasLogisticaLocales = JSON.parse(JSON.stringify(etiquetasEdicionTemporal));
+
+      var modalEl = document.getElementById('modalAdministrarEtiquetas');
+      var modal = bootstrap.Modal.getInstance(modalEl);
+      if (modal) modal.hide();
+
+      google.script.run
+        .withSuccessHandler(function() {
+          cargarConcentradoDesdeModulo();
+        })
+        .guardarEtiquetasEvento(idEv, etiquetasLogisticaLocales);
+    }
+
+    // Impresión Oficial de Formato de Control de Viaje para Profesores
+    function imprimirConcentradoGrupoActual() {
+      if (!datosLogisticaActual || !datosLogisticaActual.alumnos || datosLogisticaActual.alumnos.length === 0) {
+        return alert("No hay alumnos en la lista para imprimir.");
+      }
+
+      var ev = datosLogisticaActual.evento || { nombre: 'Excursión a Tolantongo' };
+      var selGra = document.getElementById('sel-listas-grado');
+      var selGru = document.getElementById('sel-listas-grupo');
+      var txtGra = selGra ? selGra.options[selGra.selectedIndex].text : 'Salón';
+      var txtGru = selGru ? selGru.options[selGru.selectedIndex].text : '';
+      var horaEmision = new Date().toLocaleString();
+
+      var tags = etiquetasLogisticaLocales || [];
+
+      // Encabezados de etiquetas para la tabla impresa
+      var thTags = tags.map(function(t) {
+        return '<th style="text-align: center; font-size: 10px; width: 65px;">' + t.icono + '<br>' + t.nombre + '</th>';
+      }).join('');
+
+      // Filas
+      var filasPrint = datosLogisticaActual.alumnos.map(function(al, index) {
+        var tdTags = tags.map(function(t) {
+          var isChk = (al.checklist && al.checklist[t.id] === true);
+          return '<td style="text-align: center; font-size: 12px; font-weight: bold;">' + (isChk ? '[ ✓ ]' : '[   ]') + '</td>';
+        }).join('');
+
+        return `
+          <tr>
+            <td style="text-align: center; font-size: 11px;">${index + 1}</td>
+            <td style="text-align: center; font-family: monospace; font-weight: bold; font-size: 11px;">${al.asiento ? ('#' + al.asiento) : '--'}</td>
+            <td style="font-family: monospace; font-size: 10px;">${al.id}</td>
+            <td style="font-weight: bold; font-size: 11px;">${al.nombre}</td>
+            <td style="text-align: center; font-size: 10px;">${al.esExterno ? 'Ext' : (al.grado + '° ' + al.grupo)}</td>
+            <td style="text-align: center; font-size: 10px; font-weight: bold;">${al.estatusPago}</td>
+            ${tdTags}
+            <td style="font-size: 10px;">${al.notas || ''}</td>
+          </tr>`;
+      }).join('');
+
       document.getElementById('print-area-concentrado').innerHTML = `
-        <div style="padding: 15px;">
-          <div class="marco-print-titulo">
-            <h2 style="margin:0; font-size:18px;">COLEGIO BOSTON</h2>
-            <h4 style="margin:3px 0; font-size:14px; font-weight:bold;">EVENTOS BOSTON • CONCENTRADO DE SALÓN</h4>
-            <p style="margin:2px 0; font-size:12px;"><strong>Evento:</strong> ${ev ? ev.nombre : ''} | <strong>Salón:</strong> ${gra}° "${gru}" Secundaria</p>
-            <p style="text-align:right; font-size:10px; margin:0; color:#555;">Emisión: ${horaEmision}</p>
+        <div style="padding: 10px; font-family: Arial, sans-serif; color: #111;">
+          <div style="border-bottom: 2px solid #0b1f3f; padding-bottom: 8px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: flex-end;">
+            <div>
+              <h2 style="margin: 0; font-size: 17px; color: #0b1f3f; letter-spacing: 0.5px;">COLEGIO BOSTON — CENTRO EDUCATIVO INTEGRAL</h2>
+              <h4 style="margin: 3px 0; font-size: 13px; font-weight: bold; color: #333;">HOJA OFICIAL DE CONTROL, LOGÍSTICA Y ASISTENCIA DE VIAJE</h4>
+              <p style="margin: 2px 0; font-size: 11px;">
+                <strong>Evento:</strong> ${ev.nombre} | <strong>Filtro:</strong> ${txtGra} ${txtGru} | <strong>Alumnos Registrados:</strong> ${datosLogisticaActual.alumnos.length}
+              </p>
+            </div>
+            <div style="text-align: right; font-size: 10px; color: #555;">
+              <div>Emisión: ${horaEmision}</div>
+              <div>Control Institucional de Viaje</div>
+            </div>
           </div>
-          <table class="table-print">
+
+          <table class="table-print" style="width: 100%; border-collapse: collapse; margin-bottom: 25px;">
             <thead>
-              <tr><th>N°</th><th>ID</th><th>Nombre del Alumno</th><th style="text-align:right;">Abonado</th><th style="text-align:right;">Restante</th><th style="text-align:center;">Estatus</th></tr>
+              <tr style="background: #f1f5f9;">
+                <th style="width: 25px;">N°</th>
+                <th style="width: 45px; text-align: center;">Asiento</th>
+                <th style="width: 65px;">Matrícula</th>
+                <th>Nombre Completo del Alumno</th>
+                <th style="width: 45px; text-align: center;">Salón</th>
+                <th style="width: 75px; text-align: center;">Pago</th>
+                ${thTags}
+                <th style="width: 130px;">Observaciones / Ficha Médica</th>
+              </tr>
             </thead>
             <tbody>${filasPrint}</tbody>
           </table>
+
+          <!-- Bloque de Firmas Oficiales para Profesores y Dirección -->
+          <div style="display: flex; justify-content: space-between; margin-top: 40px; padding: 0 40px;">
+            <div style="text-align: center; width: 220px; border-top: 1px solid #333; padding-top: 5px; font-size: 11px;">
+              <strong>Profesor(a) Titular Encargado(a)</strong><br>
+              Pase de Lista y Abordaje
+            </div>
+            <div style="text-align: center; width: 220px; border-top: 1px solid #333; padding-top: 5px; font-size: 11px;">
+              <strong>Dirección Académica / Logística</strong><br>
+              Colegio Boston Cuernavaca
+            </div>
+          </div>
         </div>`;
 
       forzarImpresionAislada('print-area-concentrado');
