@@ -876,27 +876,38 @@ function depurarEventosTolantongo() {
  * Obtener catálogo ligero de todos los alumnos e invitados para autocompletado en búsqueda rápida en vivo
  */
 function obtenerCatalogoAlumnosLigero() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheetClientes = ss.getSheetByName("Clientes");
-  if (!sheetClientes) return [];
-  var data = sheetClientes.getDataRange().getValues();
-  var lista = [];
-  for (var i = 1; i < data.length; i++) {
-    var estatus = data[i][6] ? data[i][6].toString().trim().toLowerCase() : "activo";
-    if (estatus.includes("inactiv") || estatus.includes("baja")) continue;
-    if (data[i][0] && data[i][1]) {
-      var idAl = data[i][0].toString().trim();
-      var esExt = idAl.startsWith("EXT-") || (data[i][2] && data[i][2].toString().toLowerCase() === "externo") || (data[i][4] && data[i][4].toString().toUpperCase() === "EXT");
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheetClientes = ss.getSheetByName("Clientes");
+    if (!sheetClientes) return [];
+    var data = sheetClientes.getDataRange().getValues();
+    var lista = [];
+    for (var i = 1; i < data.length; i++) {
+      var idAl = (data[i][0] !== undefined && data[i][0] !== null) ? data[i][0].toString().trim() : "";
+      var nomAl = (data[i][1] !== undefined && data[i][1] !== null) ? data[i][1].toString().trim() : "";
+      if (!idAl || !nomAl) continue;
+      
+      var estatus = (data[i][6] !== undefined && data[i][6] !== null) ? data[i][6].toString().trim().toLowerCase() : "activo";
+      if (estatus.includes("inactiv") || estatus.includes("baja")) continue;
+      
+      var nivelAl = (data[i][2] !== undefined && data[i][2] !== null) ? data[i][2].toString().trim() : "";
+      var gradoAl = (data[i][3] !== undefined && data[i][3] !== null) ? data[i][3].toString().trim() : "";
+      var grupoAl = (data[i][4] !== undefined && data[i][4] !== null) ? data[i][4].toString().trim().toUpperCase() : "";
+      
+      var esExt = idAl.startsWith("EXT-") || nivelAl.toLowerCase() === "externo" || grupoAl === "EXT";
       lista.push({
         id: idAl,
-        nombre: data[i][1].toString().trim(),
-        grado: esExt ? "Invitado" : (data[i][3] ? data[i][3].toString().trim() : ""),
-        grupo: esExt ? "EXT" : (data[i][4] ? data[i][4].toString().trim() : ""),
+        nombre: nomAl,
+        grado: esExt ? "Invitado" : gradoAl,
+        grupo: esExt ? "EXT" : grupoAl,
         esExterno: esExt
       });
     }
+    return lista;
+  } catch(err) {
+    Logger.log("Error en obtenerCatalogoAlumnosLigero: " + err);
+    return [];
   }
-  return lista;
 }
 
 /**

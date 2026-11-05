@@ -631,14 +631,15 @@
       top: 100%;
       left: 0;
       right: 0;
-      z-index: 1050;
+      z-index: 1090;
       background: #ffffff;
       border: 1px solid #cbd5e1;
       border-radius: 8px;
-      max-height: 320px;
+      max-height: 340px;
       overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
       margin-top: 4px;
-      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
     }
     .sugerencia-alumno-item {
       padding: 10px 14px;
@@ -1016,30 +1017,30 @@
           </div>
 
           <div class="row g-2 align-items-center position-relative">
-            <div class="col-12 col-md-9 position-relative">
+            <div class="col-10 col-md-11 position-relative">
               <div class="input-icon-wrapper position-relative">
                 <svg class="input-icon" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
                 <input type="text" id="input-busqueda-alumno-rapida" class="form-control input-with-icon" 
-                       placeholder="Buscar alumno o matrícula (ej. Derian, Sofía, S3A)..." 
+                       placeholder="Escribe el nombre o apellido del alumno o cliente (ej. Derian, Sofía, S3A)..." 
                        autocomplete="off"
+                       onfocus="if(this.value.trim().length > 0) inferirSugerenciasAlumnosEnVivo(this.value)"
                        oninput="inferirSugerenciasAlumnosEnVivo(this.value)"
                        onkeydown="manejarTecladoSugerenciasAlumnos(event)"
-                       onkeypress="if(event.key === 'Enter') ejecutarBusquedaRapidaAlumno()">
-                <!-- Menú flotante de inferencia en vivo -->
+                       onkeypress="if(event.key === 'Enter') { if(sugerenciasActuales.length > 0 && indiceSugerenciaActiva >= 0) { seleccionarSugerenciaAlumnoIndex(indiceSugerenciaActiva, event); } else { ejecutarBusquedaRapidaAlumno(); } }">
+                <!-- Menú flotante de inferencia en tiempo real -->
                 <div id="dropdown-inferencia-alumnos" class="dropdown-sugerencias-alumnos shadow d-none"></div>
               </div>
             </div>
-            <div class="col-8 col-md-2">
-              <button class="btn btn-boston w-100 py-2 fw-bold" id="btn-buscar-alumno-rapido" onclick="ejecutarBusquedaRapidaAlumno()">
-                <span id="txtBtnBuscarAlumno">🔍 Buscar</span>
-                <span id="spinnerBuscarAlumno" class="spinner-sm d-none"></span>
-              </button>
-            </div>
-            <div class="col-4 col-md-1">
+            <div class="col-2 col-md-1">
               <button class="btn btn-outline-secondary w-100 py-2 fw-bold" onclick="limpiarBusquedaRapidaAlumno()" title="Limpiar búsqueda">
-                ✕ Limpiar
+                ✕
               </button>
             </div>
+            <!-- Botón buscar oculto pero conservado en el DOM para compatibilidad técnica -->
+            <button class="d-none" id="btn-buscar-alumno-rapido" onclick="ejecutarBusquedaRapidaAlumno()">
+              <span id="txtBtnBuscarAlumno">🔍 Buscar</span>
+              <span id="spinnerBuscarAlumno" class="spinner-sm d-none"></span>
+            </button>
           </div>
 
           <!-- Selector de coincidencias si hay varios alumnos con el mismo nombre -->
@@ -2658,7 +2659,20 @@
     let saldoPendienteActual = 0;
     let globalMeta = 0, globalRecaudado = 0, globalCancelado = 0, globalAsisten = 0;
     let expedientesBusquedaActual = [];
-    let catalogoAlumnosLigero = [];
+    let catalogoAlumnosLigero = (function() {
+      try {
+        var boot = <?!= JSON.stringify(obtenerCatalogoAlumnosLigero()) ?>;
+        if (boot && Array.isArray(boot) && boot.length > 0) {
+          try { localStorage.setItem('boston_catalogo_cache', JSON.stringify(boot)); } catch(e){}
+          return boot;
+        }
+      } catch(e) {}
+      try {
+        var cached = localStorage.getItem('boston_catalogo_cache');
+        if (cached) return JSON.parse(cached);
+      } catch(e) {}
+      return [];
+    })();
 
     // Helper para abreviar grupo (Requerimiento: S3A, S3B, S1A, etc.)
     function formatearGrupoAbreviado(grado, grupo, esExterno) {
@@ -2674,6 +2688,7 @@
       actualizarSelectoresEventos();
       cargarUsuariosParaLogin();
       verificarSesionGuardada();
+      cargarCatalogoAlumnosParaAutocompletar();
     });
 
     // 1. GESTIÓN DEL LOGIN Y CREDENCIALES
@@ -2860,8 +2875,11 @@
         document.querySelectorAll('.admin-only').forEach(el => el.classList.add('d-none'));
       }
 
-      // Cargar Catálogos y poblar selectores inmediatamente
+      // Cargar Catálogos inmediatamente en paralelo
       actualizarSelectoresEventos();
+      cargarCatalogoAlumnosParaAutocompletar();
+      cargarInvitadosExternos();
+      obtenerEfectivoEnCajaActual();
 
       google.script.run
         .withSuccessHandler(eventos => {
@@ -2869,9 +2887,6 @@
             listaEventosCompleta = eventos;
             actualizarSelectoresEventos();
           }
-          obtenerEfectivoEnCajaActual();
-          cargarCatalogoAlumnosParaAutocompletar();
-          cargarInvitadosExternos();
 
           if (sesion.rol === 'Admin') {
             actualizarDropdownsAdminEspeciales();
@@ -2920,22 +2935,39 @@
     var indiceSugerenciaActiva = -1;
     var sugerenciasActuales = [];
 
-    function cargarCatalogoAlumnosParaAutocompletar() {
-      google.script.run.withSuccessHandler(alumnos => {
-        catalogoAlumnosLigero = alumnos || [];
-      }).obtenerCatalogoAlumnosLigero();
+    function escapeHtml(str) {
+      if (!str) return '';
+      return str.toString().replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function cargarCatalogoAlumnosParaAutocompletar(callback) {
+      google.script.run
+        .withSuccessHandler(alumnos => {
+          if (alumnos && Array.isArray(alumnos) && alumnos.length > 0) {
+            catalogoAlumnosLigero = alumnos;
+            try { localStorage.setItem('boston_catalogo_cache', JSON.stringify(alumnos)); } catch(e){}
+          }
+          if (typeof callback === 'function') callback(catalogoAlumnosLigero);
+        })
+        .withFailureHandler(err => {
+          console.warn("Aviso al refrescar catálogo en vivo:", err);
+          if (typeof callback === 'function') callback(catalogoAlumnosLigero);
+        })
+        .obtenerCatalogoAlumnosLigero();
     }
 
     /**
      * Normaliza texto eliminando acentos, caracteres diacríticos, mayúsculas y espacios extra
      */
     function normalizarTextoBusqueda(str) {
-      if (!str) return '';
+      if (str === undefined || str === null) return '';
       return str.toString()
         .toLowerCase()
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '')
         .replace(/ñ/g, 'n')
+        .replace(/[^a-z0-9\s]/g, ' ')
+        .replace(/\s+/g, ' ')
         .trim();
     }
 
@@ -2943,32 +2975,55 @@
       let drop = document.getElementById('dropdown-inferencia-alumnos');
       if (!drop) return;
       
-      if (!texto || texto.trim().length === 0) {
+      if (!texto || texto.toString().trim().length === 0) {
         drop.classList.add('d-none');
         drop.innerHTML = "";
         sugerenciasActuales = [];
         indiceSugerenciaActiva = -1;
         return;
       }
+
+      // Si el catálogo está vacío, cargar en segundo plano y mostrar spinner momentáneo
+      if (!catalogoAlumnosLigero || catalogoAlumnosLigero.length === 0) {
+        drop.innerHTML = `
+          <div class="p-3 text-center text-muted small">
+            <span class="spinner-border spinner-border-sm me-2 text-primary" role="status"></span>
+            <span>Cargando catálogo de clientes...</span>
+          </div>`;
+        drop.classList.remove('d-none');
+        cargarCatalogoAlumnosParaAutocompletar(function() {
+          let currentVal = document.getElementById('input-busqueda-alumno-rapida') ? document.getElementById('input-busqueda-alumno-rapida').value : '';
+          if (currentVal && currentVal.trim().length > 0) {
+            inferirSugerenciasAlumnosEnVivo(currentVal);
+          }
+        });
+        return;
+      }
       
       let normQ = normalizarTextoBusqueda(texto);
       let queryWords = normQ.split(/\s+/).filter(Boolean);
+      if (queryWords.length === 0) {
+        drop.classList.add('d-none');
+        return;
+      }
       
       let candidatos = [];
-      for (let i = 0; i < (catalogoAlumnosLigero || []).length; i++) {
+      for (let i = 0; i < catalogoAlumnosLigero.length; i++) {
         let a = catalogoAlumnosLigero[i];
         let normNom = normalizarTextoBusqueda(a.nombre);
         let normId = normalizarTextoBusqueda(a.id);
-        let fullTarget = normNom + ' ' + normId;
+        let grAbrev = formatearGrupoAbreviado(a.grado, a.grupo, a.esExterno);
+        let normGr = normalizarTextoBusqueda(grAbrev) + ' ' + normalizarTextoBusqueda(a.grado) + ' ' + normalizarTextoBusqueda(a.grupo);
+        let fullTarget = normNom + ' ' + normId + ' ' + normGr;
         
-        let coincide = queryWords.length > 0 && queryWords.every(w => fullTarget.includes(w));
+        let coincide = queryWords.every(w => fullTarget.indexOf(w) !== -1);
         if (coincide) {
           let score = 0;
           if (normNom === normQ || normId === normQ) {
             score = 100;
           } else if (normNom.startsWith(normQ) || normId.startsWith(normQ)) {
             score = 80;
-          } else if (normNom.includes(normQ)) {
+          } else if (normNom.indexOf(normQ) !== -1) {
             score = 60;
           } else {
             score = 40;
@@ -2978,19 +3033,25 @@
       }
       
       candidatos.sort((a, b) => b.score - a.score);
-      sugerenciasActuales = candidatos.slice(0, 8).map(c => c.item);
+      sugerenciasActuales = candidatos.slice(0, 15).map(c => c.item);
       
       if (sugerenciasActuales.length === 0) {
         drop.innerHTML = `
           <div class="p-3 text-center text-muted small">
-            <span>🔍 No se encontraron coincidencias para "<strong>${texto}</strong>"</span>
+            <span>🔍 No se encontraron coincidencias para "<strong>${escapeHtml(texto)}</strong>"</span>
           </div>`;
         drop.classList.remove('d-none');
         indiceSugerenciaActiva = -1;
         return;
       }
       
-      drop.innerHTML = sugerenciasActuales.map((a, idx) => {
+      let headerHtml = candidatos.length > 15 
+        ? `<div class="px-3 py-1 bg-light border-bottom text-muted small fw-semibold" style="font-size:11px;">
+             Mostrando 15 de ${candidatos.length} clientes encontrados:
+           </div>`
+        : '';
+
+      drop.innerHTML = headerHtml + sugerenciasActuales.map((a, idx) => {
         let esExt = a.esExterno || (a.id && a.id.startsWith('EXT-'));
         let grAbrev = formatearGrupoAbreviado(a.grado, a.grupo, esExt);
         let badgeSalon = esExt 
@@ -2999,7 +3060,6 @@
         
         return `
           <div class="sugerencia-alumno-item" id="sug-item-${idx}" 
-               onpointerdown="seleccionarSugerenciaAlumnoIndex(${idx}, event)" 
                onclick="seleccionarSugerenciaAlumnoIndex(${idx}, event)">
             <div class="d-flex align-items-center gap-2">
               <span class="fs-5">${esExt ? '👥' : '🎓'}</span>
@@ -3011,7 +3071,7 @@
                 </div>
               </div>
             </div>
-            <span class="badge bg-light text-primary border border-primary border-opacity-25 py-1 px-2 small">Ver Historial ➔</span>
+            <span class="badge bg-success-subtle text-success border border-success border-opacity-25 py-1 px-2 small">Ver Historial ➔</span>
           </div>`;
       }).join('');
       
@@ -3020,27 +3080,33 @@
     }
 
     function resaltarCoincidencia(texto, busqueda) {
-      if (!texto || !busqueda) return texto || '';
-      let words = busqueda.trim().split(/\s+/).filter(Boolean);
-      if (words.length === 0) return texto;
-      
-      let patterns = words.map(w => {
-        let esc = '';
-        for (let i = 0; i < w.length; i++) {
-          let ch = w[i].toLowerCase();
-          if (ch === 'a' || ch === 'á' || ch === 'à' || ch === 'ä') esc += '[aáàäâAÁÀÄÂ]';
-          else if (ch === 'e' || ch === 'é' || ch === 'è' || ch === 'ë') esc += '[eéèëêEÉÈËÊ]';
-          else if (ch === 'i' || ch === 'í' || ch === 'ì' || ch === 'ï') esc += '[iíìïîIÍÌÏÎ]';
-          else if (ch === 'o' || ch === 'ó' || ch === 'ò' || ch === 'ö') esc += '[oóòöôOÓÒÖÔ]';
-          else if (ch === 'u' || ch === 'ú' || ch === 'ù' || ch === 'ü') esc += '[uúùüûUÚÙÜÛ]';
-          else if (ch === 'n' || ch === 'ñ') esc += '[nñNÑ]';
-          else esc += ch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        }
-        return esc;
-      });
-      
-      let re = new RegExp('(' + patterns.join('|') + ')', 'gi');
-      return texto.replace(re, '<mark class="p-0 bg-warning-subtle fw-bold">$1</mark>');
+      if (texto === undefined || texto === null) return '';
+      let txt = String(texto);
+      if (!busqueda) return escapeHtml(txt);
+      try {
+        let words = busqueda.toString().trim().split(/\s+/).filter(Boolean);
+        if (words.length === 0) return escapeHtml(txt);
+        
+        let patterns = words.map(w => {
+          let esc = '';
+          for (let i = 0; i < w.length; i++) {
+            let ch = w[i].toLowerCase();
+            if (ch === 'a') esc += '[aáàäâAÁÀÄÂ]';
+            else if (ch === 'e') esc += '[eéèëêEÉÈËÊ]';
+            else if (ch === 'i') esc += '[iíìïîIÍÌÏÎ]';
+            else if (ch === 'o') esc += '[oóòöôOÓÒÖÔ]';
+            else if (ch === 'u') esc += '[uúùüûUÚÙÜÛ]';
+            else if (ch === 'n') esc += '[nñNÑ]';
+            else esc += ch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          }
+          return esc;
+        });
+        
+        let re = new RegExp('(' + patterns.join('|') + ')', 'gi');
+        return txt.replace(re, '<mark class="p-0 bg-warning-subtle fw-bold">$1</mark>');
+      } catch(e) {
+        return escapeHtml(txt);
+      }
     }
 
     function manejarTecladoSugerenciasAlumnos(e) {
@@ -3074,17 +3140,9 @@
       });
     }
 
-    let ultimaSugerenciaTimestamp = 0;
     function seleccionarSugerenciaAlumnoIndex(idx, ev) {
-      let ahora = Date.now();
-      if (ahora - ultimaSugerenciaTimestamp < 350) return; // Evita doble ejecución táctil
-      ultimaSugerenciaTimestamp = ahora;
-
-      if (ev) {
-        if (ev.cancelable && (ev.type === 'pointerdown' || ev.type === 'mousedown')) {
-          ev.preventDefault();
-        }
-        if (ev.stopPropagation) ev.stopPropagation();
+      if (ev && ev.stopPropagation) {
+        ev.stopPropagation();
       }
 
       if (!sugerenciasActuales || !sugerenciasActuales[idx]) return;
