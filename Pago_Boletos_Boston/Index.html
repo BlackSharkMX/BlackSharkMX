@@ -1057,181 +1057,177 @@
           </div>
         </div>
 
-        <div class="card-boston">
+        <div class="card-boston" id="card-recepcion-cobro">
           
           <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-2 mb-3">
-            <h5 class="section-title m-0 border-0">💳 Recepción de Pagos y Abonos</h5>
-            <div class="d-flex align-items-center gap-2">
-              <span id="badge-efectivo-usuario" class="badge bg-success p-2 font-monospace" style="font-size: 1rem;">Mi Caja: $0.00</span>
-              <button class="btn btn-warning btn-sm fw-bold px-3 py-2" onclick="cambiarApartado('apartado-caja')">💰 Arqueo</button>
+            <div>
+              <h5 class="section-title m-0 border-0">💳 Recepción de Pagos y Abonos</h5>
+              <div class="small text-muted">Cobro directo de abonos y emisión de recibos digitales</div>
             </div>
+            <!-- Elemento oculto para preservar actualización de caja en background sin errores JS -->
+            <span id="badge-efectivo-usuario" class="d-none"></span>
           </div>
 
-          <!-- Selector de Tipo de Participante: Alumno Boston vs Invitado Externo -->
+          <!-- CONTENEDOR DE CONTROLES TÉCNICOS OCULTOS (Garantiza 100% compatibilidad JS) -->
+          <div id="contenedor-filtros-ocultos" class="d-none">
+            <input type="radio" class="btn-check" name="radTipoParticipante" id="rad-tipo-alumno" value="alumno" checked onchange="cambiarTipoParticipanteCobro('alumno')">
+            <input type="radio" class="btn-check" name="radTipoParticipante" id="rad-tipo-externo" value="externo" onchange="cambiarTipoParticipanteCobro('externo')">
+            <select id="sel-grado" class="form-select" onchange="verificarCambioFiltroGrupo()">
+              <option value="">-- Grado --</option>
+              <option value="1">1° Secundaria</option>
+              <option value="2">2° Secundaria</option>
+              <option value="3">3° Secundaria</option>
+            </select>
+            <select id="sel-grupo" class="form-select" onchange="verificarCambioFiltroGrupo()">
+              <option value="">-- Grupo --</option>
+              <option value="A">Grupo A</option>
+              <option value="B">Grupo B</option>
+              <option value="C">Grupo C</option>
+            </select>
+            <select id="sel-invitado-externo" class="form-select" onchange="seleccionarInvitadoExternoCobro()">
+              <option value="">-- Selecciona un invitado o registra uno nuevo --</option>
+            </select>
+            <select id="sel-alumno" class="form-select" onchange="consultarBalance()">
+              <option value="">-- Alumno --</option>
+            </select>
+            <input type="number" id="num-efectivo" value="">
+            <span id="txt-cambio">$0.00</span>
+          </div>
+
+          <!-- Selector de Evento Escolar -->
           <div class="p-2 mb-3 bg-light border rounded-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
-            <div class="fw-bold small text-secondary">
-              Tipo de Boleto / Participante:
-            </div>
-            <div class="btn-group" role="group">
-              <input type="radio" class="btn-check" name="radTipoParticipante" id="rad-tipo-alumno" value="alumno" checked onchange="cambiarTipoParticipanteCobro('alumno')">
-              <label class="btn btn-sm btn-outline-primary fw-bold px-3" for="rad-tipo-alumno">🎓 Alumno Colegio Boston</label>
-
-              <input type="radio" class="btn-check" name="radTipoParticipante" id="rad-tipo-externo" value="externo" onchange="cambiarTipoParticipanteCobro('externo')">
-              <label class="btn btn-sm btn-outline-primary fw-bold px-3" for="rad-tipo-externo">👥 Invitado Externo (Primo / Amigo)</label>
-            </div>
-          </div>
-
-          <!-- Filtro de Evento, Grado y Grupo -->
-          <div class="row g-2 mb-3">
-            <div class="col-12 col-md-4">
-              <label class="form-label small fw-bold text-secondary">1. Evento Escolar</label>
-              <select id="sel-evento" class="form-select fw-bold" onchange="actualizarCosto()">
+            <div class="d-flex align-items-center gap-2 flex-grow-1" style="min-width: 260px;">
+              <span class="fw-bold small text-secondary">🎯 Evento:</span>
+              <select id="sel-evento" class="form-select form-select-sm fw-bold border-0 bg-transparent text-primary flex-grow-1" style="font-size: 14px;" onchange="actualizarCosto()">
                 <option value="EV-730628" selected>Excursión a Tolantongo ($4,400.00)</option>
               </select>
-              <div id="badge-evento-alcance-info" class="mt-1" style="min-height: 20px;"></div>
+            </div>
+            <div id="badge-evento-alcance-info" class="d-flex flex-wrap align-items-center gap-1"></div>
+          </div>
+
+          <!-- FICHA VISUAL DEL CLIENTE / ALUMNO A COBRAR -->
+          <div id="ficha-alumno-cobro-visual" class="mb-3">
+            <!-- Estado vacío cuando no hay alumno cargado -->
+            <div id="ficha-cobro-vacio" class="p-4 border rounded-3 text-center bg-light">
+              <div class="fs-1 text-muted mb-2">🔍</div>
+              <h6 class="fw-bold text-dark mb-1">Ningún alumno seleccionado</h6>
+              <p class="small text-muted mb-3">Busca el nombre, apellido o matrícula del alumno en la barra superior y pulsa <strong>[💳 Cobrar]</strong> para iniciar.</p>
+              <button type="button" class="btn btn-outline-primary btn-sm fw-bold px-3 py-2" onclick="enfocarBuscadorPrincipal()">
+                🔍 Ir a la Barra de Búsqueda
+              </button>
             </div>
 
-            <!-- Controles para Alumno Boston -->
-            <div class="col-6 col-md-4 contenedor-filtro-alumno">
-              <label class="form-label small fw-bold text-secondary">2. Grado</label>
-              <select id="sel-grado" class="form-select" onchange="verificarCambioFiltroGrupo()">
-                <option value="">-- Grado --</option>
-                <option value="1">1° Secundaria</option>
-                <option value="2">2° Secundaria</option>
-                <option value="3">3° Secundaria</option>
-              </select>
-            </div>
-            <div class="col-6 col-md-4 contenedor-filtro-alumno">
-              <label class="form-label small fw-bold text-secondary">3. Grupo / Sección</label>
-              <select id="sel-grupo" class="form-select" onchange="verificarCambioFiltroGrupo()">
-                <option value="">-- Grupo --</option>
-                <option value="A">Grupo A</option>
-                <option value="B">Grupo B</option>
-                <option value="C">Grupo C</option>
-              </select>
-            </div>
+            <!-- Ficha activa cuando se ha seleccionado un alumno -->
+            <div id="ficha-cobro-activo" class="p-3 border rounded-3 bg-white shadow-sm d-none">
+              <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2 border-bottom pb-2 mb-2">
+                <div>
+                  <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <span class="fs-4">🎓</span>
+                    <h5 class="fw-bold m-0 text-dark" id="cobro-display-nombre">—</h5>
+                    <span id="cobro-display-salon" class="badge bg-primary px-2 py-1">S3A</span>
+                    <span id="cobro-display-estatus" class="badge bg-success px-2 py-1">Activo</span>
+                  </div>
+                  <div class="small text-muted mt-1">
+                    <span>Matrícula: <strong id="cobro-display-id" class="font-monospace text-dark">—</strong></span>
+                    <span class="mx-1">•</span>
+                    <span id="cobro-display-email" class="text-secondary">—</span>
+                  </div>
+                </div>
+                <button type="button" class="btn btn-outline-secondary btn-sm fw-bold px-3" onclick="enfocarBuscadorPrincipal()" title="Buscar a otro alumno">
+                  🔍 Cambiar Alumno
+                </button>
+              </div>
 
-            <!-- Controles para Invitado Externo -->
-            <div class="col-12 col-md-8 contenedor-filtro-externo d-none">
-              <div class="d-flex justify-content-between align-items-center mb-1">
-                <label class="form-label small fw-bold text-secondary m-0">2. Seleccionar Invitado Externo</label>
-                <button type="button" class="btn btn-sm btn-link p-0 text-decoration-none fw-bold small text-primary" onclick="abrirModalNuevoInvitado()">
-                  ➕ Registrar Nuevo Invitado Externo
-                </button>
+              <!-- Saldo en vivo -->
+              <div id="balance-box" class="row g-2 text-center mt-1">
+                <div class="col-4">
+                  <div class="p-2 rounded bg-light border">
+                    <span class="small text-muted fw-bold d-block" style="font-size: 11px;">COSTO TOTAL</span>
+                    <span id="txt-costo-total" class="fw-bold text-dark fs-6">$0.00</span>
+                    <div id="badge-descuento-aplicado" class="badge bg-warning text-dark mt-1 d-none" style="font-size: 10px;">Descuento</div>
+                  </div>
+                </div>
+                <div class="col-4">
+                  <div class="p-2 rounded bg-light border">
+                    <span class="small text-muted fw-bold d-block" style="font-size: 11px;">TOTAL ABONADO</span>
+                    <span id="txt-abonado" class="fw-bold text-success fs-6">$0.00</span>
+                  </div>
+                </div>
+                <div class="col-4">
+                  <div class="p-2 rounded bg-light border" style="background-color: #fef2f2 !important; border-color: #fecaca !important;">
+                    <span class="small text-danger fw-bold d-block" style="font-size: 11px;">RESTANTE</span>
+                    <span id="txt-resta" class="fw-bold font-monospace text-danger fs-6">$0.00 MXN</span>
+                  </div>
+                </div>
               </div>
-              <div class="input-group">
-                <select id="sel-invitado-externo" class="form-select" onchange="seleccionarInvitadoExternoCobro()">
-                  <option value="">-- Selecciona un invitado o registra uno nuevo --</option>
-                </select>
-                <button class="btn btn-boston fw-bold px-3" type="button" onclick="abrirModalNuevoInvitado()" title="Registrar un primo o amigo externo">
-                  ➕ Nuevo Invitado
-                </button>
-              </div>
+              <div id="badge-estado-alumno-cortesia" class="badge bg-info text-dark p-2 mt-2 w-100 d-none">🎟️ Alumno con Cortesía Autorizada</div>
             </div>
           </div>
 
-          <!-- Selección de Alumno y Cobro -->
-          <div class="row g-3">
-            
-            <!-- Columna Izquierda: Alumno y Balance -->
-            <div class="col-12 col-lg-6">
-              <label class="form-label small fw-bold text-secondary">4. Buscar Alumno</label>
-              <select id="sel-alumno" class="form-select mb-2" onchange="consultarBalance()">
-                <option value="">-- Primero selecciona Grado y Grupo --</option>
-              </select>
-
-              <!-- Tarjeta de Saldo en Vivo -->
-              <div id="balance-box" class="p-3 bg-light border rounded-3 d-none">
-                <div class="d-flex justify-content-between mb-1 small">
-                  <span class="text-secondary fw-bold">Total Abonado:</span>
-                  <span id="txt-abonado" class="text-success fw-bold">$0.00</span>
+          <!-- CONTROLES DE COBRO -->
+          <div class="p-3 border rounded-3 bg-light">
+            <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-2 mb-2">
+              <label class="form-label small fw-bold text-dark m-0 fs-6">💵 Monto a Cobrar ($ MXN):</label>
+              <div class="d-flex flex-wrap align-items-center gap-2">
+                <!-- Switch Cortesía con Descuento -->
+                <div class="form-check form-switch m-0">
+                  <input class="form-check-input" type="checkbox" id="chk-descuento" onchange="toggleDescuentoEspecial()">
+                  <label class="form-check-label small fw-bold text-warning" for="chk-descuento">
+                    🏷️ Descuento Especial
+                  </label>
                 </div>
-                <div class="d-flex justify-content-between align-items-center mb-1 small">
-                  <span class="text-secondary">Total:</span>
-                  <div>
-                    <span id="txt-costo-total" class="fw-bold">$0.00</span>
-                    <span id="badge-descuento-aplicado" class="badge bg-warning text-dark ms-1 d-none">Descuento Especial</span>
-                  </div>
-                </div>
-                <div class="text-center mt-2 pt-2 border-top">
-                  <span class="small text-secondary fw-bold text-uppercase">Restante:</span>
-                  <div id="txt-resta" class="text-danger fw-bold font-monospace" style="font-size: 1.6rem;">$0.00 MXN</div>
-                  <div id="badge-estado-alumno-cortesia" class="badge bg-info text-dark p-2 mt-1 d-none">🎟️ Alumno con Cortesía Autorizada</div>
+                <!-- Switch Cortesía 100% -->
+                <div class="form-check form-switch m-0">
+                  <input class="form-check-input" type="checkbox" id="chk-cortesia" onchange="toggleCortesia()">
+                  <label class="form-check-label small fw-bold text-primary" for="chk-cortesia">
+                    🎟️ Cortesía ($0)
+                  </label>
                 </div>
               </div>
             </div>
 
-            <!-- Columna Derecha: Cobro, Cortesía y Cambio -->
-            <div class="col-12 col-lg-6">
-              <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-2 mb-2">
-                <label class="form-label small fw-bold text-secondary m-0">5. Cobrar Abono ($)</label>
-                <div class="d-flex flex-wrap align-items-center gap-3">
-                  <!-- Switch Cortesía con Descuento (Precio Especial) -->
-                  <div class="form-check form-switch m-0">
-                    <input class="form-check-input" type="checkbox" id="chk-descuento" onchange="toggleDescuentoEspecial()">
-                    <label class="form-check-label small fw-bold text-warning" for="chk-descuento" title="Precio especial para hijos de maestros o personal escolar">
-                      🏷️ Cortesía con Descuento
-                    </label>
-                  </div>
-                  <!-- Switch Cortesía 100% -->
-                  <div class="form-check form-switch m-0">
-                    <input class="form-check-input" type="checkbox" id="chk-cortesia" onchange="toggleCortesia()">
-                    <label class="form-check-label small fw-bold text-primary" for="chk-cortesia" title="Boleto 100% libre de costo ($0.00)">
-                      🎟️ Cortesía ($0)
-                    </label>
-                  </div>
-                </div>
+            <!-- Panel Desplegable de Precio Especial con Descuento -->
+            <div id="panel-descuento-especial" class="p-2 mb-3 bg-white border border-warning rounded-3 d-none">
+              <div class="d-flex justify-content-between align-items-center mb-1">
+                <span class="small fw-bold text-dark" style="font-size: 12px;">
+                  👨‍🏫 Precio Especial del Boleto (Hijo de Maestro / Descuento):
+                </span>
+                <span class="badge bg-warning text-dark">Precio Especial</span>
               </div>
-
-              <!-- Panel Desplegable de Precio Especial con Descuento -->
-              <div id="panel-descuento-especial" class="p-2 mb-2 bg-light border border-warning rounded-3 d-none">
-                <div class="d-flex justify-content-between align-items-center mb-1">
-                  <span class="small fw-bold text-dark" style="font-size: 12px;">
-                    👨‍🏫 Precio Especial del Boleto (Hijo de Maestro / Descuento):
-                  </span>
-                  <span class="badge bg-warning text-dark">Precio Especial</span>
-                </div>
-                <div class="input-group input-group-sm">
-                  <span class="input-group-text fw-bold text-success bg-white">$</span>
-                  <input type="number" id="num-precio-especial" class="form-control fw-bold text-success font-monospace" placeholder="Precio especial asignado" oninput="aplicarCambioPrecioEspecial()" min="0" step="10">
-                  <button class="btn btn-outline-secondary btn-sm" type="button" onclick="restablecerPrecioOriginal()" title="Restablecer precio original del evento">
-                    ↺ Original
-                  </button>
-                </div>
-                <div class="form-text text-muted mt-1" style="font-size: 11px;">
-                  El saldo pendiente y los límites de abono del alumno se recalcularán en vivo bajo este precio especial.
-                </div>
-              </div>
-
-              <div class="row g-2 mb-2">
-                <div class="col-6">
-                  <label class="small text-muted" style="font-size:11px;">Monto a cobrar:</label>
-                  <input type="number" id="num-monto" class="form-control text-center fw-bold" placeholder="$0.00" oninput="calcularCambio()" inputmode="numeric">
-                </div>
-                <div class="col-6">
-                  <label class="small text-muted" style="font-size:11px;">Efectivo recibido:</label>
-                  <input type="number" id="num-efectivo" class="form-control text-center text-primary fw-bold" placeholder="$ Recibido" oninput="calcularCambio()" inputmode="numeric">
-                </div>
-              </div>
-
-              <!-- Calculadora visual de cambio -->
-              <div class="p-2 mb-3 bg-dark text-white rounded text-center d-flex justify-content-between align-items-center px-3">
-                <span class="small fw-bold text-uppercase">Cambio a entregar:</span>
-                <span id="txt-cambio" class="fw-bold font-monospace" style="font-size: 1.3rem;">$0.00</span>
-              </div>
-
-              <!-- Botones de Acción -->
-              <div class="d-flex flex-column gap-2">
-                <button id="btn-cobrar" class="btn btn-warning btn-lg w-100 py-3 fw-bold shadow-sm" onclick="cobrar()">
-                  💰 Registrar Cobro y Enviar Recibo
-                </button>
-                <button class="btn btn-outline-success w-100 py-2 fw-bold" onclick="irAConcentradoDesdeCobro()">
-                  📋 Ver Concentrado del Salón
+              <div class="input-group input-group-sm">
+                <span class="input-group-text fw-bold text-success bg-white">$</span>
+                <input type="number" id="num-precio-especial" class="form-control fw-bold text-success font-monospace" placeholder="Precio especial asignado" oninput="aplicarCambioPrecioEspecial()" min="0" step="10">
+                <button class="btn btn-outline-secondary btn-sm" type="button" onclick="restablecerPrecioOriginal()" title="Restablecer precio original">
+                  ↺ Original
                 </button>
               </div>
-
             </div>
 
+            <!-- Input Principal de Monto -->
+            <div class="mb-3">
+              <div class="input-group input-group-lg shadow-sm">
+                <span class="input-group-text bg-white fw-bold text-dark fs-3">$</span>
+                <input type="number" id="num-monto" class="form-control form-control-lg fw-bold font-monospace fs-2 text-dark" placeholder="0.00" inputmode="numeric" min="1" step="10">
+              </div>
+              <!-- Botones de montos sugeridos -->
+              <div class="d-flex flex-wrap gap-2 mt-2" id="contenedor-montos-sugeridos">
+                <button type="button" class="btn btn-sm btn-outline-secondary fw-bold" onclick="ponerMontoSugerido('restante')">Total Restante</button>
+                <button type="button" class="btn btn-sm btn-outline-primary fw-bold" onclick="ponerMontoSugerido(200)">$200</button>
+                <button type="button" class="btn btn-sm btn-outline-primary fw-bold" onclick="ponerMontoSugerido(500)">$500</button>
+                <button type="button" class="btn btn-sm btn-outline-primary fw-bold" onclick="ponerMontoSugerido(1000)">$1,000</button>
+                <button type="button" class="btn btn-sm btn-outline-primary fw-bold" onclick="ponerMontoSugerido(2000)">$2,000</button>
+              </div>
+            </div>
+
+            <!-- Botones de Acción -->
+            <div class="d-flex flex-column gap-2">
+              <button id="btn-cobrar" class="btn btn-warning btn-lg w-100 py-3 fw-bold shadow-sm fs-5" onclick="cobrar()">
+                💰 Registrar Cobro y Enviar Recibo
+              </button>
+              <button class="btn btn-outline-success w-100 py-2 fw-bold" onclick="irAConcentradoDesdeCobro()">
+                📋 Ver Concentrado del Salón
+              </button>
+            </div>
           </div>
 
         </div>
@@ -2458,6 +2454,82 @@
     </div>
   </div>
 
+  <!-- MODAL PARA COBRO EN EFECTIVO Y VALIDACIÓN DE CAMBIO -->
+  <div class="modal fade" id="modalCobroEfectivo" tabindex="-1" aria-labelledby="modalCobroEfectivoLabel" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content shadow-lg border-0" style="border-radius: 16px; overflow: hidden;">
+        <div class="modal-header text-white" style="background-color: var(--color-primario, #0b1f3f);">
+          <div class="d-flex align-items-center gap-2">
+            <span class="fs-5">💵</span>
+            <h5 class="modal-title fw-bold fs-6 m-0" id="modalCobroEfectivoLabel">Confirmar Cobro y Validar Cambio</h5>
+          </div>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4">
+          <!-- Detalle del cliente y evento -->
+          <div class="p-2 mb-3 rounded border bg-light">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <span class="small text-muted d-block" style="font-size: 11px;">CLIENTE / ALUMNO:</span>
+                <strong class="text-dark fs-6" id="modal-cobro-nombre-alumno">—</strong>
+              </div>
+              <div class="text-end">
+                <span id="modal-cobro-badge-salon" class="badge bg-primary">S3A</span>
+                <div class="small text-muted font-monospace" id="modal-cobro-matricula">—</div>
+              </div>
+            </div>
+            <div class="mt-1 pt-1 border-top small text-secondary" id="modal-cobro-evento-nombre">
+              Evento: Excursión a Tolantongo
+            </div>
+          </div>
+
+          <!-- Monto a cobrar -->
+          <div class="text-center p-3 mb-3 rounded-3" style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); border: 1px solid #cbd5e1;">
+            <div class="small fw-bold text-secondary text-uppercase tracking-wide" style="font-size: 11px;">Monto a Cobrar</div>
+            <div class="fs-1 fw-bold text-dark font-monospace" id="modal-cobro-monto-display">$0.00</div>
+          </div>
+
+          <!-- Cantidad con la que paga -->
+          <div class="mb-3">
+            <label class="form-label small fw-bold text-dark mb-1">
+              ¿Con cuánto efectivo paga el cliente?
+            </label>
+            <div class="input-group input-group-lg shadow-sm">
+              <span class="input-group-text fw-bold text-primary bg-white fs-4">$</span>
+              <input type="number" id="modal-num-efectivo" class="form-control form-control-lg fw-bold font-monospace fs-3 text-primary" placeholder="0.00" inputmode="numeric" oninput="calcularCambioModal()" autofocus>
+            </div>
+          </div>
+
+          <!-- Botones de ayuda rápida de billetes -->
+          <div class="d-flex flex-wrap gap-2 mb-3">
+            <button type="button" class="btn btn-sm btn-outline-secondary fw-bold px-3" onclick="ponerEfectivoExactoModal()">💵 Exacto</button>
+            <button type="button" class="btn btn-sm btn-outline-primary fw-bold" onclick="sumarEfectivoModal(100)">+$100</button>
+            <button type="button" class="btn btn-sm btn-outline-primary fw-bold" onclick="sumarEfectivoModal(200)">+$200</button>
+            <button type="button" class="btn btn-sm btn-outline-primary fw-bold" onclick="sumarEfectivoModal(500)">+$500</button>
+            <button type="button" class="btn btn-sm btn-outline-primary fw-bold" onclick="sumarEfectivoModal(1000)">+$1,000</button>
+            <button type="button" class="btn btn-sm btn-outline-danger fw-bold" onclick="limpiarEfectivoModal()" title="Borrar">✕</button>
+          </div>
+
+          <!-- Cambio que debe entregar -->
+          <div id="modal-caja-cambio" class="p-3 rounded-3 text-center border" style="background-color: #f1f5f9; transition: all 0.2s ease;">
+            <div class="small fw-bold text-uppercase" id="modal-lbl-cambio" style="font-size: 11px; color: #64748b;">Cambio que debe entregar:</div>
+            <div id="modal-txt-cambio" class="fw-bold font-monospace fs-2" style="color: #334155;">$0.00</div>
+            <div id="modal-msg-cambio" class="small mt-1 text-muted" style="font-size: 12px;">Ingresa la cantidad recibida para calcular el cambio</div>
+          </div>
+        </div>
+        <div class="modal-footer bg-light py-2 px-4 d-flex justify-content-between">
+          <button type="button" class="btn btn-outline-secondary fw-bold px-3" data-bs-dismiss="modal">
+            Cancelar
+          </button>
+          <button type="button" id="btn-modal-confirmar-pago" class="btn btn-success btn-lg px-4 py-2 fw-bold shadow-sm" onclick="ejecutarPagoModal()" disabled>
+            <span id="txt-btn-modal-pago">✅ Pagar y Validar Cambio</span>
+            <span id="spinner-modal-pago" class="spinner-sm d-none ms-1"></span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ==============================================================
        JAVASCRIPT DEL CLIENTE
        ============================================================== -->
@@ -2928,6 +3000,8 @@
         cargarMetricasDashboard();
       } else if (apartadoId === 'apartado-eventos' && sesion.rol === 'Admin') {
         cargarDirectorioEventosAdmin();
+      } else if (apartadoId === 'apartado-cobros') {
+        actualizarFichaCobroVisual();
       }
     }
 
@@ -3363,13 +3437,18 @@
               ${al.email ? `<span class="badge bg-light text-dark border">✉️ ${al.email}</span>` : ''}
             </div>
           </div>
-          <div class="d-flex align-items-center gap-2 w-100 w-md-auto justify-content-end">
+          <div class="d-flex flex-wrap align-items-center gap-2 w-100 w-md-auto justify-content-end">
             <button class="btn btn-outline-secondary btn-sm fw-bold px-3 py-2" onclick="imprimirEstadoCuentaAlumno(${idx})" title="Imprimir estado de cuenta">
               🖨️ Imprimir
             </button>
             <button id="btn-exportar-pdf-${idx}" class="btn btn-danger btn-sm fw-bold px-3 py-2 shadow-sm" style="background-color: var(--color-rojo-boston, #c83e2b); border: none;" onclick="exportarEstadoCuentaPDF(${idx})" title="Exportar detalle de pagos a PDF">
               📄 Exportar PDF
             </button>
+            ${(al.estatus && al.estatus.toLowerCase().includes('baja')) ? 
+              `<button class="btn btn-secondary btn-sm" disabled title="Alumno dado de baja">🚫 En Baja</button>` :
+              `<button class="btn btn-boston px-3 py-2 fw-bold shadow-sm" style="font-size: 14px;" onclick="cargarAlumnoEnCobro('', '${al.grado}', '${al.grupo}', '${al.id}', '${al.nombre.replace(/'/g, "\\'")}', '${al.email || ''}')">
+                💳 Cobrar
+              </button>`}
           </div>
         </div>
 
@@ -3411,9 +3490,85 @@
       }
     }
 
+    var alumnoCobroActual = {
+      id: '',
+      nombre: '',
+      grado: '',
+      grupo: '',
+      email: ''
+    };
+
+    function enfocarBuscadorPrincipal() {
+      let inp = document.getElementById('input-busqueda-alumno-rapida');
+      if (inp) {
+        inp.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setTimeout(() => { 
+          inp.focus(); 
+          inp.select();
+        }, 300);
+      }
+    }
+
+    function ponerMontoSugerido(val) {
+      let numMonto = document.getElementById('num-monto');
+      if (!numMonto || numMonto.disabled) return;
+      if (val === 'restante') {
+        numMonto.value = (saldoPendienteActual && saldoPendienteActual > 0) ? saldoPendienteActual : "";
+      } else {
+        numMonto.value = val;
+      }
+      numMonto.focus();
+    }
+
+    function actualizarFichaCobroVisual() {
+      let fichaVacio = document.getElementById('ficha-cobro-vacio');
+      let fichaActivo = document.getElementById('ficha-cobro-activo');
+      let selAl = document.getElementById('sel-alumno');
+
+      if (!selAl || !selAl.value) {
+        if (fichaVacio) fichaVacio.classList.remove('d-none');
+        if (fichaActivo) fichaActivo.classList.add('d-none');
+        return;
+      }
+
+      let opt = (selAl.selectedIndex >= 0) ? selAl.options[selAl.selectedIndex] : null;
+      let idCliente = selAl.value;
+      let nombre = (opt && opt.dataset && opt.dataset.nombre) ? opt.dataset.nombre : (alumnoCobroActual.nombre || (opt ? opt.text : idCliente));
+      let email = (opt && opt.dataset && opt.dataset.email) ? opt.dataset.email : (alumnoCobroActual.email || '');
+      let grado = (opt && opt.dataset && opt.dataset.grado) ? opt.dataset.grado : alumnoCobroActual.grado;
+      let grupo = (opt && opt.dataset && opt.dataset.grupo) ? opt.dataset.grupo : alumnoCobroActual.grupo;
+      let esExt = (idCliente && idCliente.startsWith('EXT-')) || grado === 'Invitado' || grupo === 'EXT';
+
+      if (fichaVacio) fichaVacio.classList.add('d-none');
+      if (fichaActivo) fichaActivo.classList.remove('d-none');
+
+      let elNom = document.getElementById('cobro-display-nombre');
+      if (elNom) elNom.innerText = nombre;
+
+      let elId = document.getElementById('cobro-display-id');
+      if (elId) elId.innerText = idCliente;
+
+      let elSalon = document.getElementById('cobro-display-salon');
+      if (elSalon) {
+        elSalon.innerText = formatearGrupoAbreviado(grado, grupo, esExt);
+        elSalon.className = esExt ? 'badge bg-warning text-dark px-2 py-1' : 'badge bg-primary px-2 py-1';
+      }
+
+      let elEmail = document.getElementById('cobro-display-email');
+      if (elEmail) elEmail.innerText = email || 'Sin correo registrado';
+    }
+
     function cargarAlumnoEnCobro(idEvento, grado, grupo, idCliente, nombreCliente, emailCliente) {
       // 1. Cambiar a apartado-cobros
       cambiarApartado('apartado-cobros');
+
+      alumnoCobroActual = {
+        id: idCliente || '',
+        nombre: nombreCliente || '',
+        grado: grado || '',
+        grupo: grupo || '',
+        email: emailCliente || ''
+      };
 
       // 2. Determinar si es alumno Boston o invitado externo
       let esExterno = (idCliente && idCliente.startsWith('EXT-')) || grado === 'Invitado' || grupo === 'EXT';
@@ -3453,6 +3608,9 @@
         }
       }
 
+      // Actualizar tarjeta visual
+      actualizarFichaCobroVisual();
+
       // 3. Preseleccionar evento si viene especificado o tomar el evento activo por defecto
       let selEv = document.getElementById('sel-evento');
       if (idEvento && selEv) {
@@ -3466,14 +3624,15 @@
       }
 
       // 4. Desplazamiento suave hacia el formulario de cobro
-      let seccionCobro = document.querySelector('#apartado-cobros .card-boston:nth-of-type(2)');
+      let seccionCobro = document.getElementById('card-recepcion-cobro') || document.querySelector('#apartado-cobros .card-boston:nth-of-type(2)');
       if (seccionCobro) {
-        seccionCobro.scrollIntoView({ behavior: 'smooth' });
+        seccionCobro.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
 
       // 5. Consultar balance y enfocar campo de monto
       setTimeout(() => {
         consultarBalance();
+        actualizarFichaCobroVisual();
         setTimeout(() => {
           let numMonto = document.getElementById('num-monto');
           if (numMonto && !numMonto.disabled) numMonto.focus();
@@ -4687,6 +4846,7 @@
           document.getElementById('badge-descuento-aplicado').classList.add('d-none');
           document.getElementById('badge-estado-alumno-cortesia').classList.add('d-none');
         }
+        actualizarFichaCobroVisual();
         return;
       }
 
@@ -4696,6 +4856,8 @@
           costoOriginalEventoActual = res.costoOriginalEvento || ev.costo || res.costoTotal;
           costoEfectivoActual = res.costoTotal;
           saldoPendienteActual = res.resta;
+
+          actualizarFichaCobroVisual();
 
           box.classList.remove('d-none');
           document.getElementById('txt-abonado').innerText = `$${res.montoPagado}.00`;
@@ -4907,6 +5069,131 @@
       recalcularBalanceConPrecioEfectivo();
     }
 
+    var datosCobroPendiente = null;
+
+    function abrirModalPagoEfectivo(monto) {
+      let selAl = document.getElementById('sel-alumno');
+      let selEv = document.getElementById('sel-evento');
+      let opt = (selAl.selectedIndex >= 0) ? selAl.options[selAl.selectedIndex] : null;
+      let ev = listaEventosCompleta.find(e => e.id == selEv.value) || {};
+
+      let nombre = (opt && opt.dataset && opt.dataset.nombre) ? opt.dataset.nombre : (alumnoCobroActual.nombre || (opt ? opt.text : selAl.value));
+      let matricula = selAl.value;
+      let grado = (opt && opt.dataset && opt.dataset.grado) ? opt.dataset.grado : alumnoCobroActual.grado;
+      let grupo = (opt && opt.dataset && opt.dataset.grupo) ? opt.dataset.grupo : alumnoCobroActual.grupo;
+      let esExt = matricula.startsWith('EXT-') || grado === 'Invitado' || grupo === 'EXT';
+      let salon = formatearGrupoAbreviado(grado, grupo, esExt);
+
+      document.getElementById('modal-cobro-nombre-alumno').innerText = nombre;
+      document.getElementById('modal-cobro-matricula').innerText = matricula;
+      let badgeSalon = document.getElementById('modal-cobro-badge-salon');
+      if (badgeSalon) {
+        badgeSalon.innerText = salon;
+        badgeSalon.className = esExt ? 'badge bg-warning text-dark' : 'badge bg-primary';
+      }
+      document.getElementById('modal-cobro-evento-nombre').innerText = `🎯 Evento: ${ev.nombre || 'Evento escolar'}`;
+      document.getElementById('modal-cobro-monto-display').innerText = `$${monto.toLocaleString('es-MX', {minimumFractionDigits: 2})} MXN`;
+
+      let inpEfectivo = document.getElementById('modal-num-efectivo');
+      inpEfectivo.value = "";
+      
+      calcularCambioModal();
+
+      let modalEl = document.getElementById('modalCobroEfectivo');
+      let modalInstance = bootstrap.Modal.getOrCreateInstance(modalEl);
+      modalInstance.show();
+
+      setTimeout(() => {
+        inpEfectivo.focus();
+      }, 400);
+    }
+
+    function calcularCambioModal() {
+      if (!datosCobroPendiente) return;
+      let monto = datosCobroPendiente.monto || 0;
+      let inpEfectivo = document.getElementById('modal-num-efectivo');
+      let valStr = inpEfectivo ? inpEfectivo.value.trim() : "";
+      let efectivo = parseFloat(valStr) || 0;
+
+      let cajaCambio = document.getElementById('modal-caja-cambio');
+      let lblCambio = document.getElementById('modal-lbl-cambio');
+      let txtCambio = document.getElementById('modal-txt-cambio');
+      let msgCambio = document.getElementById('modal-msg-cambio');
+      let btnPagar = document.getElementById('btn-modal-confirmar-pago');
+
+      if (!valStr || efectivo === 0) {
+        cajaCambio.style.backgroundColor = "#f1f5f9";
+        cajaCambio.style.borderColor = "#cbd5e1";
+        lblCambio.innerText = "Cambio que debe entregar:";
+        lblCambio.style.color = "#64748b";
+        txtCambio.innerText = "$0.00";
+        txtCambio.style.color = "#334155";
+        msgCambio.innerText = "Ingresa la cantidad recibida para calcular el cambio.";
+        msgCambio.className = "small mt-1 text-muted";
+        btnPagar.disabled = true;
+      } else if (efectivo < monto) {
+        let falta = monto - efectivo;
+        cajaCambio.style.backgroundColor = "#fef2f2";
+        cajaCambio.style.borderColor = "#fca5a5";
+        lblCambio.innerText = "⚠️ Efectivo insuficiente (Falta cubrir):";
+        lblCambio.style.color = "#b91c1c";
+        txtCambio.innerText = `- $${falta.toFixed(2)}`;
+        txtCambio.style.color = "#dc2626";
+        msgCambio.innerText = `Faltan $${falta.toFixed(2)} MXN para cubrir el monto del cobro.`;
+        msgCambio.className = "small mt-1 text-danger fw-bold";
+        btnPagar.disabled = true;
+      } else {
+        let cambio = efectivo - monto;
+        cajaCambio.style.backgroundColor = "#dcfce7";
+        cajaCambio.style.borderColor = "#86efac";
+        lblCambio.innerText = "✅ Cambio a entregar:";
+        lblCambio.style.color = "#15803d";
+        txtCambio.innerText = `$${cambio.toFixed(2)} MXN`;
+        txtCambio.style.color = "#16a34a";
+        msgCambio.innerText = (cambio === 0) ? "¡Pago exacto! No se requiere entregar cambio." : `Entrega $${cambio.toFixed(2)} MXN de cambio al cliente.`;
+        msgCambio.className = "small mt-1 text-success fw-bold";
+        btnPagar.disabled = false;
+      }
+    }
+
+    function ponerEfectivoExactoModal() {
+      if (!datosCobroPendiente) return;
+      let inp = document.getElementById('modal-num-efectivo');
+      inp.value = datosCobroPendiente.monto;
+      calcularCambioModal();
+      inp.focus();
+    }
+
+    function sumarEfectivoModal(cantidad) {
+      let inp = document.getElementById('modal-num-efectivo');
+      let curr = parseFloat(inp.value) || 0;
+      inp.value = curr + cantidad;
+      calcularCambioModal();
+      inp.focus();
+    }
+
+    function limpiarEfectivoModal() {
+      let inp = document.getElementById('modal-num-efectivo');
+      inp.value = "";
+      calcularCambioModal();
+      inp.focus();
+    }
+
+    function ejecutarPagoModal() {
+      if (!datosCobroPendiente) return;
+      let inp = document.getElementById('modal-num-efectivo');
+      let efectivo = parseFloat(inp.value) || 0;
+      let monto = datosCobroPendiente.monto;
+
+      if (efectivo < monto) {
+        alert("El efectivo recibido no cubre el monto a cobrar.");
+        return;
+      }
+
+      let cambio = efectivo - monto;
+      procesarCobroFinal(monto, efectivo, cambio);
+    }
+
     function cobrar() {
       let evSelect = document.getElementById('sel-evento');
       let alSelect = document.getElementById('sel-alumno');
@@ -4916,7 +5203,11 @@
       let ev = listaEventosCompleta.find(e => e.id == evSelect.value);
 
       if (!evSelect.value) return alert("Por favor selecciona un evento.");
-      if (!alSelect.value) return alert("Por favor selecciona al alumno que va a realizar el pago.");
+      if (!alSelect.value) {
+        alert("Por favor selecciona al alumno que va a realizar el pago usando la barra de búsqueda superior.");
+        enfocarBuscadorPrincipal();
+        return;
+      }
 
       let costoFinal = isDescuento ? costoEfectivoActual : (ev.costo || 0);
 
@@ -4933,31 +5224,86 @@
         return alert(`❌ ATENCIÓN: No es posible cobrar más del saldo pendiente.\n\nEl alumno únicamente debe $${saldoPendienteActual}.00 MXN para este evento.`);
       }
 
-      let opt = alSelect.options[alSelect.selectedIndex];
-      let btn = document.getElementById('btn-cobrar');
-      btn.disabled = true;
-      btn.innerText = "Registrando cobro...";
-
+      let opt = (alSelect.selectedIndex >= 0) ? alSelect.options[alSelect.selectedIndex] : null;
       let radExt = document.getElementById('rad-tipo-externo');
-      let esModoExterno = radExt && radExt.checked;
-      let gradoCobro = esModoExterno ? "Invitado" : (opt.dataset.grado || document.getElementById('sel-grado').value);
-      let grupoCobro = esModoExterno ? "EXT" : (opt.dataset.grupo || document.getElementById('sel-grupo').value);
-      let nombreClienteCobro = opt.dataset.nombre || opt.text;
-      let emailClienteCobro = opt.dataset.email || "";
+      let esModoExterno = (radExt && radExt.checked) || alSelect.value.startsWith('EXT-');
+      let gradoCobro = esModoExterno ? "Invitado" : ((opt && opt.dataset && opt.dataset.grado) ? opt.dataset.grado : document.getElementById('sel-grado').value);
+      let grupoCobro = esModoExterno ? "EXT" : ((opt && opt.dataset && opt.dataset.grupo) ? opt.dataset.grupo : document.getElementById('sel-grupo').value);
+      let nombreClienteCobro = (opt && opt.dataset && opt.dataset.nombre) ? opt.dataset.nombre : (alumnoCobroActual.nombre || (opt ? opt.text : alSelect.value));
+      let emailClienteCobro = (opt && opt.dataset && opt.dataset.email) ? opt.dataset.email : alumnoCobroActual.email || "";
+
+      datosCobroPendiente = {
+        idEvento: ev.id,
+        nombreEvento: ev.nombre,
+        idAlumno: alSelect.value,
+        nombreCliente: nombreClienteCobro,
+        emailCliente: emailClienteCobro,
+        monto: monto,
+        costoFinal: costoFinal,
+        grado: gradoCobro,
+        grupo: grupoCobro,
+        isCortesia: isCortesia,
+        isDescuento: isDescuento
+      };
+
+      if (isCortesia) {
+        if (confirm(`¿Confirmas el registro de CORTESÍA ($0.00) para ${nombreClienteCobro}?`)) {
+          procesarCobroFinal(0, 0, 0);
+        }
+        return;
+      }
+
+      // Abrir modal de cobro en efectivo y validación de cambio
+      abrirModalPagoEfectivo(monto);
+    }
+
+    function procesarCobroFinal(monto, efectivo, cambio) {
+      if (!datosCobroPendiente) return;
+      let d = datosCobroPendiente;
+      let btnModal = document.getElementById('btn-modal-confirmar-pago');
+      let txtBtnModal = document.getElementById('txt-btn-modal-pago');
+      let spinnerModal = document.getElementById('spinner-modal-pago');
+      let btnCobrar = document.getElementById('btn-cobrar');
+
+      if (btnModal) {
+        btnModal.disabled = true;
+        if (txtBtnModal) txtBtnModal.innerText = "Registrando cobro...";
+        if (spinnerModal) spinnerModal.classList.remove('d-none');
+      }
+      if (btnCobrar) {
+        btnCobrar.disabled = true;
+        btnCobrar.innerText = "Registrando cobro...";
+      }
 
       google.script.run.withSuccessHandler(res => {
-        btn.disabled = false;
-        btn.innerText = "💰 Registrar Cobro y Enviar Recibo";
-        alert(isCortesia 
-          ? `🎟️ Cortesía registrada con éxito.\nFolio: ${res.folio}` 
-          : (isDescuento 
-              ? `🏷️ Cobro con Descuento Especial registrado.\nFolio Oficial: ${res.folio}\nPrecio especial aplicado: $${costoFinal}.00\nRecibo digital enviado por correo.` 
-              : `✅ Pago registrado con éxito.\nFolio Oficial: ${res.folio}\nRecibo digital enviado por correo.`));
+        if (btnModal) {
+          btnModal.disabled = false;
+          if (txtBtnModal) txtBtnModal.innerText = "✅ Pagar y Validar Cambio";
+          if (spinnerModal) spinnerModal.classList.add('d-none');
+        }
+        if (btnCobrar) {
+          btnCobrar.disabled = false;
+          btnCobrar.innerText = "💰 Registrar Cobro y Enviar Recibo";
+        }
 
-        // Limpiar montos
+        // Cerrar modal si estaba abierto
+        let modalEl = document.getElementById('modalCobroEfectivo');
+        let modalInstance = bootstrap.Modal.getInstance(modalEl);
+        if (modalInstance) modalInstance.hide();
+
+        let mensajeExito = d.isCortesia 
+          ? `🎟️ Cortesía registrada con éxito.\nFolio: ${res.folio}` 
+          : (d.isDescuento 
+              ? `🏷️ Cobro con Descuento Especial registrado.\nFolio Oficial: ${res.folio}\nMonto: $${monto}.00\nEfectivo recibido: $${efectivo}.00\nCambio entregado: $${cambio.toFixed(2)}\nRecibo digital enviado por correo.` 
+              : `✅ Pago registrado con éxito.\nFolio Oficial: ${res.folio}\nMonto: $${monto}.00\nEfectivo recibido: $${efectivo}.00\nCambio entregado: $${cambio.toFixed(2)}\nRecibo digital enviado por correo.`);
+
+        alert(mensajeExito);
+
+        // Limpiar campos
         document.getElementById('num-monto').value = "";
-        document.getElementById('num-efectivo').value = "";
-        calcularCambio();
+        let numEfectivo = document.getElementById('num-efectivo');
+        if (numEfectivo) numEfectivo.value = "";
+        datosCobroPendiente = null;
 
         consultarBalance();
         obtenerEfectivoEnCajaActual();
@@ -4965,17 +5311,24 @@
         
         // Actualizar métricas y búsqueda rápida si están visibles
         if (expedientesBusquedaActual && expedientesBusquedaActual.length > 0) {
-          ejecutarBusquedaRapidaAlumno(alSelect.value);
+          ejecutarBusquedaRapidaAlumno(d.idAlumno);
         }
         cargarMetricasDashboard();
       }).withFailureHandler(err => {
-        btn.disabled = false;
-        btn.innerText = "💰 Registrar Cobro y Enviar Recibo";
+        if (btnModal) {
+          btnModal.disabled = false;
+          if (txtBtnModal) txtBtnModal.innerText = "✅ Pagar y Validar Cambio";
+          if (spinnerModal) spinnerModal.classList.add('d-none');
+        }
+        if (btnCobrar) {
+          btnCobrar.disabled = false;
+          btnCobrar.innerText = "💰 Registrar Cobro y Enviar Recibo";
+        }
         alert("Error al registrar el cobro: " + err.message);
       }).registrarPago(
-        ev.id, ev.nombre, alSelect.value, nombreClienteCobro, emailClienteCobro,
-        monto, costoFinal, sesion.id, gradoCobro, 
-        grupoCobro, isCortesia, isDescuento
+        d.idEvento, d.nombreEvento, d.idAlumno, d.nombreCliente, d.emailCliente,
+        d.monto, d.costoFinal, sesion.id, d.grado, 
+        d.grupo, d.isCortesia, d.isDescuento
       );
     }
 
