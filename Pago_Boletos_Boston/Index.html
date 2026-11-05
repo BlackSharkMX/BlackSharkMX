@@ -204,7 +204,8 @@
     .input-icon-wrapper { position: relative; }
     .input-icon {
       position: absolute;
-      bottom: 13px;
+      top: 50%;
+      transform: translateY(-50%);
       left: 14px;
       width: 20px;
       height: 20px;
@@ -462,6 +463,20 @@
         border-radius: 8px !important;
         min-height: 42px !important;
       }
+      .input-with-icon {
+        padding-left: 44px !important;
+      }
+      .input-icon {
+        top: 50% !important;
+        bottom: auto !important;
+        transform: translateY(-50%) !important;
+        left: 13px !important;
+        width: 18px !important;
+        height: 18px !important;
+      }
+      .dropdown-sugerencias-alumnos {
+        max-height: 250px !important;
+      }
       .btn-boston, .btn-boston-gold {
         padding: 10px 14px !important;
         font-size: 13.5px !important;
@@ -618,11 +633,14 @@
       justify-content: space-between;
       align-items: center;
       transition: all 0.15s ease-in-out;
+      -webkit-tap-highlight-color: rgba(22, 163, 74, 0.15);
+      user-select: none;
+      touch-action: manipulation;
     }
     .sugerencia-alumno-item:last-child {
       border-bottom: none;
     }
-    .sugerencia-alumno-item:hover, .sugerencia-alumno-item.active {
+    .sugerencia-alumno-item:hover, .sugerencia-alumno-item:active, .sugerencia-alumno-item.active {
       background-color: #f0fdf4;
       border-left: 4px solid #16a34a;
     }
@@ -976,7 +994,7 @@
               <div class="input-icon-wrapper position-relative">
                 <svg class="input-icon" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
                 <input type="text" id="input-busqueda-alumno-rapida" class="form-control input-with-icon" 
-                       placeholder="Escribe el nombre o matrícula (ej. Derian, Sofía, Matías, S3A-01)..." 
+                       placeholder="Buscar alumno o matrícula (ej. Derian, Sofía, S3A)..." 
                        autocomplete="off"
                        oninput="inferirSugerenciasAlumnosEnVivo(this.value)"
                        onkeydown="manejarTecladoSugerenciasAlumnos(event)"
@@ -2909,7 +2927,9 @@
           : `<span class="badge bg-primary-subtle text-primary border me-1">${grAbrev}</span>`;
         
         return `
-          <div class="sugerencia-alumno-item" id="sug-item-${idx}" onclick="seleccionarSugerenciaAlumnoIndex(${idx})">
+          <div class="sugerencia-alumno-item" id="sug-item-${idx}" 
+               onpointerdown="seleccionarSugerenciaAlumnoIndex(${idx}, event)" 
+               onclick="seleccionarSugerenciaAlumnoIndex(${idx}, event)">
             <div class="d-flex align-items-center gap-2">
               <span class="fs-5">${esExt ? '👥' : '🎓'}</span>
               <div>
@@ -2983,14 +3003,33 @@
       });
     }
 
-    function seleccionarSugerenciaAlumnoIndex(idx) {
+    let ultimaSugerenciaTimestamp = 0;
+    function seleccionarSugerenciaAlumnoIndex(idx, ev) {
+      let ahora = Date.now();
+      if (ahora - ultimaSugerenciaTimestamp < 350) return; // Evita doble ejecución táctil
+      ultimaSugerenciaTimestamp = ahora;
+
+      if (ev) {
+        if (ev.cancelable && (ev.type === 'pointerdown' || ev.type === 'mousedown')) {
+          ev.preventDefault();
+        }
+        if (ev.stopPropagation) ev.stopPropagation();
+      }
+
       if (!sugerenciasActuales || !sugerenciasActuales[idx]) return;
       let al = sugerenciasActuales[idx];
       let input = document.getElementById('input-busqueda-alumno-rapida');
-      if (input) input.value = al.nombre;
+      if (input) {
+        input.value = al.nombre;
+        input.blur(); // Oculta inmediatamente el teclado virtual en celulares
+      }
       let drop = document.getElementById('dropdown-inferencia-alumnos');
-      if (drop) drop.classList.add('d-none');
-      ejecutarBusquedaRapidaAlumno(al.id);
+      if (drop) {
+        drop.classList.add('d-none');
+        drop.innerHTML = "";
+      }
+      // Entra al detalle directamente omitiendo el botón de buscar
+      ejecutarBusquedaRapidaAlumno(al.id, true);
     }
 
     // Cerrar sugerencias al hacer clic fuera
@@ -3002,9 +3041,11 @@
       }
     });
 
-    function ejecutarBusquedaRapidaAlumno(criterioDirecto) {
+    function ejecutarBusquedaRapidaAlumno(criterioDirecto, autoScroll) {
       let input = document.getElementById('input-busqueda-alumno-rapida');
-      let criterio = (criterioDirecto !== undefined) ? criterioDirecto : (input ? input.value.trim() : '');
+      let criterio = (criterioDirecto !== undefined && criterioDirecto !== null && criterioDirecto !== '') 
+                     ? criterioDirecto 
+                     : (input ? input.value.trim() : '');
       let btn = document.getElementById('btn-buscar-alumno-rapido');
       let txtBtn = document.getElementById('txtBtnBuscarAlumno');
       let spinner = document.getElementById('spinnerBuscarAlumno');
@@ -3012,7 +3053,11 @@
       let selectorCoincidencias = document.getElementById('selector-coincidencias-alumnos');
       let pills = document.getElementById('pills-alumnos-coincidentes');
       let drop = document.getElementById('dropdown-inferencia-alumnos');
-      if (drop) drop.classList.add('d-none');
+      if (drop) {
+        drop.classList.add('d-none');
+        drop.innerHTML = "";
+      }
+      if (input) input.blur();
 
       if (!criterio) {
         return alert("Por favor escribe el nombre o la matrícula del alumno.");
@@ -3035,6 +3080,9 @@
               <div>${res.message || "No se encontraron alumnos con ese nombre o matrícula."}</div>
             </div>`;
           contenedor.classList.remove('d-none');
+          if (autoScroll !== false) {
+            contenedor.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
           return;
         }
 
@@ -3045,7 +3093,7 @@
           pills.innerHTML = expedientesBusquedaActual.map((item, idx) => {
             let grAbrev = formatearGrupoAbreviado(item.alumno.grado, item.alumno.grupo, item.alumno.esExterno);
             return `
-              <button class="btn btn-sm btn-outline-primary pill-alumno-match" onclick="mostrarExpedienteAlumnoIndex(${idx})">
+              <button class="btn btn-sm btn-outline-primary pill-alumno-match" onclick="mostrarExpedienteAlumnoIndex(${idx}, true)">
                 👤 ${item.alumno.nombre} (${grAbrev}) ${(item.alumno.estatus && item.alumno.estatus.toLowerCase().includes('baja')) ? '<span class="badge bg-danger ms-1">BAJA</span>' : ''}
               </button>`;
           }).join('');
@@ -3054,8 +3102,8 @@
           selectorCoincidencias.classList.add('d-none');
         }
 
-        // Mostrar por defecto el primer alumno encontrado
-        mostrarExpedienteAlumnoIndex(0);
+        // Mostrar por defecto el primer alumno encontrado y desplegarlo en pantalla
+        mostrarExpedienteAlumnoIndex(0, autoScroll !== false);
 
       }).withFailureHandler(err => {
         btn.disabled = false;
@@ -3075,7 +3123,7 @@
       expedientesBusquedaActual = [];
     }
 
-    function mostrarExpedienteAlumnoIndex(idx) {
+    function mostrarExpedienteAlumnoIndex(idx, autoScroll) {
       if (!expedientesBusquedaActual || !expedientesBusquedaActual[idx]) return;
       let exp = expedientesBusquedaActual[idx];
       let al = exp.alumno;
@@ -3225,6 +3273,13 @@
 
       contenedor.innerHTML = htmlExpediente;
       contenedor.classList.remove('d-none');
+
+      // Auto-desplazamiento suave directo al expediente para ver el detalle de inmediato
+      if (autoScroll !== false) {
+        setTimeout(() => {
+          contenedor.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 80);
+      }
     }
 
     function cargarAlumnoEnCobro(idEvento, grado, grupo, idCliente, nombreCliente, emailCliente) {
