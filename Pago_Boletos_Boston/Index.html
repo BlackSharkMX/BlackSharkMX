@@ -28,6 +28,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- Generador PDF del lado del cliente para exportar detalles y estados de cuenta -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
   <style>
     :root {
@@ -3365,11 +3367,9 @@
             <button class="btn btn-outline-secondary btn-sm fw-bold px-3 py-2" onclick="imprimirEstadoCuentaAlumno(${idx})" title="Imprimir estado de cuenta">
               🖨️ Imprimir
             </button>
-            ${(al.estatus && al.estatus.toLowerCase().includes('baja')) ? 
-              `<button class="btn btn-secondary btn-sm" disabled title="Alumno dado de baja">🚫 En Baja</button>` :
-              `<button class="btn btn-boston px-4 py-2 fw-bold shadow-sm" style="font-size: 15px;" onclick="cargarAlumnoEnCobro('', '${al.grado}', '${al.grupo}', '${al.id}', '${al.nombre.replace(/'/g, "\\'")}', '${al.email || ''}')">
-                💳 Cobrar
-              </button>`}
+            <button id="btn-exportar-pdf-${idx}" class="btn btn-danger btn-sm fw-bold px-3 py-2 shadow-sm" style="background-color: var(--color-rojo-boston, #c83e2b); border: none;" onclick="exportarEstadoCuentaPDF(${idx})" title="Exportar detalle de pagos a PDF">
+              📄 Exportar PDF
+            </button>
           </div>
         </div>
 
@@ -3543,6 +3543,120 @@
 
       document.getElementById('print-area-estado-cuenta').innerHTML = htmlPrint;
       forzarImpresionAislada('print-area-estado-cuenta');
+    }
+
+    /**
+     * Exporta el estado de cuenta y detalle de pagos del alumno directamente a archivo PDF
+     */
+    function exportarEstadoCuentaPDF(idx) {
+      if (!expedientesBusquedaActual || !expedientesBusquedaActual[idx]) return;
+      let exp = expedientesBusquedaActual[idx];
+      let al = exp.alumno;
+      let horaEmision = new Date().toLocaleString();
+      let nombreLimpio = (al.nombre || 'Alumno').replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s]/g, '').trim().replace(/\s+/g, '_');
+      let nombreArchivo = `Estado_Cuenta_${nombreLimpio}_${al.id || ''}.pdf`;
+
+      let btn = document.getElementById(`btn-exportar-pdf-${idx}`);
+      let txtOriginal = btn ? btn.innerHTML : '';
+      if (btn) {
+        btn.innerHTML = `⏳ Generando...`;
+        btn.disabled = true;
+      }
+
+      let bloquesEventos = "";
+      exp.eventos.forEach(ev => {
+        let filas = "";
+        if (ev.abonos && ev.abonos.length > 0) {
+          filas = ev.abonos.map(ab => `
+            <tr ${ab.cancelado ? 'style="text-decoration: line-through; color: #94a3b8;"' : ''}>
+              <td style="font-family:monospace; padding: 6px 8px; border: 1px solid #cbd5e1;">${ab.folio}</td>
+              <td style="padding: 6px 8px; border: 1px solid #cbd5e1;">${ab.fecha}</td>
+              <td style="text-align:right; padding: 6px 8px; border: 1px solid #cbd5e1; font-weight:bold;">${ab.cancelado ? ab.montoTexto : (ab.cortesia ? 'CORTESÍA' : '$' + ab.montoValor + '.00')}</td>
+              <td style="padding: 6px 8px; border: 1px solid #cbd5e1;">${ab.cajero}</td>
+              <td style="padding: 6px 8px; border: 1px solid #cbd5e1;">${ab.estatusCorte}</td>
+            </tr>`).join('');
+        } else {
+          filas = `<tr><td colspan="5" style="text-align:center; color:#94a3b8; padding: 8px; border: 1px solid #cbd5e1;">Sin abonos registrados aún.</td></tr>`;
+        }
+
+        bloquesEventos += `
+          <div style="margin-bottom: 16px; border: 1px solid #0b1f3f; border-radius: 6px; padding: 10px; background: #ffffff;">
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 1px solid #cbd5e1; padding-bottom: 6px; margin-bottom: 8px; font-size:12px;">
+              <div><strong style="color:#0b1f3f; font-size:13px;">Evento: ${ev.nombreEvento}</strong> (${ev.estatus})</div>
+              <div>Costo: <strong>$${ev.costoTotal}.00</strong> &nbsp;|&nbsp; Abonado: <strong style="color:#16a34a;">$${ev.totalAbonado}.00</strong> &nbsp;|&nbsp; Resta: <strong style="color:${ev.restante > 0 ? '#dc2626' : '#16a34a'};">$${ev.restante}.00</strong></div>
+            </div>
+            <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+              <thead>
+                <tr style="background-color: #f1f5f9;">
+                  <th style="padding: 6px 8px; border: 1px solid #cbd5e1; text-align:left;">Folio</th>
+                  <th style="padding: 6px 8px; border: 1px solid #cbd5e1; text-align:left;">Fecha y Hora</th>
+                  <th style="padding: 6px 8px; border: 1px solid #cbd5e1; text-align:right;">Monto</th>
+                  <th style="padding: 6px 8px; border: 1px solid #cbd5e1; text-align:left;">Cajero</th>
+                  <th style="padding: 6px 8px; border: 1px solid #cbd5e1; text-align:left;">Corte</th>
+                </tr>
+              </thead>
+              <tbody>${filas}</tbody>
+            </table>
+          </div>`;
+      });
+
+      let elementoPDF = document.createElement('div');
+      elementoPDF.style.cssText = "width: 780px; padding: 25px; background: #ffffff; color: #1e293b; font-family: 'Inter', Arial, sans-serif;";
+      elementoPDF.innerHTML = `
+        <div style="border: 2px solid #0b1f3f; border-radius: 8px; padding: 14px; text-align: center; margin-bottom: 16px; background: #f8fafc;">
+          <h2 style="margin:0; font-size: 20px; color: #0b1f3f; font-weight: 800; letter-spacing: 0.5px;">COLEGIO BOSTON</h2>
+          <h4 style="margin:4px 0; font-size: 13px; font-weight: bold; color: #475569; text-transform: uppercase;">Estado de Cuenta Individual de Eventos</h4>
+          <p style="margin:4px 0 0 0; font-size: 12px; color: #1e293b;">
+            <strong>Estudiante:</strong> ${al.nombre} &nbsp;|&nbsp; 
+            <strong>Salón:</strong> ${formatearGrupoAbreviado(al.grado, al.grupo, al.esExterno)} &nbsp;|&nbsp; 
+            <strong>Matrícula:</strong> ${al.id}
+          </p>
+          <p style="text-align: right; font-size: 10px; margin: 4px 0 0 0; color: #64748b;">Emisión: ${horaEmision}</p>
+        </div>
+
+        <div style="margin-bottom: 16px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px; display: flex; justify-content: space-around; background: #f8fafc; font-size: 12px;">
+          <div><span style="color:#64748b;">Total Abonado:</span> <strong style="color:#16a34a; font-size:13px;">$${exp.granTotalAbonado}.00</strong></div>
+          <div><span style="color:#64748b;">Restante:</span> <strong style="color:${exp.granRestante > 0 ? '#dc2626' : '#16a34a'}; font-size:13px;">$${exp.granRestante}.00</strong></div>
+          <div><span style="color:#64748b;">Total:</span> <strong style="color:#0b1f3f; font-size:13px;">$${exp.granCostoTotal}.00</strong></div>
+        </div>
+
+        ${bloquesEventos}
+
+        <div style="margin-top: 40px; text-align: center;">
+          <div style="display: inline-block; width: 260px; border-top: 1px solid #334155; padding-top: 6px; font-size: 11px; color: #475569;">
+            <strong>Firma y Sello de Caja Escolar</strong><br>Colegio Boston • Cuernavaca
+          </div>
+        </div>`;
+
+      if (typeof html2pdf !== 'undefined') {
+        let opt = {
+          margin:       [10, 10, 10, 10],
+          filename:     nombreArchivo,
+          image:        { type: 'jpeg', quality: 0.98 },
+          html2canvas:  { scale: 2, useCORS: true, logging: false },
+          jsPDF:        { unit: 'mm', format: 'letter', orientation: 'portrait' }
+        };
+
+        html2pdf().set(opt).from(elementoPDF).save().then(() => {
+          if (btn) {
+            btn.innerHTML = txtOriginal;
+            btn.disabled = false;
+          }
+        }).catch(err => {
+          console.error("Error al exportar PDF con html2pdf:", err);
+          if (btn) {
+            btn.innerHTML = txtOriginal;
+            btn.disabled = false;
+          }
+          imprimirEstadoCuentaAlumno(idx);
+        });
+      } else {
+        if (btn) {
+          btn.innerHTML = txtOriginal;
+          btn.disabled = false;
+        }
+        imprimirEstadoCuentaAlumno(idx);
+      }
     }
 
     // ========================================================================
