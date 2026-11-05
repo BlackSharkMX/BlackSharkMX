@@ -837,16 +837,16 @@
             
             <div class="input-icon-wrapper">
               <svg class="input-icon" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
-              <!-- Selector precargado desde backend con opciones directas -->
+              <!-- Selector precargado dinámicamente desde backend según hoja Usuarios -->
               <select id="user" class="form-select input-with-icon" onchange="manejarSeleccionUsuario(this.value)">
                 <option value="">-- Selecciona tu usuario --</option>
-                <option value="Hugo">Hugo Galera M. (Cajero)</option>
-                <option value="admin">Administrador Principal (Admin)</option>
-                <option value="Jessi">Jessica Salgado (Cajero)</option>
-                <option value="cajero2">Cajero-2 (Cajero)</option>
-                <option value="Liliana">Liliana Cafetería (Cajero)</option>
-                <option value="Raquel">Raquel Zozaya Arellano (Cajero)</option>
-                <option value="Ruth">Ruth Estela García Azcárraga (Cajero)</option>
+                <? 
+                  var usrsObj = obtenerUsuariosLogin();
+                  var usrs = (usrsObj && usrsObj.usuarios) ? usrsObj.usuarios : [];
+                  for (var u = 0; u < usrs.length; u++) { 
+                ?>
+                  <option value="<?= usrs[u].usuario ?>"><?= usrs[u].nombre ?> (<?= usrs[u].rol ?>)</option>
+                <? } ?>
                 <option value="__manual__">✏️ Escribir otro usuario...</option>
               </select>
               <!-- Campo alternativo manual -->
@@ -2594,13 +2594,8 @@
         if (boot && boot.length > 0) return boot;
       } catch(e) {}
       return [
-        { usuario: "Hugo", nombre: "Hugo Galera M.", rol: "Cajero" },
-        { usuario: "admin", nombre: "Administrador Principal", rol: "Admin" },
-        { usuario: "Jessi", nombre: "Jessica Salgado", rol: "Cajero" },
-        { usuario: "cajero2", nombre: "Cajero-2", rol: "Cajero" },
-        { usuario: "Liliana", nombre: "Liliana Cafetería", rol: "Cajero" },
-        { usuario: "Raquel", nombre: "Raquel Zozaya Arellano", rol: "Cajero" },
-        { usuario: "Ruth", nombre: "Ruth Estela García Azcárraga", rol: "Cajero" }
+        { usuario: "Admin Root", nombre: "Root", rol: "Admin" },
+        { usuario: "Raquel Zozaya", nombre: "Raquel Zozaya Arellano", rol: "Cajero" }
       ];
     })();
 
@@ -2614,7 +2609,9 @@
       });
       html += '<option value="__manual__">✏️ Escribir otro usuario...</option>';
       selUser.innerHTML = html;
-      if (prevVal) selUser.value = prevVal;
+      if (prevVal && usuarios.some(u => u.usuario === prevVal)) {
+        selUser.value = prevVal;
+      }
     }
 
     function cargarUsuariosParaLogin() {
@@ -2622,6 +2619,7 @@
       google.script.run
         .withSuccessHandler(res => {
           if (res && res.usuarios) {
+            usuariosBootstrap = res.usuarios;
             renderizarSelectUsuarios(res.usuarios);
           }
         })
@@ -2725,9 +2723,15 @@
         try {
           let creds = JSON.parse(saved);
           if (creds.usuario && creds.pass) {
-            document.getElementById('pass').value = creds.pass;
-            alternarModoIngresoUsuario(true);
-            document.getElementById('userInputManual').value = creds.usuario;
+            let sel = document.getElementById('user');
+            let existe = usuariosBootstrap.some(u => (u.usuario || '').toLowerCase() === (creds.usuario || '').toLowerCase() || (u.nombre || '').toLowerCase() === (creds.usuario || '').toLowerCase());
+            if (existe) {
+              let uMatch = usuariosBootstrap.find(u => (u.usuario || '').toLowerCase() === (creds.usuario || '').toLowerCase() || (u.nombre || '').toLowerCase() === (creds.usuario || '').toLowerCase());
+              if (uMatch && sel) sel.value = uMatch.usuario;
+              document.getElementById('pass').value = creds.pass;
+            } else {
+              localStorage.removeItem('boston_session');
+            }
           }
         } catch(e) {}
       }
