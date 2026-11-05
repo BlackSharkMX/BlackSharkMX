@@ -8,6 +8,15 @@
  */
 function doGet(e) {
   try {
+    // Endpoint para prueba directa de login
+    if (e && e.parameter && e.parameter.action === 'login') {
+      var userParam = e.parameter.user || "Admin Root";
+      var passParam = e.parameter.pass || "Santos89";
+      var resLogin = login(userParam, passParam);
+      return ContentService.createTextOutput(JSON.stringify(resLogin, null, 2))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
     // Endpoint para sincronización directa de alumnos desde navegador autenticado
     if (e && e.parameter && e.parameter.action === 'sync') {
       var targetUrl = e.parameter.url || e.parameter.id || "1cfQ1ni8TuszbAhiW-jEB-Dk2Q7xSBVtUPjBrNP80I_I";
