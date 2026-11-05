@@ -202,8 +202,15 @@ function doGet(e) {
 
     return HtmlService.createTemplateFromFile('Index')
       .evaluate()
-      .setTitle('Eventos Boston | Pagos, Abonos y Cooperaciones')
-      .addMetaTag('viewport', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no')
+      .setTitle('Eventos Boston')
+      .setFaviconUrl('https://lh3.googleusercontent.com/d/1ZpZST5pl7nQPkJRhnKLL2WNDNpEO6_3f')
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover')
+      .addMetaTag('apple-mobile-web-app-title', 'Eventos Boston')
+      .addMetaTag('application-name', 'Eventos Boston')
+      .addMetaTag('mobile-web-app-capable', 'yes')
+      .addMetaTag('apple-mobile-web-app-capable', 'yes')
+      .addMetaTag('apple-mobile-web-app-status-bar-style', 'black-translucent')
+      .addMetaTag('theme-color', '#0b1f3f')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   } catch(error) {
     return HtmlService.createHtmlOutput('<h3>Error al cargar Eventos Boston:</h3><p>' + error.message + '</p>');
